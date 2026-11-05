@@ -1,0 +1,462 @@
+import XCTest
+@testable import IslandCore
+
+final class ReducerInteractionTests: XCTestCase {
+    private let t0 = TestClock.start
+
+    func testManualOpenAndLostFocusCollapses() throws {
+        var state = IslandState()
+        _ = state.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .idle, title: "Alpha"),
+            makeAgent("w1:p2", .working, title: "Beta"),
+        ])))
+        XCTAssertFalse(presentation(of: state).isExpanded)
+
+        let openEffects = state.apply(.hotKey, at: t0.addingTimeInterval(0.1))
+        XCTAssertEqual(openEffects, [.loadPreview(state.selection!)])
+        var p = presentation(of: state, at: t0.addingTimeInterval(0.1))
+        XCTAssertTrue(p.isExpanded)
+        XCTAssertNotNil(p.composer)
+
+        _ = state.apply(.lostFocus, at: t0.addingTimeInterval(0.2))
+        XCTAssertFalse(presentation(of: state, at: t0.addingTimeInterval(0.2)).isExpanded)
+
+        _ = state.apply(.hotKey, at: t0.addingTimeInterval(0.3))
+        let selected = try XCTUnwrap(presentation(of: state, at: t0.addingTimeInterval(0.3)).selected?.id)
+        _ = state.apply(.setDraft(selected, "typing"), at: t0.addingTimeInterval(0.4))
+        _ = state.apply(.lostFocus, at: t0.addingTimeInterval(0.5))
+        XCTAssertTrue(presentation(of: state, at: t0.addingTimeInterval(0.5)).isExpanded)
+
+        _ = state.apply(.setDraft(selected, ""), at: t0.addingTimeInterval(0.6))
+        _ = state.apply(.lostFocus, at: t0.addingTimeInterval(0.7))
+        p = presentation(of: state, at: t0.addingTimeInterval(0.7))
+        XCTAssertFalse(p.isExpanded)
+    }
+
+    func testSendBlockedAgentDoesNotEmitPrompt() {
+        var state = IslandState()
+        _ = state.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .blocked, title: "Alpha", stateChangeSeq: 3),
+        ])))
+        _ = state.apply(.setDraft(PaneID("w1:p1"), "yes, run it"), at: t0.addingTimeInterval(0.1))
+
+        let effects = state.apply(.sendMessage, at: t0.addingTimeInterval(0.2))
+        XCTAssertEqual(effects, [])
+
+        let p = presentation(of: state, at: t0.addingTimeInterval(0.2))
+        XCTAssertEqual(p.banner?.source, .send)
+        XCTAssertEqual(p.banner?.isError, true)
+        XCTAssertEqual(p.banner?.text, MessagePolicy.refusal(for: makeAgent("w1:p1", .blocked)))
+        XCTAssertEqual(p.composer?.isSending, false)
+        XCTAssertEqual(p.composer?.canSend, false)
+        XCTAssertEqual(p.composer?.text, "yes, run it")
+
+        var working = IslandState()
+        _ = working.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .working),
+        ])))
+        _ = working.apply(.hotKey, at: t0.addingTimeInterval(0.05))
+        _ = working.apply(.setDraft(PaneID("w1:p1"), "hello"), at: t0.addingTimeInterval(0.1))
+        let workingEffects = working.apply(.sendMessage, at: t0.addingTimeInterval(0.2))
+        XCTAssertEqual(workingEffects, [])
+        let queued = presentation(of: working, at: t0.addingTimeInterval(0.2))
+        XCTAssertNil(queued.banner)
+        XCTAssertEqual(queued.composer?.isQueue, true)
+        XCTAssertEqual(queued.composer?.queuedText, "hello")
+        XCTAssertEqual(queued.composer?.text, "")
+    }
+
+    func testSendFailureKeepsDraftAndShowsBanner() {
+        var state = IslandState()
+        _ = state.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .idle, title: "Alpha"),
+        ])))
+        _ = state.apply(.hotKey, at: t0.addingTimeInterval(0.05))
+        _ = state.apply(.setDraft(PaneID("w1:p1"), "  ship it  "), at: t0.addingTimeInterval(0.1))
+
+        let sendEffects = state.apply(.sendMessage, at: t0.addingTimeInterval(0.2))
+        XCTAssertEqual(sendEffects, [.sendPrompt(PaneID("w1:p1"), "ship it")])
+        var p = presentation(of: state, at: t0.addingTimeInterval(0.2))
+        XCTAssertEqual(p.composer?.isSending, true)
+        XCTAssertEqual(p.composer?.canSend, false)
+
+        let failure = BackendFailure(.commandFailed, "herdr exited 1")
+        let resultEffects = state.apply(
+            .sendResult(PaneID("w1:p1"), .failure(failure)),
+            at: t0.addingTimeInterval(0.5)
+        )
+        XCTAssertEqual(resultEffects, [.sampleNow])
+
+        p = presentation(of: state, at: t0.addingTimeInterval(0.5))
+        XCTAssertEqual(p.composer?.text, "  ship it  ")
+        XCTAssertEqual(p.composer?.isSending, false)
+        XCTAssertEqual(p.banner?.text, "herdr exited 1")
+        XCTAssertEqual(p.banner?.isError, true)
+        XCTAssertEqual(p.banner?.source, .send)
+    }
+
+    func testSendSuccessKeepsPanelOpenAndSamplesNow() {
+        var state = IslandState(rules: IslandRules(completionHold: 8))
+        _ = state.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .working),
+        ])))
+        _ = state.apply(.snapshot(makeSnapshot(2, [
+            makeAgent("w1:p1", .idle, completionSeq: 11),
+        ])))
+        XCTAssertEqual(presentation(of: state).summary.completed, 1)
+
+        _ = state.apply(.setDraft(PaneID("w1:p1"), "ship it"), at: t0.addingTimeInterval(0.1))
+        let sendEffects = state.apply(.sendMessage, at: t0.addingTimeInterval(0.2))
+        XCTAssertEqual(sendEffects, [.sendPrompt(PaneID("w1:p1"), "ship it")])
+
+        let resultEffects = state.apply(.sendResult(PaneID("w1:p1"), .success), at: t0.addingTimeInterval(0.3))
+        XCTAssertEqual(resultEffects, [.sampleNow])
+
+        let p = presentation(of: state, at: t0.addingTimeInterval(0.3))
+        XCTAssertTrue(p.isExpanded)
+        XCTAssertEqual(p.composer?.text, "")
+        XCTAssertEqual(p.composer?.isSending, false)
+        XCTAssertEqual(p.banner?.text, "已发送。")
+        XCTAssertEqual(p.banner?.isError, false)
+        XCTAssertEqual(p.summary.completed, 0)
+
+        _ = state.apply(.tick, at: t0.addingTimeInterval(60))
+        XCTAssertTrue(presentation(of: state, at: t0.addingTimeInterval(60)).isExpanded)
+    }
+
+    func testPreviewResultKeptForSelectedAgentAfterStatusChange() {
+        var state = IslandState()
+        let launchEffects = state.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .blocked, stateChangeSeq: 42),
+        ])))
+        XCTAssertEqual(launchEffects, [.loadPreview(PaneID("w1:p1"))])
+        XCTAssertEqual(presentation(of: state).preview?.isLoading, true)
+
+        _ = state.apply(.snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
+            makeAgent("w1:p1", .idle),
+        ])), at: t0.addingTimeInterval(1))
+        XCTAssertFalse(presentation(of: state, at: t0.addingTimeInterval(1)).isExpanded)
+
+        let resultEffects = state.apply(
+            .previewResult(PaneID("w1:p1"), .success("secret text")),
+            at: t0.addingTimeInterval(1.1)
+        )
+        XCTAssertEqual(resultEffects, [])
+        XCTAssertNil(presentation(of: state, at: t0.addingTimeInterval(1.1)).preview)
+
+        _ = state.apply(.hotKey, at: t0.addingTimeInterval(1.2))
+        let p = presentation(of: state, at: t0.addingTimeInterval(1.2))
+        XCTAssertTrue(p.isExpanded)
+        XCTAssertEqual(p.preview?.text, "secret text")
+        XCTAssertNotNil(p.composer)
+    }
+
+    func testPreviewLoadsOnlyOnceWhileInFlight() {
+        let agents = [
+            makeAgent("w1:p1", .blocked, title: "Alpha", stateChangeSeq: 42),
+            makeAgent("w1:p2", .idle, title: "Beta"),
+        ]
+        var state = IslandState()
+        let launchEffects = state.apply(.snapshot(makeSnapshot(1, agents)))
+        XCTAssertEqual(launchEffects, [.loadPreview(PaneID("w1:p1"))])
+
+        let pollEffects = state.apply(.snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), agents)), at: t0.addingTimeInterval(1))
+        XCTAssertEqual(pollEffects, [])
+
+        XCTAssertEqual(state.apply(.select(PaneID("w1:p2")), at: t0.addingTimeInterval(1.1)), [.loadPreview(PaneID("w1:p2"))])
+        XCTAssertEqual(state.apply(.select(PaneID("w1:p1")), at: t0.addingTimeInterval(1.2)), [])
+
+        let resultEffects = state.apply(
+            .previewResult(PaneID("w1:p1"), .success("body")),
+            at: t0.addingTimeInterval(1.3)
+        )
+        XCTAssertEqual(resultEffects, [])
+        XCTAssertEqual(presentation(of: state, at: t0.addingTimeInterval(1.3)).preview?.text, "body")
+
+        XCTAssertEqual(state.apply(.select(PaneID("w1:p2")), at: t0.addingTimeInterval(1.4)), [])
+        XCTAssertEqual(state.apply(.select(PaneID("w1:p1")), at: t0.addingTimeInterval(1.5)), [])
+        XCTAssertEqual(presentation(of: state, at: t0.addingTimeInterval(1.5)).preview?.text, "body")
+    }
+
+    func testHotKeyOpensAndLoadsSelectedBlockedPreview() {
+        var state = IslandState(rules: IslandRules(autoExpandOnBlocked: false))
+        let launchEffects = state.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .blocked, stateChangeSeq: 42),
+        ])))
+        XCTAssertEqual(launchEffects, [])
+        XCTAssertFalse(presentation(of: state).isExpanded)
+
+        let openEffects = state.apply(.hotKey, at: t0.addingTimeInterval(0.5))
+        XCTAssertEqual(openEffects, [.loadPreview(PaneID("w1:p1"))])
+        let p = presentation(of: state, at: t0.addingTimeInterval(0.5))
+        XCTAssertTrue(p.isExpanded)
+        XCTAssertEqual(p.preview?.isLoading, true)
+    }
+
+    func testMoveSelectionOntoBlockedLoadsPreview() {
+        var state = IslandState(rules: IslandRules(autoExpandOnBlocked: false))
+        _ = state.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .blocked, title: "Beta", stateChangeSeq: 42),
+            makeAgent("w1:p2", .idle, title: "Alpha"),
+        ])))
+        _ = state.apply(.select(PaneID("w1:p2")), at: t0.addingTimeInterval(0.1))
+        _ = state.apply(.hotKey, at: t0.addingTimeInterval(0.2))
+        XCTAssertEqual(presentation(of: state, at: t0.addingTimeInterval(0.2)).preview?.pane, PaneID("w1:p2"))
+        XCTAssertEqual(presentation(of: state, at: t0.addingTimeInterval(0.2)).preview?.isLoading, true)
+
+        let effects = state.apply(.moveSelection(-1), at: t0.addingTimeInterval(0.3))
+        XCTAssertEqual(effects, [.loadPreview(PaneID("w1:p1"))])
+
+        let p = presentation(of: state, at: t0.addingTimeInterval(0.3))
+        XCTAssertEqual(p.selected?.id, PaneID("w1:p1"))
+        XCTAssertEqual(p.preview?.pane, PaneID("w1:p1"))
+        XCTAssertEqual(p.preview?.isLoading, true)
+    }
+
+    func testJumpSuccessKeepsOtherAttentionExpanded() {
+        let agents = [
+            makeAgent("w1:p1", .blocked, title: "Alpha", stateChangeSeq: 10),
+            makeAgent("w1:p2", .blocked, title: "Beta", stateChangeSeq: 20),
+        ]
+        var state = IslandState()
+        _ = state.apply(.snapshot(makeSnapshot(1, agents)))
+
+        var p = presentation(of: state)
+        XCTAssertTrue(p.isExpanded)
+        XCTAssertEqual(p.selected?.id, PaneID("w1:p1"))
+        XCTAssertEqual(p.summary.blocked, 2)
+
+        let jumpEffects = state.apply(.jumpResult(PaneID("w1:p1"), .success), at: t0.addingTimeInterval(0.5))
+        XCTAssertEqual(jumpEffects, [.loadPreview(PaneID("w1:p2"))])
+
+        p = presentation(of: state, at: t0.addingTimeInterval(0.5))
+        XCTAssertTrue(p.isExpanded)
+        XCTAssertEqual(p.selected?.id, PaneID("w1:p2"))
+        XCTAssertEqual(p.summary.blocked, 2)
+
+        let confirmEffects = state.apply(.confirmJump, at: t0.addingTimeInterval(0.6))
+        XCTAssertEqual(confirmEffects, [.focusPane(PaneID("w1:p2"))])
+
+        _ = state.apply(.snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1.5), agents)), at: t0.addingTimeInterval(1.5))
+        p = presentation(of: state, at: t0.addingTimeInterval(1.5))
+        XCTAssertTrue(p.isExpanded)
+        XCTAssertEqual(p.selected?.id, PaneID("w1:p2"))
+
+        _ = state.apply(.escape, at: t0.addingTimeInterval(2))
+        XCTAssertFalse(presentation(of: state, at: t0.addingTimeInterval(2)).isExpanded)
+
+        let afterDismiss = state.apply(.snapshot(makeSnapshot(3, at: t0.addingTimeInterval(2.5), agents)), at: t0.addingTimeInterval(2.5))
+        XCTAssertEqual(afterDismiss, [])
+        XCTAssertFalse(presentation(of: state, at: t0.addingTimeInterval(2.5)).isExpanded)
+    }
+
+    func testJumpToUnselectedBlockedPaneLoadsItsPreview() {
+        var state = IslandState()
+        _ = state.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .blocked, title: "Alpha", stateChangeSeq: 10),
+            makeAgent("w1:p2", .blocked, title: "Beta", stateChangeSeq: 20),
+        ])))
+        XCTAssertEqual(presentation(of: state).selected?.id, PaneID("w1:p1"))
+
+        let effects = state.apply(.jump(PaneID("w1:p2")), at: t0.addingTimeInterval(0.5))
+        XCTAssertEqual(effects, [.focusPane(PaneID("w1:p2")), .loadPreview(PaneID("w1:p2"))])
+
+        let p = presentation(of: state, at: t0.addingTimeInterval(0.5))
+        XCTAssertEqual(p.selected?.id, PaneID("w1:p2"))
+        XCTAssertEqual(p.preview?.pane, PaneID("w1:p2"))
+        XCTAssertEqual(p.preview?.isLoading, true)
+    }
+
+    func testJumpSuccessLoadsPreviewForNextAttentionPane() {
+        var state = IslandState()
+        _ = state.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .working, title: "Alpha"),
+            makeAgent("w1:p2", .blocked, title: "Beta", stateChangeSeq: 20),
+        ])))
+        _ = state.apply(.setDraft(PaneID("w1:p2"), "typing"), at: t0.addingTimeInterval(0.2))
+        _ = state.apply(.snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
+            makeAgent("w1:p1", .blocked, title: "Alpha", stateChangeSeq: 10),
+            makeAgent("w1:p2", .blocked, title: "Beta", stateChangeSeq: 20),
+        ])), at: t0.addingTimeInterval(1))
+
+        var p = presentation(of: state, at: t0.addingTimeInterval(1))
+        XCTAssertTrue(p.isExpanded)
+        XCTAssertEqual(p.selected?.id, PaneID("w1:p2"))
+        XCTAssertEqual(p.preview?.pane, PaneID("w1:p2"))
+        XCTAssertEqual(p.preview?.isLoading, true)
+
+        let jumpEffects = state.apply(.jump(PaneID("w1:p2")), at: t0.addingTimeInterval(1.5))
+        XCTAssertEqual(jumpEffects, [.focusPane(PaneID("w1:p2"))])
+
+        let resultEffects = state.apply(.jumpResult(PaneID("w1:p2"), .success), at: t0.addingTimeInterval(1.6))
+        XCTAssertEqual(resultEffects, [.loadPreview(PaneID("w1:p1"))])
+
+        p = presentation(of: state, at: t0.addingTimeInterval(1.6))
+        XCTAssertTrue(p.isExpanded)
+        XCTAssertEqual(p.selected?.id, PaneID("w1:p1"))
+        XCTAssertEqual(p.preview?.pane, PaneID("w1:p1"))
+        XCTAssertEqual(p.preview?.isLoading, true)
+    }
+
+    func testNewBlockedDoesNotStealSelectionWhileTyping() {
+        var drafting = IslandState()
+        _ = drafting.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .idle, title: "Alpha"),
+            makeAgent("w1:p2", .working, title: "Beta"),
+        ])))
+        _ = drafting.apply(.select(PaneID("w1:p1")), at: t0.addingTimeInterval(0.1))
+        _ = drafting.apply(.setDraft(PaneID("w1:p1"), "typing"), at: t0.addingTimeInterval(0.2))
+
+        let draftEffects = drafting.apply(.snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
+            makeAgent("w1:p1", .idle, title: "Alpha"),
+            makeAgent("w1:p2", .blocked, title: "Beta", stateChangeSeq: 8),
+        ])), at: t0.addingTimeInterval(1))
+        XCTAssertEqual(draftEffects, [.loadPreview(PaneID("w1:p1"))])
+
+        var p = presentation(of: drafting, at: t0.addingTimeInterval(1))
+        XCTAssertTrue(p.isExpanded)
+        XCTAssertEqual(p.selected?.id, PaneID("w1:p1"))
+        XCTAssertEqual(row(p, "w1:p2")?.status, .blocked)
+        XCTAssertEqual(row(p, "w1:p2")?.isSelected, false)
+
+        var focused = IslandState()
+        _ = focused.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .idle, title: "Alpha"),
+            makeAgent("w1:p2", .working, title: "Beta"),
+        ])))
+        _ = focused.apply(.select(PaneID("w1:p1")), at: t0.addingTimeInterval(0.1))
+        _ = focused.apply(.setComposerFocus(true), at: t0.addingTimeInterval(0.2))
+        _ = focused.apply(.snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
+            makeAgent("w1:p1", .idle, title: "Alpha"),
+            makeAgent("w1:p2", .blocked, title: "Beta", stateChangeSeq: 8),
+        ])), at: t0.addingTimeInterval(1))
+
+        p = presentation(of: focused, at: t0.addingTimeInterval(1))
+        XCTAssertEqual(p.selected?.id, PaneID("w1:p1"))
+        XCTAssertTrue(p.isComposerFocused)
+
+        var idle = IslandState()
+        _ = idle.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .idle, title: "Alpha"),
+            makeAgent("w1:p2", .working, title: "Beta"),
+        ])))
+        _ = idle.apply(.select(PaneID("w1:p1")), at: t0.addingTimeInterval(0.1))
+        _ = idle.apply(.snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
+            makeAgent("w1:p1", .idle, title: "Alpha"),
+            makeAgent("w1:p2", .blocked, title: "Beta", stateChangeSeq: 8),
+        ])), at: t0.addingTimeInterval(1))
+        XCTAssertEqual(presentation(of: idle, at: t0.addingTimeInterval(1)).selected?.id, PaneID("w1:p2"))
+    }
+
+    func testQueuedMessageDispatchesOnceWhenAgentBecomesIdleAndCanBeCancelled() {
+        var state = IslandState()
+        _ = state.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .working, title: "Alpha"),
+        ])))
+        _ = state.apply(.hotKey, at: t0.addingTimeInterval(0.05))
+        _ = state.apply(.setDraft(PaneID("w1:p1"), "next turn"), at: t0.addingTimeInterval(0.1))
+        _ = state.apply(.sendMessage, at: t0.addingTimeInterval(0.2))
+        XCTAssertEqual(presentation(of: state, at: t0.addingTimeInterval(0.2)).composer?.queuedText, "next turn")
+
+        _ = state.apply(.cancelQueued(PaneID("w1:p1")), at: t0.addingTimeInterval(0.3))
+        XCTAssertNil(presentation(of: state, at: t0.addingTimeInterval(0.3)).composer?.queuedText)
+
+        _ = state.apply(.setDraft(PaneID("w1:p1"), "ship it"), at: t0.addingTimeInterval(0.4))
+        _ = state.apply(.sendMessage, at: t0.addingTimeInterval(0.5))
+        let effects = state.apply(
+            .snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
+                makeAgent("w1:p1", .idle, title: "Alpha"),
+            ])),
+            at: t0.addingTimeInterval(1)
+        )
+        XCTAssertTrue(effects.contains(.sendPrompt(PaneID("w1:p1"), "ship it")))
+        XCTAssertNil(presentation(of: state, at: t0.addingTimeInterval(1)).composer?.queuedText)
+
+        let repeated = state.apply(
+            .snapshot(makeSnapshot(3, at: t0.addingTimeInterval(2), [
+                makeAgent("w1:p1", .idle, title: "Alpha"),
+            ])),
+            at: t0.addingTimeInterval(2)
+        )
+        XCTAssertFalse(repeated.contains(.sendPrompt(PaneID("w1:p1"), "ship it")))
+    }
+
+    func testDropComposerSubmitCarriesEditsAndWorktreeBranch() throws {
+        var state = IslandState()
+        _ = state.apply(.beginDrop(
+            cwd: "/tmp/pairfob",
+            kind: .claude,
+            branch: "island/quiet-otter"
+        ))
+        _ = state.apply(.openDropComposer)
+        _ = state.apply(.setDropDraft("  Trace the flaky test  "))
+        _ = state.apply(.setDropKind(.codex))
+        _ = state.apply(.setDropCwd("/tmp/other"))
+        _ = state.apply(.setDropWorktree(true))
+
+        var p = presentation(of: state)
+        XCTAssertTrue(p.isDropActive)
+        XCTAssertEqual(p.drop?.draft, "  Trace the flaky test  ")
+        XCTAssertEqual(p.drop?.kind, .codex)
+        XCTAssertEqual(p.drop?.cwd, "/tmp/other")
+        XCTAssertEqual(p.drop?.useWorktree, true)
+        XCTAssertEqual(p.drop?.canSubmit, true)
+
+        let effects = state.apply(.submitDropTask(name: "quiet-otter"))
+        XCTAssertEqual(effects.count, 1)
+        let request = try XCTUnwrap({
+            if case .createQuickTask(let request) = effects[0] { return request }
+            return nil
+        }())
+        XCTAssertEqual(request.text, "Trace the flaky test")
+        XCTAssertEqual(request.kind, .codex)
+        XCTAssertEqual(request.cwd, "/tmp/other")
+        XCTAssertEqual(request.worktreeBranch, "island/quiet-otter")
+        XCTAssertEqual(request.name, "quiet-otter")
+
+        p = presentation(of: state)
+        XCTAssertEqual(p.drop?.isCreating, true)
+        XCTAssertEqual(p.drop?.canSubmit, false)
+
+        _ = state.apply(.dropTaskResult(.success(TaskLaunchResult(
+            pane: PaneID("w1:p9"),
+            name: "quiet-otter",
+            worktree: "island/quiet-otter"
+        ))))
+        p = presentation(of: state)
+        XCTAssertNil(p.drop)
+        XCTAssertFalse(p.isDropActive)
+        XCTAssertEqual(p.banner?.isError, false)
+        XCTAssertEqual(p.banner?.text, "已创建新任务 · island/quiet-otter")
+    }
+
+    func testDropSubmitRequiresADraftAndRestoresComposingOnFailure() {
+        var state = IslandState()
+        _ = state.apply(.beginDrop(cwd: "/tmp/pairfob", kind: .claude, branch: "island/quiet-otter"))
+        _ = state.apply(.openDropComposer)
+
+        XCTAssertEqual(state.apply(.submitDropTask(name: "quiet-otter")), [])
+
+        _ = state.apply(.setDropWorktree(false))
+        _ = state.apply(.setDropDraft("Fix the flaky test"))
+        let effects = state.apply(.submitDropTask(name: "quiet-otter"))
+        XCTAssertEqual(effects.count, 1)
+        if case .createQuickTask(let request) = effects[0] {
+            XCTAssertNil(request.worktreeBranch)
+        } else {
+            XCTFail("expected a createQuickTask effect")
+        }
+
+        _ = state.apply(.closeDropComposer)
+        XCTAssertEqual(presentation(of: state).drop?.isCreating, true)
+
+        let failure = BackendFailure(.commandFailed, "herdr exited 8")
+        _ = state.apply(.dropTaskResult(.failure(failure)))
+        let p = presentation(of: state)
+        XCTAssertEqual(p.drop?.isCreating, false)
+        XCTAssertEqual(p.drop?.error, "herdr exited 8")
+        XCTAssertEqual(p.drop?.draft, "Fix the flaky test")
+        XCTAssertEqual(p.drop?.canSubmit, true)
+        XCTAssertTrue(p.isDropActive)
+    }
+}
