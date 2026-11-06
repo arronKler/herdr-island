@@ -67,6 +67,42 @@ public enum KeyCommand: Sendable, Equatable {
     case passThrough
 }
 
+public enum DropDirectoryPolicy {
+    public struct Choice: Sendable, Equatable {
+        public let path: String
+        public let isExplicit: Bool
+
+        public init(path: String, isExplicit: Bool) {
+            self.path = path
+            self.isExplicit = isExplicit
+        }
+    }
+
+    public static func initialCwd(
+        last: String?,
+        defaultCwd: String?,
+        focused: String?,
+        home: String
+    ) -> Choice {
+        if let last = nonEmpty(last) {
+            return Choice(path: last, isExplicit: true)
+        }
+        if let defaultCwd = nonEmpty(defaultCwd) {
+            return Choice(path: defaultCwd, isExplicit: true)
+        }
+        if let focused = nonEmpty(focused) {
+            return Choice(path: focused, isExplicit: false)
+        }
+        return Choice(path: home, isExplicit: false)
+    }
+
+    private static func nonEmpty(_ path: String?) -> String? {
+        guard let trimmed = path?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !trimmed.isEmpty else { return nil }
+        return trimmed
+    }
+}
+
 public enum KeyboardRouter {
     public static func route(_ stroke: KeyStroke, composerFocused: Bool) -> KeyCommand {
         if stroke.key == .escape {

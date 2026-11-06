@@ -1,0 +1,209 @@
+{
+  "entries": [
+    {
+      "event": "probe_start",
+      "name": "island-start-race-b80e3832",
+      "probe": 1,
+      "recorded_ms": 6.0215
+    },
+    {
+      "event": "progress",
+      "pane": "",
+      "probe": 1,
+      "recorded_ms": 11.230458,
+      "stage": "workspace"
+    },
+    {
+      "event": "progress",
+      "pane": "w34:p1",
+      "probe": 1,
+      "recorded_ms": 56.09025,
+      "stage": "agent"
+    },
+    {
+      "event": "progress",
+      "pane": "w34:p1",
+      "probe": 1,
+      "recorded_ms": 3311.2774170000002,
+      "stage": "submission"
+    },
+    {
+      "event": "result",
+      "ms": 7958.565208,
+      "pane": "w34:p1",
+      "probe": 1,
+      "recorded_ms": 7964.534958,
+      "status": "working",
+      "success": true
+    },
+    {
+      "completed": true,
+      "event": "completion",
+      "probe": 1,
+      "recorded_ms": 15479.372875000001
+    },
+    {
+      "event": "owned_pane_metadata",
+      "metadata": {
+        "agent": "claude",
+        "agent_status": "done",
+        "pane_id": "w34:p1",
+        "revision": 3,
+        "workspace_id": "w34"
+      },
+      "pane": "w34:p1",
+      "recorded_ms": 15684.534583
+    },
+    {
+      "event": "cleanup_success",
+      "pane": "w34:p1",
+      "recorded_ms": 16800.874292,
+      "workspace": "w34"
+    },
+    {
+      "event": "probe_start",
+      "name": "island-start-race-9c6a67ef",
+      "probe": 2,
+      "recorded_ms": 16807.080167
+    },
+    {
+      "event": "progress",
+      "pane": "",
+      "probe": 2,
+      "recorded_ms": 16813.17725,
+      "stage": "workspace"
+    },
+    {
+      "event": "progress",
+      "pane": "w35:p1",
+      "probe": 2,
+      "recorded_ms": 16863.440417,
+      "stage": "agent"
+    },
+    {
+      "event": "progress",
+      "pane": "w35:p1",
+      "probe": 2,
+      "recorded_ms": 20758.651458,
+      "stage": "submission"
+    },
+    {
+      "event": "result",
+      "ms": 9189.315792,
+      "pane": "w35:p1",
+      "probe": 2,
+      "recorded_ms": 25996.051958,
+      "status": "working",
+      "success": true
+    },
+    {
+      "completed": true,
+      "event": "completion",
+      "probe": 2,
+      "recorded_ms": 39848.47575
+    },
+    {
+      "event": "owned_pane_metadata",
+      "metadata": {
+        "agent": "claude",
+        "agent_status": "done",
+        "pane_id": "w35:p1",
+        "revision": 4,
+        "workspace_id": "w35"
+      },
+      "pane": "w35:p1",
+      "recorded_ms": 39875.93575
+    },
+    {
+      "event": "cleanup_success",
+      "pane": "w35:p1",
+      "recorded_ms": 40753.03075,
+      "workspace": "w35"
+    },
+    {
+      "event": "probe_start",
+      "name": "island-start-race-bc76349d",
+      "probe": 3,
+      "recorded_ms": 40772.176292
+    },
+    {
+      "event": "progress",
+      "pane": "",
+      "probe": 3,
+      "recorded_ms": 40782.700208,
+      "stage": "workspace"
+    },
+    {
+      "event": "progress",
+      "pane": "w36:p1",
+      "probe": 3,
+      "recorded_ms": 40820.323125,
+      "stage": "agent"
+    },
+    {
+      "event": "progress",
+      "pane": "w36:p1",
+      "probe": 3,
+      "recorded_ms": 43982.867458,
+      "stage": "submission"
+    },
+    {
+      "event": "result",
+      "ms": 7595.131042,
+      "pane": "w36:p1",
+      "probe": 3,
+      "recorded_ms": 48366.841125,
+      "status": "working",
+      "success": true
+    },
+    {
+      "completed": true,
+      "event": "completion",
+      "probe": 3,
+      "recorded_ms": 57277.075708
+    },
+    {
+      "event": "owned_pane_metadata",
+      "metadata": {
+        "agent": "claude",
+        "agent_status": "done",
+        "pane_id": "w36:p1",
+        "revision": 4,
+        "workspace_id": "w36"
+      },
+      "pane": "w36:p1",
+      "recorded_ms": 57314.155583
+    },
+    {
+      "event": "cleanup_success",
+      "pane": "w36:p1",
+      "recorded_ms": 58463.242625,
+      "workspace": "w36"
+    },
+    {
+      "event": "finished",
+      "recorded_ms": 58497.266
+    }
+  ],
+  "pending_panes": [],
+  "cleanup_verification": [
+    {
+      "pane": "w34:p1",
+      "workspace": "w34",
+      "exit": 1,
+      "error": "pane_not_found"
+    },
+    {
+      "pane": "w35:p1",
+      "workspace": "w35",
+      "exit": 1,
+      "error": "pane_not_found"
+    },
+    {
+      "pane": "w36:p1",
+      "workspace": "w36",
+      "exit": 1,
+      "error": "pane_not_found"
+    }
+  ]
+}

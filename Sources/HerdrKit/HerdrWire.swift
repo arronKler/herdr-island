@@ -72,7 +72,8 @@ extension WireAgent {
             completionSeq: completion_seq,
             stateChangeSeq: state_change_seq ?? 0,
             labels: normalizedLabels(state_labels),
-            name: trimmed(name)
+            name: trimmed(name),
+            terminalRevision: revision
         )
     }
 }

@@ -1,0 +1,11 @@
+{
+  "authorized": false,
+  "bundle_id": "local.herdr.island",
+  "duration_ms": 8.876166,
+  "error": "Screen Recording permission is required. Enable it in System Settings > Privacy & Security > Screen Recording, then relaunch Herdr Island.",
+  "error_kind": "screenCapturePermission",
+  "success": false,
+  "launch_method": "LaunchServices diagnostic mode",
+  "open_exit_code": 0,
+  "executable_sha256": "360534c60a491d20b815b22b9fc5da2f207b0ef89253db63a9e7944fe9a621de"
+}

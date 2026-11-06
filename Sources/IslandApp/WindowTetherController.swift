@@ -112,9 +112,11 @@ final class WindowTetherController {
 
         defer { refreshContent() }
 
-        let requested: CFArray = [NSNumber(value: target.windowID)] as CFArray
-        guard let entries = CGWindowListCreateDescriptionFromArray(requested) as? [[String: Any]],
-              let entry = entries.first else {
+        guard let entries = CGWindowListCopyWindowInfo([.optionIncludingWindow], target.windowID) as? [[String: Any]],
+              let entry = entries.first(where: {
+                  ($0[kCGWindowNumber as String] as? NSNumber)?.uint32Value == target.windowID
+                      && ($0[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == target.ownerPID
+              }) else {
             misses += 1
             if misses >= 3 {
                 misses = 0
@@ -176,6 +178,8 @@ final class WindowTetherController {
 
         for window in overlayWindows {
             guard let view = window.contentView as? TetherOverlayView else { continue }
+            guard view.anchorPoint != anchor || view.targetPoint != targetAnchor
+                    || view.showsTether != targetOnScreen else { continue }
             view.anchorPoint = anchor
             view.targetPoint = targetAnchor
             view.showsTether = targetOnScreen

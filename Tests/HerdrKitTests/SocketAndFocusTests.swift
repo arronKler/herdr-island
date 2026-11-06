@@ -71,43 +71,39 @@ final class HerdrSocketProtocolTests: XCTestCase {
 final class GhosttyFocuserTests: XCTestCase {
     private let herdr = "/Users/me/.local/bin/herdr"
 
-    func testPSParserSelectsOnlyTheBareHerdrTUI() {
-        let output = """
-        ttys001  /Users/me/.local/bin/herdr server
-        ttys002  /Users/me/.local/bin/herdr-core
-        ttys003  /Users/me/.local/bin/herdr agent list
-        ttys004  -/bin/zsh
-        ttys005  /Users/me/.local/bin/herdr
-        ??       /Users/me/.local/bin/herdr
-        ttys006  /opt/homebrew/bin/herdr
-        """
-        let ttys = GhosttyFocuser.herdrTTYs(psOutput: output, herdrPath: herdr)
-        XCTAssertEqual(ttys, ["/dev/ttys005"])
+    func testNativeProcessFilterRejectsServerCommandsAndOtherExecutables() {
+        XCTAssertTrue(GhosttyFocuser.isHerdrTUI(executablePath: herdr, argumentCount: 1, herdrPath: herdr))
+        XCTAssertFalse(GhosttyFocuser.isHerdrTUI(executablePath: herdr, argumentCount: 2, herdrPath: herdr))
+        XCTAssertFalse(GhosttyFocuser.isHerdrTUI(executablePath: herdr, argumentCount: nil, herdrPath: herdr))
+        XCTAssertFalse(GhosttyFocuser.isHerdrTUI(executablePath: "/opt/homebrew/bin/herdr", argumentCount: 1, herdrPath: herdr))
+        XCTAssertTrue(GhosttyFocuser.isHerdrTUI(executablePath: "/Users/me/.local/bin/../bin/herdr", argumentCount: 1, herdrPath: herdr))
     }
 
-    func testPSParserAcceptsAPathInvocationOfTheSameBinary() {
-        let output = "ttys009  /Users/me/.local/bin/../bin/herdr\n"
-        let ttys = GhosttyFocuser.herdrTTYs(psOutput: output, herdrPath: herdr)
-        XCTAssertEqual(ttys, ["/dev/ttys009"])
+    func testTerminalQueryUsesTTYAsLiteralData() {
+        let tty = "/dev/ttys\"x\\y"
+        let query = GhosttyAppleEvents.terminalQuery(tty: tty)
+        XCTAssertEqual(query.descriptorType, GhosttyAppleEvents.code("obj "))
+        XCTAssertEqual(query.forKeyword(GhosttyAppleEvents.code("want"))?.typeCodeValue,
+                       GhosttyAppleEvents.code("Gtrm"))
+        let comparison = query.forKeyword(GhosttyAppleEvents.code("seld"))
+        XCTAssertEqual(comparison?.descriptorType, GhosttyAppleEvents.code("cmpd"))
+        XCTAssertEqual(comparison?.forKeyword(GhosttyAppleEvents.code("obj2"))?.stringValue, tty)
+        let property = comparison?.forKeyword(GhosttyAppleEvents.code("obj1"))
+        XCTAssertEqual(property?.forKeyword(GhosttyAppleEvents.code("seld"))?.typeCodeValue,
+                       GhosttyAppleEvents.code("Gtty"))
     }
 
-    func testPSParserAllowsAPathlessCommandName() {
-        let output = "ttys010  herdr\n"
-        XCTAssertEqual(
-            GhosttyFocuser.herdrTTYs(psOutput: output, herdrPath: herdr),
-            ["/dev/ttys010"]
-        )
-    }
-
-    func testFocusScriptTargetsTheTTY() {
-        let script = GhosttyFocuser.focusScript(tty: "/dev/ttys023")
-        XCTAssertTrue(script.contains(#"tell application "Ghostty""#))
-        XCTAssertTrue(script.contains(#"focus (first terminal whose tty is "/dev/ttys023")"#))
-    }
-
-    func testFocusScriptEscapesQuotes() {
-        let script = GhosttyFocuser.focusScript(tty: "/dev/ttys\"x")
-        XCTAssertTrue(script.contains(#"/dev/ttys\"x"#))
+    func testAppleEventReplyErrorsAreNotReportedAsSuccessfulFocus() {
+        let reply = NSAppleEventDescriptor(eventClass: GhosttyAppleEvents.code("aevt"),
+                                           eventID: GhosttyAppleEvents.code("ansr"),
+                                           targetDescriptor: nil, returnID: -1, transactionID: 0)
+        XCTAssertNil(GhosttyAppleEvents.replyFailure(reply))
+        reply.setParam(NSAppleEventDescriptor(int32: -1743), forKeyword: GhosttyAppleEvents.code("errn"))
+        XCTAssertEqual(GhosttyAppleEvents.replyFailure(reply)?.kind, .automationDenied)
+        reply.setParam(NSAppleEventDescriptor(int32: -1728), forKeyword: GhosttyAppleEvents.code("errn"))
+        XCTAssertEqual(GhosttyAppleEvents.replyFailure(reply)?.kind, .paneUnavailable)
+        reply.setParam(NSAppleEventDescriptor(int32: -1712), forKeyword: GhosttyAppleEvents.code("errn"))
+        XCTAssertEqual(GhosttyAppleEvents.replyFailure(reply)?.kind, .timeout)
     }
 
     func testAutomationDenialMapsToItsKind() {
@@ -163,5 +159,24 @@ final class HerdrLocatorTests: XCTestCase {
             home: URL(fileURLWithPath: "/Users/me")
         )
         XCTAssertEqual(url.path, "/Users/me/.config/herdr/herdr.sock")
+    }
+
+    func testCanonicalSocketOverrideWinsAndLegacyAliasStillWorks() {
+        let home = URL(fileURLWithPath: "/Users/me")
+        XCTAssertEqual(HerdrLocator.socketURL(environment: [
+            "HERDR_SOCKET_PATH": "/tmp/selected.sock", "HERDR_SOCKET": "/tmp/legacy.sock",
+        ], home: home).path, "/tmp/selected.sock")
+        XCTAssertEqual(HerdrLocator.socketURL(environment: ["HERDR_SOCKET": "/tmp/legacy.sock"], home: home).path,
+                       "/tmp/legacy.sock")
+    }
+
+    func testEmptyCanonicalSocketOverrideDoesNotHideLegacyAlias() {
+        let home = URL(fileURLWithPath: "/Users/me")
+        XCTAssertEqual(HerdrLocator.socketURL(environment: [
+            "HERDR_SOCKET_PATH": "", "HERDR_SOCKET": "/tmp/legacy.sock",
+        ], home: home).path, "/tmp/legacy.sock")
+        XCTAssertEqual(HerdrLocator.socketURL(environment: [
+            "HERDR_SOCKET_PATH": "", "HERDR_SOCKET": "",
+        ], home: home).path, "/Users/me/.config/herdr/herdr.sock")
     }
 }

@@ -405,7 +405,7 @@ final class ReducerInteractionTests: XCTestCase {
         let effects = state.apply(.submitDropTask(name: "quiet-otter"))
         XCTAssertEqual(effects.count, 1)
         let request = try XCTUnwrap({
-            if case .createQuickTask(let request) = effects[0] { return request }
+            if case .createDropTask(let request) = effects[0] { return request }
             return nil
         }())
         XCTAssertEqual(request.text, "Trace the flaky test")
@@ -424,10 +424,54 @@ final class ReducerInteractionTests: XCTestCase {
             worktree: "island/quiet-otter"
         ))))
         p = presentation(of: state)
+        // The composer holds one exit motion so the droplet can fly home.
+        XCTAssertEqual(p.drop?.didCreate, true)
+        XCTAssertEqual(p.drop?.isBusy, false)
+        XCTAssertEqual(p.drop?.isCreating, false)
+        XCTAssertEqual(p.drop?.canSubmit, false)
+        XCTAssertEqual(p.drop?.creation?.pane, PaneID("w1:p9"))
+        XCTAssertTrue(p.isDropActive)
+        XCTAssertEqual(p.banner?.isError, false)
+        XCTAssertEqual(p.banner?.text, "任务已提交，正在跟踪。")
+
+        // The overlay closes after the motion. Sent text is not a draft, and
+        // the success banner belongs to the deck that follows.
+        _ = state.apply(.closeDropComposer)
+        p = presentation(of: state)
         XCTAssertNil(p.drop)
         XCTAssertFalse(p.isDropActive)
-        XCTAssertEqual(p.banner?.isError, false)
-        XCTAssertEqual(p.banner?.text, "已创建新任务 · island/quiet-otter")
+        XCTAssertEqual(p.banner?.text, "任务已提交，正在跟踪。")
+        XCTAssertNil(state.dropDraftRecovery)
+    }
+
+    func testDropDirectoryChoicesReachThePresentation() {
+        var state = IslandState()
+        _ = state.apply(.beginDrop(cwd: "/tmp/current", kind: .claude, branch: "island/test"))
+        _ = state.apply(.setDropHerdrCwds(["/tmp/one", "/tmp/two"]))
+        _ = state.apply(.setDropDefaultCwd("/tmp/two"))
+
+        let drop = presentation(of: state).drop
+        XCTAssertEqual(drop?.herdrCwds, ["/tmp/one", "/tmp/two"])
+        XCTAssertEqual(drop?.defaultCwd, "/tmp/two")
+    }
+
+    func testClosingADropKeepsItsTextForTheNextDrop() {
+        var state = IslandState()
+        _ = state.apply(.beginDrop(cwd: "/tmp/pairfob", kind: .claude, branch: "island/quiet-otter"))
+        _ = state.apply(.openDropComposer)
+        _ = state.apply(.setDropDraft("Trace the flaky test"))
+        _ = state.apply(.setDropKind(.codex))
+        _ = state.apply(.setDropCwd("/tmp/other"))
+        _ = state.apply(.setDropWorktree(true))
+        _ = state.apply(.closeDropComposer)
+        XCTAssertNil(presentation(of: state).drop)
+
+        _ = state.apply(.beginDrop(cwd: "/tmp/new", kind: .claude, branch: "island/still-fern"))
+        let drop = presentation(of: state).drop
+        XCTAssertEqual(drop?.draft, "Trace the flaky test")
+        XCTAssertEqual(drop?.kind, .codex)
+        XCTAssertEqual(drop?.cwd, "/tmp/other")
+        XCTAssertEqual(drop?.useWorktree, true)
     }
 
     func testDropSubmitRequiresADraftAndRestoresComposingOnFailure() {
@@ -441,7 +485,7 @@ final class ReducerInteractionTests: XCTestCase {
         _ = state.apply(.setDropDraft("Fix the flaky test"))
         let effects = state.apply(.submitDropTask(name: "quiet-otter"))
         XCTAssertEqual(effects.count, 1)
-        if case .createQuickTask(let request) = effects[0] {
+        if case .createDropTask(let request) = effects[0] {
             XCTAssertNil(request.worktreeBranch)
         } else {
             XCTFail("expected a createQuickTask effect")
@@ -458,5 +502,122 @@ final class ReducerInteractionTests: XCTestCase {
         XCTAssertEqual(p.drop?.draft, "Fix the flaky test")
         XCTAssertEqual(p.drop?.canSubmit, true)
         XCTAssertTrue(p.isDropActive)
+    }
+
+    func testDropOnWindowCapturesBeforeCreating() throws {
+        var state = IslandState()
+        let target = WindowTarget(
+            windowID: 4242,
+            ownerPID: 999,
+            appName: "Feishu",
+            bundleIdentifier: "com.bytedance.feishu",
+            title: "Q4 planning review",
+            bounds: CGRect(x: 420, y: 180, width: 900, height: 620)
+        )
+        _ = state.apply(.beginDrop(
+            cwd: "/tmp/pairfob",
+            kind: .claude,
+            branch: "island/quiet-otter"
+        ))
+        _ = state.apply(.openDropComposer)
+        _ = state.apply(.setDropDraft("Summarize the decisions"))
+        _ = state.apply(.setDropWindow(target))
+
+        var p = presentation(of: state)
+        XCTAssertEqual(p.drop?.window?.windowID, 4242)
+        XCTAssertEqual(p.drop?.window?.displayTitle, "Q4 planning review")
+        XCTAssertEqual(p.drop?.isCapturing, false)
+        XCTAssertEqual(p.drop?.canSubmit, true)
+
+        let effects = state.apply(.submitDropTask(name: "island-preview"))
+        let request = try XCTUnwrap({
+            if case .captureDropWindow(let request) = effects[0] { return request }
+            return nil
+        }())
+        XCTAssertEqual(request.target.windowID, 4242)
+        XCTAssertEqual(request.text, "Summarize the decisions")
+        XCTAssertEqual(request.kind, .claude)
+        XCTAssertEqual(request.cwd, "/tmp/pairfob")
+        XCTAssertEqual(request.name, "island-preview")
+        XCTAssertNil(request.worktreeBranch)
+
+        p = presentation(of: state)
+        XCTAssertEqual(p.drop?.isCapturing, true)
+        XCTAssertEqual(p.drop?.isCreating, false)
+        XCTAssertEqual(p.drop?.canSubmit, false)
+        XCTAssertTrue(p.isDropActive)
+
+        // The screenshot is in flight; edits and dismissal must wait.
+        _ = state.apply(.setDropWindow(nil))
+        _ = state.apply(.setDropDraft("changed"))
+        _ = state.apply(.closeDropComposer)
+        p = presentation(of: state)
+        XCTAssertEqual(p.drop?.window?.windowID, 4242)
+        XCTAssertEqual(p.drop?.draft, "Summarize the decisions")
+        XCTAssertTrue(p.isDropActive)
+    }
+
+    func testDropWindowCaptureProgressMovesToCreation() {
+        var state = windowDropState()
+        _ = state.apply(.submitDropTask(name: "island-preview"))
+        XCTAssertEqual(presentation(of: state).drop?.isCapturing, true)
+
+        _ = state.apply(.dropTaskProgress(TaskCreationProgress(
+            stage: .workspace,
+            startedAt: TestClock.start
+        )))
+        let p = presentation(of: state)
+        XCTAssertEqual(p.drop?.isCapturing, false)
+        XCTAssertEqual(p.drop?.isCreating, true)
+        XCTAssertEqual(p.drop?.window?.windowID, 4242)
+    }
+
+    func testDropWindowCaptureFailureKeepsTheWindowContext() {
+        var state = windowDropState()
+        _ = state.apply(.submitDropTask(name: "island-preview"))
+        _ = state.apply(.dropTaskResult(.failure(BackendFailure(
+            .screenCapturePermission,
+            "屏幕录制未开启"
+        ))))
+
+        let p = presentation(of: state)
+        XCTAssertEqual(p.drop?.isCapturing, false)
+        XCTAssertEqual(p.drop?.isCreating, false)
+        XCTAssertEqual(p.drop?.canSubmit, true)
+        XCTAssertEqual(p.drop?.window?.windowID, 4242)
+        XCTAssertEqual(p.drop?.error, "屏幕录制未开启")
+        XCTAssertTrue(p.isDropActive)
+    }
+
+    func testDropWindowCanBeDetachedBeforeSubmit() {
+        var state = windowDropState()
+        _ = state.apply(.setDropWindow(nil))
+        XCTAssertNil(presentation(of: state).drop?.window)
+
+        let effects = state.apply(.submitDropTask(name: "island-preview"))
+        XCTAssertEqual(effects.count, 1)
+        guard case .createDropTask = effects[0] else {
+            return XCTFail("expected a plain task without a window")
+        }
+    }
+
+    private func windowDropState() -> IslandState {
+        var state = IslandState()
+        _ = state.apply(.beginDrop(
+            cwd: "/tmp/pairfob",
+            kind: .claude,
+            branch: "island/quiet-otter"
+        ))
+        _ = state.apply(.openDropComposer)
+        _ = state.apply(.setDropDraft("Review this window"))
+        _ = state.apply(.setDropWindow(WindowTarget(
+            windowID: 4242,
+            ownerPID: 999,
+            appName: "Feishu",
+            bundleIdentifier: "com.bytedance.feishu",
+            title: "Q4 planning review",
+            bounds: CGRect(x: 420, y: 180, width: 900, height: 620)
+        )))
+        return state
     }
 }

@@ -185,6 +185,39 @@ final class WindowLockTests: XCTestCase {
         XCTAssertEqual(p.banner?.text, "herdr exited 1")
     }
 
+    func testNewWindowTaskProgressAndDestinationSurviveSnapshots() throws {
+        var state = lockedState(agents: [])
+        _ = state.apply(.setWindowTaskDraft("Check the document"), at: t0)
+        let effects = state.apply(.submitWindowTask(name: "island-abcd"), at: t0)
+        guard case .captureWindow(let request) = effects.first else { return XCTFail("expected capture") }
+        _ = state.apply(.windowCaptureResult(request, .success("/tmp/capture.png")), at: t0)
+        let pane = PaneID("w9:p1")
+        let progress = TaskCreationProgress(stage: .agent, startedAt: t0, pane: pane)
+        _ = state.apply(.windowTaskProgress(token: UUID(), progress: progress), at: t0)
+        XCTAssertNil(state.windowTask?.creation)
+        _ = state.apply(.windowTaskProgress(token: request.token, progress: progress), at: t0)
+        XCTAssertEqual(presentation(of: state, at: t0).windowTask?.creation, progress)
+        let agent = makeAgent("w9:p1", .working)
+        _ = state.apply(.windowTaskCreated(token: request.token, launch: TaskLaunchResult(pane: pane, name: "island-abcd", agent: agent)), at: t0)
+        XCTAssertEqual(state.windowTask?.draft, "")
+        XCTAssertNil(state.windowTask?.creation)
+        _ = state.apply(.snapshot(makeSnapshot(2, [agent, makeAgent("w1:p1", .idle)])), at: t0)
+        XCTAssertEqual(state.windowTask?.destinationAgent, pane, "follow-up must not silently target another agent")
+    }
+
+    func testFailedWindowCreationCannotDuplicateItsWorkspace() {
+        var state = lockedState(agents: [])
+        _ = state.apply(.setWindowTaskDraft("Check the document"), at: t0)
+        let effects = state.apply(.submitWindowTask(name: "island-abcd"), at: t0)
+        guard case .captureWindow(let request) = effects.first else { return XCTFail("expected capture") }
+        _ = state.apply(.windowCaptureResult(request, .success("/tmp/capture.png")), at: t0)
+        _ = state.apply(.windowTaskProgress(token: request.token, progress: TaskCreationProgress(stage: .agent, startedAt: t0, pane: PaneID("w9:p1"))), at: t0)
+        _ = state.apply(.windowTaskResult(token: request.token, result: .failure(BackendFailure(.timeout, "startup timeout"))), at: t0)
+        XCTAssertFalse(presentation(of: state, at: t0).windowTask!.canSubmit)
+        XCTAssertTrue(state.apply(.submitWindowTask(name: "duplicate"), at: t0).isEmpty)
+        XCTAssertEqual(state.windowTask?.draft, "Check the document")
+    }
+
     func testNewAgentDestinationUsesCwdAndKind() {
         var state = lockedState(agents: [makeAgent("w1:p1", .working)])
         _ = state.apply(.setWindowTaskKind(.codex), at: t0)

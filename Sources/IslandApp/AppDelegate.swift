@@ -43,7 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             do {
                 let environment = try HerdrLocator.resolve()
                 self.environment = environment
-                let cli = HerdrCLI(binary: environment.binary)
+                let cli = HerdrCLI(binary: environment.binary, socketURL: environment.socket)
                 let service = HerdrService(
                     cli: cli,
                     socketURL: environment.socket,
@@ -241,24 +241,64 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actions.dropDraft = { [weak store] text in store?.setDropDraft(text) }
         actions.dropKind = { [weak store] kind in store?.setDropKind(kind) }
         actions.chooseDropCwd = { [weak self] in self?.chooseDropCwd() }
+        actions.selectDropCwd = { [weak store] path in store?.setDropCwd(path) }
+        actions.setDropDefaultCwd = { [weak store] path in store?.setDropDefaultCwd(path) }
         actions.dropWorktree = { [weak store] enabled in store?.setDropWorktree(enabled) }
+        actions.dropWindow = { [weak self, weak store] target in
+            store?.setDropWindow(target)
+            if target == nil {
+                self?.dragCoordinator?.clearAttachment()
+            }
+        }
         actions.submitDropTask = { [weak store] in store?.submitDropTask() }
+        actions.beginDropHover = { [weak self] in self?.dragCoordinator?.begin() }
+        actions.dropHoverMoved = { [weak self] point in
+            guard let self else { return }
+            if self.panelController?.isIslandDropCancelPoint(point) == true {
+                self.dragCoordinator?.clearHoverHighlight()
+            } else {
+                self.dragCoordinator?.update(at: point)
+            }
+        }
+        actions.dropHoverEnded = { [weak self, weak store] point in
+            guard let coordinator = self?.dragCoordinator else { return }
+            let hit = coordinator.endHover(at: point)
+            let cancelled = self?.panelController?.isIslandDropCancelPoint(point) == true
+            let target = cancelled ? nil : hit
+            if let target {
+                coordinator.attach(target)
+            }
+            store?.setDropWindow(target)
+        }
+        actions.clearDropHover = { [weak self, weak store] in
+            self?.dragCoordinator?.clearAttachment()
+            store?.setDropWindow(nil)
+        }
         actions.beginWindowDrag = { [weak self, weak store] in
             store?.beginWindowDrag()
             self?.dragCoordinator?.begin()
         }
         actions.windowDragMoved = { [weak self] point in
-            self?.dragCoordinator?.update(at: point)
+            guard let self else { return }
+            if self.panelController?.isIslandDropCancelPoint(point) == true {
+                self.dragCoordinator?.clearHoverHighlight()
+            } else {
+                self.dragCoordinator?.update(at: point)
+            }
         }
         actions.windowDragEnded = { [weak self, weak store] point in
             let target = self?.dragCoordinator?.end(at: point)
-            store?.endWindowDrag()
-            guard let target else { return }
-            // Dropping back onto the island itself is a cancel, not a lock.
-            if let frame = self?.panelController?.panel.frame, frame.contains(point) {
+            // The drop panel fills the screen, so the panel frame cannot tell
+            // the island apart from the desktop. Use the island's own footprint.
+            let cancelled = self?.panelController?.isIslandDropCancelPoint(point) == true
+            guard let target, !cancelled else {
+                store?.endWindowDrag()
                 return
             }
+            // Lock first, then clear the drag flag: the panel stays expanded
+            // through the transition instead of collapsing and reopening.
             store?.lockWindow(target)
+            store?.endWindowDrag()
             self?.panelController?.makeKey()
         }
         actions.unlockWindow = { [weak store] in store?.unlockWindow() }

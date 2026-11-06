@@ -32,31 +32,30 @@ enum WindowCaptureService {
     }
 
     /// Captures `target` and returns the absolute path of a freshly written PNG.
-    static func capture(_ target: WindowTarget) async -> Result<String, BackendFailure> {
+    static func prepare(_ target: WindowTarget) async {
+        guard isAuthorized else { return }
+        _ = try? await WindowCaptureLookup.shared.window(for: target)
+    }
+
+    static func capture(_ target: WindowTarget, in destination: URL? = nil) async -> Result<String, BackendFailure> {
         guard CGPreflightScreenCaptureAccess() else {
             return .failure(BackendFailure(.screenCapturePermission, permissionMessage))
         }
 
         let scale = await backingScaleFactor(for: target.bounds)
 
-        let content: SCShareableContent
+        let window: SCWindow
         do {
-            content = try await SCShareableContent.excludingDesktopWindows(
-                false,
-                onScreenWindowsOnly: false
-            )
+            window = try await WindowCaptureLookup.shared.window(for: target)
         } catch {
+            if let failure = error as? BackendFailure { return .failure(failure) }
             return .failure(failure(from: error))
-        }
-
-        guard let window = content.windows.first(where: { $0.windowID == target.windowID }) else {
-            return .failure(BackendFailure(.windowUnavailable, "The locked window is no longer available."))
         }
 
         let configuration = SCStreamConfiguration()
         configuration.showsCursor = false
         configuration.captureResolution = .best
-        let pixels = pixelSize(for: target.bounds.size, scale: scale)
+        let pixels = pixelSize(for: window.frame.size, scale: scale)
         configuration.width = pixels.width
         configuration.height = pixels.height
 
@@ -68,13 +67,14 @@ enum WindowCaptureService {
                 configuration: configuration
             )
         } catch {
+            await WindowCaptureLookup.shared.invalidate(target.windowID)
             return .failure(failure(from: error))
         }
 
         do {
-            let directory = try capturesDirectory()
+            let directory = try destination ?? capturesDirectory()
             let url = try writePNG(image, windowID: target.windowID, in: directory)
-            pruneCaptures(in: directory, preserving: url)
+            if destination == nil { pruneCaptures(in: directory, preserving: url) }
             return .success(url.path)
         } catch {
             return .failure(BackendFailure(
@@ -135,7 +135,7 @@ enum WindowCaptureService {
 
     private static func writePNG(_ image: CGImage, windowID: UInt32, in directory: URL) throws -> URL {
         let url = directory.appendingPathComponent(
-            "capture-\(timestamp())-\(windowID).png",
+            "capture-\(timestamp())-\(windowID)-\(UUID().uuidString).png",
             isDirectory: false
         )
 
@@ -199,6 +199,9 @@ enum WindowCaptureService {
 
     private static func failure(from error: Error) -> BackendFailure {
         let nsError = error as NSError
+        if nsError.domain.contains("ScreenCaptureKit"), nsError.code == -3811 {
+            return BackendFailure(.other, "系统截图服务未能启动，请稍后重试。")
+        }
         let text = [
             nsError.localizedDescription,
             nsError.localizedFailureReason ?? "",

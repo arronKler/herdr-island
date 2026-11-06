@@ -132,6 +132,7 @@ public struct WindowTaskState: Sendable, Equatable {
     public var kind: AgentKindOption
     public var cwd: String
     public var phase: WindowTaskPhase
+    public var creation: TaskCreationProgress? = nil
     public var error: String?
     public var lastScreenshotPath: String?
     public var lastDelivery: String?
@@ -193,6 +194,40 @@ public struct WindowCaptureRequest: Sendable, Equatable {
     }
 }
 
+/// Captures the window a plain droplet drop landed on, then creates the task
+/// around that screenshot. Distinct from the lock flow: no persistent tether,
+/// and the task keeps living after the composer closes.
+public struct DropWindowCaptureRequest: Sendable, Equatable {
+    public let token: UUID
+    public let target: WindowTarget
+    public let text: String
+    public let kind: AgentKindOption
+    public let cwd: String
+    public let name: String
+    public let label: String
+    public let worktreeBranch: String?
+
+    public init(
+        token: UUID,
+        target: WindowTarget,
+        text: String,
+        kind: AgentKindOption,
+        cwd: String,
+        name: String,
+        label: String,
+        worktreeBranch: String?
+    ) {
+        self.token = token
+        self.target = target
+        self.text = text
+        self.kind = kind
+        self.cwd = cwd
+        self.name = name
+        self.label = label
+        self.worktreeBranch = worktreeBranch
+    }
+}
+
 public struct WindowDeliveryRequest: Sendable, Equatable {
     public let token: UUID
     public let target: WindowTarget
@@ -248,6 +283,7 @@ public struct WindowTaskPresentation: Sendable, Equatable {
     public let kind: AgentKindOption
     public let cwd: String
     public let phase: WindowTaskPhase
+    public var creation: TaskCreationProgress? = nil
     public let error: String?
     public let lastScreenshotPath: String?
     public let lastDelivery: String?

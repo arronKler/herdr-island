@@ -6,6 +6,17 @@ struct IslandRootView: View {
     let actions: IslandViewActions
     var notchWidth: CGFloat?
     var notchHeight: CGFloat = 0
+    /// Where the island hangs inside the panel. A drop panel spans every
+    /// display, so the panel's midpoint is not the notch anymore. Nil keeps
+    /// the view's own midpoint, which is what the render fixtures use.
+    var anchorX: CGFloat?
+    var anchorY: CGFloat?
+    /// The same anchor in screen coordinates. The drop NSView converts it
+    /// against the live window frame, so it stays exact while the panel
+    /// animates from the notch to the desktop.
+    var anchorScreen: CGPoint?
+    /// Panel-local frames of every display, for keeping the composer on one screen.
+    var screens: [CGRect] = []
 
     private var barHeight: CGFloat { notchHeight > 0 ? notchHeight : 28 }
     private var barWidth: CGFloat {
@@ -35,7 +46,12 @@ struct IslandRootView: View {
             LiquidDropOverlay(
                 presentation: presentation,
                 actions: actions,
-                notchHeight: barHeight
+                notchHeight: barHeight,
+                anchorX: anchorX,
+                anchorY: anchorY,
+                anchorScreen: anchorScreen,
+                screens: screens,
+                persistentDroplet: notchHeight > 0
             )
             .zIndex(20)
         }
@@ -65,35 +81,37 @@ struct IslandRootView: View {
     /// Dropping happens over the real desktop, not inside another opaque card.
     /// The menu-bar HUD fades back to a ghost so the space stays legible.
     private var dropCurtain: some View {
-        VStack(spacing: 0) {
-            Group {
-                if notchHeight > 0, let notchWidth {
-                    AmbientBarView(
-                        presentation: presentation,
-                        actions: actions,
-                        notchWidth: notchWidth,
-                        showsChrome: false
-                    )
-                    .background(NotchBarShape(cornerRadius: 11).fill(Color.black))
-                } else {
-                    menuBarBar
+        GeometryReader { proxy in
+            let x = anchorX ?? proxy.size.width / 2
+            let barTop = max(0, (anchorY ?? barHeight - 2) - barHeight + 2)
+            ZStack(alignment: .topLeading) {
+                Group {
+                    if notchHeight > 0, let notchWidth {
+                        AmbientBarView(
+                            presentation: presentation,
+                            actions: actions,
+                            notchWidth: notchWidth,
+                            showsChrome: false
+                        )
+                        .background(NotchBarShape(cornerRadius: 11).fill(Color.black))
+                    } else {
+                        menuBarBar
+                    }
                 }
+                .frame(width: barWidth, height: barHeight)
+                .opacity(0.35)
+                .position(x: x, y: barTop + barHeight / 2)
+
+                LinearGradient(
+                    colors: [Theme.blue.opacity(0.05), Color.clear],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(width: 420, height: 260)
+                .blur(radius: 28)
+                .position(x: x, y: barTop + 130)
             }
-            .frame(width: barWidth, height: barHeight)
-            .opacity(0.35)
-            .allowsHitTesting(false)
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, alignment: .top)
-        .overlay(alignment: .top) {
-            LinearGradient(
-                colors: [Theme.blue.opacity(0.05), Color.clear],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .frame(width: 420, height: 260)
-            .blur(radius: 28)
-            .allowsHitTesting(false)
+            .frame(width: proxy.size.width, height: proxy.size.height, alignment: .topLeading)
         }
         .allowsHitTesting(false)
     }

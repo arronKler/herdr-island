@@ -7,12 +7,16 @@ public enum FixtureName: String, CaseIterable, Sendable {
     case blocked
     case completed
     case quickTask
+    case quickTaskCreating
+    case quickTaskFailed
+    case dropCreating
     case windowLocked
     case deckRunning
     case deckDone
     case deckCrowded
     case detail
     case drop
+    case dropWindow
 }
 
 public enum Fixtures {
@@ -61,7 +65,7 @@ public enum Fixtures {
         case .completed:
             let second = completedSnapshot()
             _ = IslandReducer.reduce(&state, .snapshot(second), now: now)
-        case .quickTask:
+        case .quickTask, .quickTaskCreating, .quickTaskFailed:
             _ = IslandReducer.reduce(
                 &state,
                 .openQuickTask(cwd: "/Users/bytedance/projects/github/herdr-island", kind: .claude),
@@ -72,6 +76,17 @@ public enum Fixtures {
                 .setQuickTaskDraft("Fix the flaky geometry test and run the full suite"),
                 now: now
             )
+            if name != .quickTask {
+                _ = IslandReducer.reduce(&state, .submitQuickTask(name: "island-preview"), now: now)
+                _ = IslandReducer.reduce(&state, .quickTaskProgress(TaskCreationProgress(
+                    stage: .agent, startedAt: Date().addingTimeInterval(-9), pane: PaneID("w9:p1")
+                )), now: now)
+                if name == .quickTaskFailed {
+                    _ = IslandReducer.reduce(&state, .quickTaskResult(.failure(BackendFailure(
+                        .timeout, "启动模型未完成，终端 w9:p1 已保留。请去终端检查启动、登录或授权提示。"
+                    ))), now: now)
+                }
+            }
         case .windowLocked:
             let target = WindowTarget(
                 windowID: 4242,
@@ -126,7 +141,7 @@ public enum Fixtures {
                     now: now
                 )
             }
-        case .drop:
+        case .drop, .dropCreating, .dropWindow:
             _ = IslandReducer.reduce(
                 &state,
                 .beginDrop(
@@ -139,12 +154,42 @@ public enum Fixtures {
             _ = IslandReducer.reduce(&state, .openDropComposer, now: now)
             _ = IslandReducer.reduce(
                 &state,
+                .setDropHerdrCwds([
+                    "/Users/bytedance/projects/github/herdr-island",
+                    "/Users/bytedance/projects/test/herdr-core",
+                    "/Users/bytedance/projects/test/pairfob",
+                ]),
+                now: now
+            )
+            _ = IslandReducer.reduce(
+                &state,
+                .setDropDefaultCwd("/Users/bytedance/projects/github/herdr-island"),
+                now: now
+            )
+            _ = IslandReducer.reduce(
+                &state,
                 .setDropDraft("Trace the flaky geometry test and open a focused fix."),
                 now: now
             )
             _ = IslandReducer.reduce(&state, .setDropWorktree(true), now: now)
+            if name == .dropWindow {
+                _ = IslandReducer.reduce(&state, .setDropWindow(WindowTarget(
+                    windowID: 4242,
+                    ownerPID: 999,
+                    appName: "Feishu",
+                    bundleIdentifier: "com.bytedance.feishu",
+                    title: "Q4 planning review",
+                    bounds: CGRect(x: 420, y: 180, width: 900, height: 620)
+                )), now: now)
+            }
         }
 
+        if name == .dropCreating {
+            _ = IslandReducer.reduce(&state, .submitDropTask(name: "island-preview"), now: now)
+            _ = IslandReducer.reduce(&state, .dropTaskProgress(TaskCreationProgress(
+                stage: .submission, startedAt: Date().addingTimeInterval(-5), pane: PaneID("w9:p1")
+            )), now: now)
+        }
         return IslandPresenter.present(state, now: now)
     }
 
@@ -190,7 +235,7 @@ public enum Fixtures {
                     agent("w1:p3", "claude", "Write the release notes", "herdr-core", .idle, completionSeq: 10),
                 ]
             )
-        case .quickTask:
+        case .quickTask, .quickTaskCreating, .quickTaskFailed, .dropCreating:
             return snapshot(for: .collapsed)
         case .windowLocked:
             return snapshot(for: .collapsed)
@@ -217,7 +262,7 @@ public enum Fixtures {
             )
         case .detail:
             return snapshot(for: .blocked)
-        case .drop:
+        case .drop, .dropWindow:
             return snapshot(for: .collapsed)
         }
     }

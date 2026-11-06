@@ -16,8 +16,12 @@ public enum HerdrLocator {
         environment: [String: String] = ProcessInfo.processInfo.environment,
         home: URL = FileManager.default.homeDirectoryForCurrentUser
     ) -> URL {
-        if let override = environment["HERDR_SOCKET"], !override.isEmpty {
-            return URL(fileURLWithPath: (override as NSString).expandingTildeInPath)
+        // HERDR_SOCKET_PATH is Herdr's canonical override. Keep the original
+        // Island-specific spelling as a compatibility alias.
+        for name in ["HERDR_SOCKET_PATH", "HERDR_SOCKET"] {
+            if let override = environment[name], !override.isEmpty {
+                return URL(fileURLWithPath: (override as NSString).expandingTildeInPath)
+            }
         }
         return home.appendingPathComponent(".config/herdr/herdr.sock")
     }

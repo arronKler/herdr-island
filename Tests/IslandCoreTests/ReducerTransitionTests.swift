@@ -314,7 +314,8 @@ final class ReducerTransitionTests: XCTestCase {
         )
         p = presentation(of: state, at: t0)
         XCTAssertNil(p.quickTask)
-        XCTAssertFalse(p.isExpanded)
+        XCTAssertTrue(p.isExpanded)
+        XCTAssertEqual(state.selection, PaneID("w9:p1"))
     }
 
     func testQuickTaskFailureKeepsDraftAndEscapeCloses() {

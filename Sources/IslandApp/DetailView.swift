@@ -23,17 +23,17 @@ struct DetailView: View {
                 .frame(height: notchHeight)
             }
 
-            HStack(alignment: .top, spacing: 12) {
+            HStack(alignment: .top, spacing: 16) {
                 rail
-                    .frame(width: 178)
+                    .frame(width: 210)
                 Rectangle()
                     .fill(Theme.hairline)
                     .frame(width: 1)
                 main
             }
-            .padding(.horizontal, 16)
-            .padding(.top, 8)
-            .padding(.bottom, 12)
+            .padding(.horizontal, Theme.Layout.pad)
+            .padding(.top, 30)
+            .padding(.bottom, 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -78,21 +78,21 @@ struct DetailView: View {
     }
 
     private var rail: some View {
-        ScrollView(.vertical, showsIndicators: false) {
-            LazyVStack(alignment: .leading, spacing: 2) {
+        ScrollView(.vertical, showsIndicators: true) {
+            LazyVStack(alignment: .leading, spacing: 3) {
                 ForEach(groupedRail, id: \.title) { group in
                     Text(group.title)
-                        .font(Theme.code(7.5, weight: .medium))
+                        .font(Theme.code(Theme.TypeSize.micro, weight: .medium))
                         .tracking(1.0)
                         .foregroundStyle(Theme.textTertiary)
-                        .padding(.top, 7)
-                        .padding(.leading, 4)
+                        .padding(.top, 10)
+                        .padding(.leading, 6)
                     ForEach(group.rows) { row in
                         railRow(row)
                     }
                 }
             }
-            .padding(.top, 10)
+            .padding(.top, 12)
         }
         .frame(maxHeight: .infinity)
     }
@@ -109,27 +109,27 @@ struct DetailView: View {
     }
 
     private func railRow(_ row: AgentRow) -> some View {
-        HStack(spacing: 6) {
-            AgentMarkView(kind: row.kind, size: 18, status: row.status)
-            VStack(alignment: .leading, spacing: 1) {
+        HStack(spacing: 8) {
+            AgentMarkView(kind: row.kind, size: 22, status: row.status)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(row.title)
-                    .font(Theme.sans(9.5, weight: .medium))
+                    .font(Theme.sans(Theme.TypeSize.caption, weight: .medium))
                     .foregroundStyle(row.isSelected ? Theme.textPrimary : Theme.textSecondary)
                     .lineLimit(1)
                 Text("\(row.project) · \(IslandFormat.age(row.waited))")
-                    .font(Theme.code(7.5))
+                    .font(Theme.code(9.5))
                     .foregroundStyle(Theme.textTertiary)
                     .lineLimit(1)
             }
             Spacer(minLength: 2)
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 6)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 8)
         .background(
-            RoundedRectangle(cornerRadius: 7)
+            RoundedRectangle(cornerRadius: 9)
                 .fill(row.isSelected ? Color.white.opacity(0.06) : .clear)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 7)
+                    RoundedRectangle(cornerRadius: 9)
                         .stroke(row.isSelected ? Theme.hairline : .clear, lineWidth: 0.6)
                 )
         )
@@ -140,7 +140,7 @@ struct DetailView: View {
     @ViewBuilder
     private var main: some View {
         if let selected {
-            VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 12) {
                 header(selected)
                 if let banner = presentation.banner {
                     bannerView(banner)
@@ -154,17 +154,19 @@ struct DetailView: View {
                 }
                 terminal
                 actionsRow(selected)
-                trustRow
+                if selected.status != .blocked {
+                    trustRow
+                }
                 composer(selected)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } else {
-            VStack(spacing: 8) {
+            VStack(spacing: 10) {
                 Image(systemName: "rectangle.stack")
-                    .font(.system(size: 20, weight: .light))
+                    .font(.system(size: 24, weight: .light))
                     .foregroundStyle(Theme.textTertiary)
                 Text("没有选中的 agent")
-                    .font(Theme.sans(11))
+                    .font(Theme.sans(Theme.TypeSize.lead))
                     .foregroundStyle(Theme.textSecondary)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -172,11 +174,11 @@ struct DetailView: View {
     }
 
     private func header(_ row: AgentRow) -> some View {
-        HStack(spacing: 8) {
-            AgentMarkView(kind: row.kind, size: 24, status: nil)
-            VStack(alignment: .leading, spacing: 1) {
+        HStack(spacing: 10) {
+            AgentMarkView(kind: row.kind, size: 28, status: nil)
+            VStack(alignment: .leading, spacing: 2) {
                 Text(row.title)
-                    .font(Theme.sans(12, weight: .semibold))
+                    .font(Theme.sans(Theme.TypeSize.title, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                 HStack(spacing: 5) {
@@ -190,31 +192,31 @@ struct DetailView: View {
                         Text(row.labels.prefix(2).joined(separator: " / "))
                     }
                 }
-                .font(Theme.code(8))
+                .font(Theme.code(Theme.TypeSize.micro))
                 .foregroundStyle(Theme.textTertiary)
                 .lineLimit(1)
             }
             Spacer(minLength: 4)
-            HStack(spacing: 4) {
-                StatusDot(status: row.status, size: 4)
+            HStack(spacing: 5) {
+                StatusDot(status: row.status, size: 5)
                 Text(IslandFormat.status(row.status, pending: row.isPendingCompletion))
-                    .font(Theme.code(8, weight: .medium))
+                    .font(Theme.code(Theme.TypeSize.micro, weight: .medium))
                     .tracking(0.4)
                     .foregroundStyle(Theme.color(for: row.status))
             }
-            .padding(.horizontal, 6)
-            .frame(height: 20)
+            .padding(.horizontal, 10)
+            .frame(height: 26)
             .background(
                 Capsule().fill(Theme.wash(for: row.status))
             )
 
             Button(action: actions.backToDeck) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.textTertiary)
-                    .frame(width: 22, height: 22)
+                    .frame(width: 30, height: 30)
                     .background(
-                        RoundedRectangle(cornerRadius: 6)
+                        RoundedRectangle(cornerRadius: 8)
                             .fill(Color.white.opacity(0.035))
                     )
             }
@@ -222,7 +224,7 @@ struct DetailView: View {
             .help("返回队列 (esc)")
             .accessibilityLabel("返回任务台")
         }
-        .frame(height: 30)
+        .frame(height: 36)
     }
 
     private func questionCard(_ row: AgentRow) -> some View {
@@ -241,14 +243,14 @@ struct DetailView: View {
             label = "状态未知"
         }
 
-        return VStack(alignment: .leading, spacing: 3) {
+        return VStack(alignment: .leading, spacing: 5) {
             Text(label)
-                .font(Theme.code(8, weight: .medium))
+                .font(Theme.code(9.5, weight: .medium))
                 .tracking(1.0)
                 .textCase(.uppercase)
                 .foregroundStyle(color)
             Text(questionText(row))
-                .font(Theme.sans(11.5, weight: .semibold))
+                .font(Theme.sans(Theme.TypeSize.lead, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)
@@ -259,33 +261,33 @@ struct DetailView: View {
                     Text(command)
                         .foregroundStyle(Theme.textPrimary)
                 }
-                .font(Theme.code(10))
-                .padding(.horizontal, 6)
-                .padding(.vertical, 2)
+                .font(Theme.code(Theme.TypeSize.terminal))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
                 .background(
-                    RoundedRectangle(cornerRadius: 5)
+                    RoundedRectangle(cornerRadius: 6)
                         .fill(Color.black.opacity(0.28))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 5)
+                            RoundedRectangle(cornerRadius: 6)
                                 .stroke(Color.white.opacity(0.08), lineWidth: 0.6)
                         )
                 )
                 .padding(.top, 2)
             } else if let last = row.lastLine, row.status != .blocked {
                 Text(last)
-                    .font(Theme.sans(9.5))
+                    .font(Theme.sans(Theme.TypeSize.caption))
                     .foregroundStyle(Theme.textSecondary)
                     .lineLimit(1)
             }
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(Theme.wash(for: row.status))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: 12)
                         .stroke(Theme.line(for: row.status), lineWidth: 0.6)
                 )
         )
@@ -299,61 +301,61 @@ struct DetailView: View {
     }
 
     private func worktreeBanner(_ branch: String) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: "arrow.triangle.branch")
-                .font(.system(size: 8, weight: .semibold))
+                .font(.system(size: 10, weight: .semibold))
             Text("隔离在")
-                .font(Theme.sans(9))
+                .font(Theme.sans(Theme.TypeSize.caption))
                 .foregroundStyle(Theme.textSecondary)
             Text(branch)
-                .font(Theme.code(9))
+                .font(Theme.code(Theme.TypeSize.caption))
                 .foregroundStyle(Theme.amber)
             Spacer(minLength: 4)
             Text("worktree")
-                .font(Theme.code(7.5))
+                .font(Theme.code(9.5))
                 .foregroundStyle(Theme.textTertiary)
         }
-        .padding(.horizontal, 9)
-        .frame(height: 25)
+        .padding(.horizontal, 12)
+        .frame(height: 30)
         .background(
-            RoundedRectangle(cornerRadius: 7)
+            RoundedRectangle(cornerRadius: 8)
                 .fill(Theme.amberWash)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 7)
+                    RoundedRectangle(cornerRadius: 8)
                         .stroke(Theme.amber.opacity(0.18), lineWidth: 0.6)
                 )
         )
     }
 
     private func queuedBanner(_ text: String, pane: PaneID) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: "clock.arrow.circlepath")
-                .font(.system(size: 8, weight: .medium))
+                .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Theme.blue)
             Text("已排队 · 本轮结束自动发送")
-                .font(Theme.code(8))
+                .font(Theme.code(9.5))
                 .foregroundStyle(Theme.blue)
             Text(text)
-                .font(Theme.sans(9))
+                .font(Theme.sans(Theme.TypeSize.caption))
                 .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
             Spacer(minLength: 4)
             Button { actions.cancelQueued(pane) } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 7, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(Theme.textTertiary)
             }
             .buttonStyle(.plain)
             .help("取消排队")
             .accessibilityLabel("取消排队消息")
         }
-        .padding(.horizontal, 9)
-        .frame(height: 25)
+        .padding(.horizontal, 12)
+        .frame(height: 30)
         .background(
-            RoundedRectangle(cornerRadius: 7)
+            RoundedRectangle(cornerRadius: 8)
                 .fill(Theme.blueWash)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 7)
+                    RoundedRectangle(cornerRadius: 8)
                         .stroke(Theme.blue.opacity(0.18), lineWidth: 0.6)
                 )
         )
@@ -361,197 +363,186 @@ struct DetailView: View {
 
     private var terminal: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 9)
+            RoundedRectangle(cornerRadius: 10)
                 .fill(Color(red: 0.035, green: 0.039, blue: 0.051))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 9)
+                    RoundedRectangle(cornerRadius: 10)
                         .stroke(Theme.hairline, lineWidth: 0.6)
                 )
             if presentation.preview?.isLoading == true {
-                HStack(spacing: 7) {
+                HStack(spacing: 8) {
                     ProgressView().controlSize(.mini)
                     Text("正在读取终端…")
-                        .font(Theme.code(9))
+                        .font(Theme.code(Theme.TypeSize.terminal))
                         .foregroundStyle(Theme.textTertiary)
                 }
             } else if let failure = presentation.preview?.failure {
                 Text(failure)
-                    .font(Theme.code(9))
+                    .font(Theme.code(Theme.TypeSize.terminal))
                     .foregroundStyle(Theme.red)
-                    .padding(10)
+                    .padding(12)
             } else {
-                ScrollView(.vertical, showsIndicators: false) {
-                    VStack(alignment: .leading, spacing: 1) {
-                        ForEach(Array(terminalLines.enumerated()), id: \.offset) { _, line in
-                            terminalLine(line)
+                GeometryReader { geometry in
+                    ScrollViewReader { proxy in
+                        ScrollView([.horizontal, .vertical], showsIndicators: true) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                ForEach(Array(terminalLines.enumerated()), id: \.offset) { index, line in
+                                    terminalLine(line, viewportWidth: geometry.size.width - 24)
+                                        .id(index)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
                         }
+                        .defaultScrollAnchor(UnitPoint(x: 0, y: 1))
+                        .onAppear { scrollTerminalToBottom(proxy) }
+                        .onChange(of: presentation.preview?.text) { scrollTerminalToBottom(proxy) }
+                        .onChange(of: geometry.size.height) { scrollTerminalToBottom(proxy) }
                     }
-                    .padding(.horizontal, 9)
-                    .padding(.vertical, 7)
-                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
         }
         .frame(maxHeight: .infinity)
-        .frame(minHeight: 120)
+        .frame(minHeight: 170)
     }
 
     private var terminalLines: [String] {
-        let text = presentation.preview?.text ?? ""
-        let lines = text.split(whereSeparator: \.isNewline).map(String.init)
+        let lines = presentation.preview?.terminalLines ?? []
         if lines.isEmpty { return ["（终端暂时没有输出）"] }
-        return Array(lines.suffix(60))
+        return lines
     }
 
-    private func terminalLine(_ line: String) -> some View {
+    private func scrollTerminalToBottom(_ proxy: ScrollViewProxy) {
+        guard let last = terminalLines.indices.last else { return }
+        proxy.scrollTo(last, anchor: UnitPoint(x: 0, y: 1))
+    }
+
+    @ViewBuilder
+    private func terminalLine(_ line: String, viewportWidth: CGFloat) -> some View {
         let trimmed = line.trimmingCharacters(in: .whitespaces)
-        let color: Color
-        if trimmed.hasPrefix("$") || trimmed.hasPrefix("❯") {
-            color = Theme.amber
-        } else if trimmed.contains("✓") || trimmed.contains("PASS") || trimmed.contains("passed") {
-            color = Theme.mint
-        } else if trimmed.contains("✗") || trimmed.contains("FAIL") || trimmed.contains("failed") {
-            color = Theme.red
-        } else if trimmed.hasPrefix("//") || trimmed.hasPrefix("#") {
-            color = Theme.textTertiary
-        } else {
-            color = Theme.textSecondary
-        }
-        return Text(line.isEmpty ? " " : line)
-            .font(Theme.code(9.5))
+        let color: Color = {
+            if trimmed.hasPrefix("$") || trimmed.hasPrefix("❯") { return Theme.amber }
+            if trimmed.contains("✓") || trimmed.contains("PASS") || trimmed.contains("passed") { return Theme.mint }
+            if trimmed.contains("✗") || trimmed.contains("FAIL") || trimmed.contains("failed") { return Theme.red }
+            if trimmed.hasPrefix("//") || trimmed.hasPrefix("#") { return Theme.textTertiary }
+            return Theme.textSecondary
+        }()
+        let text = Text(line.isEmpty ? " " : line)
+            .font(Theme.code(Theme.TypeSize.terminal))
             .foregroundStyle(color)
             .textSelection(.enabled)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        if TerminalText.isStructured(line) {
+            text.fixedSize(horizontal: true, vertical: false)
+        } else {
+            text.frame(width: max(viewportWidth, 1), alignment: .leading)
+        }
     }
 
     private func actionsRow(_ row: AgentRow) -> some View {
-        HStack(spacing: 6) {
-            Button(action: { actions.jump(row.id) }) {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.up.right.square")
-                        .font(.system(size: 8, weight: .semibold))
-                    Text(row.status == .blocked ? "去终端处理" : "去终端")
-                }
-                .font(Theme.sans(9.5, weight: .semibold))
-                .foregroundStyle(row.status == .blocked
-                    ? Color(red: 0.09, green: 0.07, blue: 0.03)
-                    : Theme.textPrimary)
-                .padding(.horizontal, 10)
-                .frame(height: 26)
-                .background(
-                    RoundedRectangle(cornerRadius: 7)
-                        .fill(row.status == .blocked ? Theme.amber : Color.white.opacity(0.07))
-                )
+        HStack(spacing: 8) {
+            IslandButton(
+                title: row.status == .blocked ? "去终端处理" : "去终端",
+                trailingIcon: "arrow.up.right",
+                tier: row.status == .blocked ? .primary : .secondary,
+                size: .medium
+            ) {
+                actions.jump(row.id)
             }
-            .buttonStyle(.plain)
 
             if row.status == .blocked {
-                Button { actions.snooze(row.id) } label: {
-                    Text("稍后")
-                        .font(Theme.sans(9.5))
-                        .foregroundStyle(Theme.textSecondary)
-                        .padding(.horizontal, 9)
-                        .frame(height: 26)
-                        .background(
-                            RoundedRectangle(cornerRadius: 7)
-                                .stroke(Theme.hairline, lineWidth: 0.6)
-                        )
+                IslandButton(title: "稍后", tier: .secondary, size: .medium) {
+                    actions.snooze(row.id)
                 }
-                .buttonStyle(.plain)
             }
 
             if presentation.preview?.command != nil {
-                Button {
+                IslandButton(title: "复制命令", tier: .secondary, size: .medium) {
                     if let command = presentation.preview?.command {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(command, forType: .string)
                     }
-                } label: {
-                    Text("复制命令")
-                        .font(Theme.sans(9.5))
-                        .foregroundStyle(Theme.textSecondary)
-                        .padding(.horizontal, 9)
-                        .frame(height: 26)
-                        .background(
-                            RoundedRectangle(cornerRadius: 7)
-                                .stroke(Theme.hairline, lineWidth: 0.6)
-                        )
                 }
-                .buttonStyle(.plain)
             }
 
             Spacer(minLength: 4)
 
             Text(IslandFormat.age(row.waited))
-                .font(Theme.code(8))
+                .font(Theme.code(Theme.TypeSize.micro))
                 .foregroundStyle(Theme.textTertiary)
         }
     }
 
     private var trustRow: some View {
-        HStack(alignment: .top, spacing: 6) {
+        HStack(alignment: .top, spacing: 8) {
             Image(systemName: "shield.lefthalf.filled")
-                .font(.system(size: 9, weight: .medium))
+                .font(.system(size: 11, weight: .medium))
                 .foregroundStyle(Theme.amber)
                 .padding(.top, 1)
             Text("只读预览。批准与回答需在终端完成，岛不会代为操作。")
-                .font(Theme.sans(8.5))
+                .font(Theme.sans(Theme.TypeSize.caption))
                 .foregroundStyle(Theme.textTertiary)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
         }
-        .padding(.top, 6)
+        .padding(.top, 10)
         .overlay(alignment: .top) { Hairline().opacity(0.7) }
     }
 
     @ViewBuilder
     private func composer(_ row: AgentRow) -> some View {
         if row.status == .blocked {
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Image(systemName: "lock.fill")
-                    .font(.system(size: 8, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(Theme.amber)
                 Text(presentation.composer?.refusal ?? "在终端里回答。")
-                    .font(Theme.sans(9))
+                    .font(Theme.sans(Theme.TypeSize.caption))
                     .foregroundStyle(Theme.textTertiary)
                     .lineLimit(1)
                 Spacer(minLength: 0)
             }
-            .frame(height: 28)
-            .padding(.top, 6)
+            .frame(height: 34)
+            .padding(.top, 10)
             .overlay(alignment: .top) { Hairline().opacity(0.7) }
         } else {
-            HStack(spacing: 6) {
-                TextField(composerPlaceholder(row), text: draftBinding)
+            let placeholder = composerPlaceholder(row)
+            HStack(spacing: 8) {
+                TextField("", text: draftBinding)
                     .textFieldStyle(.plain)
-                    .font(Theme.sans(10))
+                    .font(Theme.sans(Theme.TypeSize.body))
                     .foregroundStyle(Theme.textPrimary)
                     .focused($composerFocused)
                     .onSubmit {
                         if presentation.composer?.canSend == true { actions.send() }
                     }
-                    .padding(.horizontal, 9)
-                    .frame(height: 29)
+                    .padding(.horizontal, 12)
+                    .frame(height: 38)
+                    .fieldPlaceholder(
+                        placeholder,
+                        text: presentation.composer?.text ?? "",
+                        insets: EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 0)
+                    )
+                    .accessibilityLabel(placeholder)
                     .background(
-                        RoundedRectangle(cornerRadius: 7)
+                        RoundedRectangle(cornerRadius: 9)
                             .fill(Theme.field)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 7)
+                                RoundedRectangle(cornerRadius: 9)
                                     .stroke(composerFocused ? Theme.amberLine : .clear, lineWidth: 0.7)
                             )
                     )
                 Button(action: actions.send) {
                     Image(systemName: presentation.composer?.isSending == true ? "hourglass" : "arrow.up")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(presentation.composer?.canSend == true ? Theme.amber : Theme.textTertiary)
-                        .frame(width: 29, height: 29)
+                        .frame(width: 34, height: 34)
                         .background(
-                            RoundedRectangle(cornerRadius: 7)
+                            RoundedRectangle(cornerRadius: 9)
                                 .fill(presentation.composer?.canSend == true
                                     ? Theme.amber.opacity(0.12)
                                     : Color.white.opacity(0.03))
                                 .overlay(
-                                    RoundedRectangle(cornerRadius: 7)
+                                    RoundedRectangle(cornerRadius: 9)
                                         .stroke(presentation.composer?.canSend == true
                                             ? Theme.amberLine
                                             : Theme.hairline, lineWidth: 0.6)
@@ -563,7 +554,7 @@ struct DetailView: View {
                 .help("发送 (⌘↩)")
                 .accessibilityLabel("发送消息")
             }
-            .padding(.top, 6)
+            .padding(.top, 10)
             .overlay(alignment: .top) { Hairline().opacity(0.7) }
         }
     }
@@ -581,26 +572,26 @@ struct DetailView: View {
     }
 
     private func bannerView(_ banner: Banner) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: banner.isError ? "exclamationmark.triangle.fill" : "checkmark.circle.fill")
-                .font(.system(size: 8, weight: .semibold))
+                .font(.system(size: 10, weight: .semibold))
                 .foregroundStyle(banner.isError ? Theme.red : Theme.mint)
             Text(banner.text)
-                .font(Theme.sans(9))
+                .font(Theme.sans(Theme.TypeSize.caption))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
             Spacer(minLength: 4)
             Button(action: actions.dismissBanner) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 7, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(Theme.textTertiary)
             }
             .buttonStyle(.plain)
             .help("关闭提示")
             .accessibilityLabel("关闭提示")
         }
-        .padding(.horizontal, 8)
-        .frame(height: 24)
-        .background(RoundedRectangle(cornerRadius: 7).fill((banner.isError ? Theme.red : Theme.mint).opacity(0.09)))
+        .padding(.horizontal, 12)
+        .frame(height: 30)
+        .background(RoundedRectangle(cornerRadius: 8).fill((banner.isError ? Theme.red : Theme.mint).opacity(0.09)))
     }
 }

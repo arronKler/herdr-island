@@ -1,0 +1,155 @@
+{
+  "started": 1793972933.834493,
+  "scenario": "exact Scripts/PerformanceBaseline.swift cpuPaths(count:500)",
+  "runs": [
+    {
+      "variant": "v1",
+      "raw": "2026-11-06-changed-state-run-1.json",
+      "load_before": [
+        8.19677734375,
+        10.0380859375,
+        9.521484375
+      ],
+      "load_after": [
+        8.19677734375,
+        10.0380859375,
+        9.521484375
+      ],
+      "summary": {
+        "state.changed_snapshot_present_n500": {
+          "p50": 15.3337705,
+          "p95": 18.611167
+        },
+        "state.draft_present_live_clock_n500": {
+          "p50": 0.226437,
+          "p95": 0.610791
+        },
+        "state.draft_present_n500": {
+          "p50": 0.14735399999999998,
+          "p95": 0.361375
+        },
+        "state.search_present_n500": {
+          "p50": 3.2934795,
+          "p95": 6.261833
+        },
+        "state.snapshot_present_n500": {
+          "p50": 2.905125,
+          "p95": 3.623625
+        }
+      }
+    },
+    {
+      "variant": "v2_candidate",
+      "raw": "2026-11-06-changed-state-run-2.json",
+      "load_before": [
+        8.19677734375,
+        10.0380859375,
+        9.521484375
+      ],
+      "load_after": [
+        8.19677734375,
+        10.0380859375,
+        9.521484375
+      ],
+      "summary": {
+        "state.changed_snapshot_present_n500": {
+          "p50": 1.8590205,
+          "p95": 3.854667
+        },
+        "state.draft_present_live_clock_n500": {
+          "p50": 0.41810400000000003,
+          "p95": 0.458208
+        },
+        "state.draft_present_n500": {
+          "p50": 0.2812915,
+          "p95": 0.309584
+        },
+        "state.search_present_n500": {
+          "p50": 2.781625,
+          "p95": 5.528292
+        },
+        "state.snapshot_present_n500": {
+          "p50": 3.8578330000000003,
+          "p95": 9.15725
+        }
+      }
+    },
+    {
+      "variant": "v2_candidate",
+      "raw": "2026-11-06-changed-state-run-3.json",
+      "load_before": [
+        8.19677734375,
+        10.0380859375,
+        9.521484375
+      ],
+      "load_after": [
+        7.8603515625,
+        9.9375,
+        9.48876953125
+      ],
+      "summary": {
+        "state.changed_snapshot_present_n500": {
+          "p50": 3.4854795000000003,
+          "p95": 3.969791
+        },
+        "state.draft_present_live_clock_n500": {
+          "p50": 0.416229,
+          "p95": 0.461625
+        },
+        "state.draft_present_n500": {
+          "p50": 0.285375,
+          "p95": 0.368583
+        },
+        "state.search_present_n500": {
+          "p50": 2.8950835,
+          "p95": 6.386583
+        },
+        "state.snapshot_present_n500": {
+          "p50": 3.606896,
+          "p95": 4.441
+        }
+      }
+    },
+    {
+      "variant": "v1",
+      "raw": "2026-11-06-changed-state-run-4.json",
+      "load_before": [
+        7.8603515625,
+        9.9375,
+        9.48876953125
+      ],
+      "load_after": [
+        7.8603515625,
+        9.9375,
+        9.48876953125
+      ],
+      "summary": {
+        "state.changed_snapshot_present_n500": {
+          "p50": 15.916021,
+          "p95": 20.583333
+        },
+        "state.draft_present_live_clock_n500": {
+          "p50": 0.425729,
+          "p95": 0.529125
+        },
+        "state.draft_present_n500": {
+          "p50": 0.292187,
+          "p95": 0.342958
+        },
+        "state.search_present_n500": {
+          "p50": 2.533167,
+          "p95": 5.268
+        },
+        "state.snapshot_present_n500": {
+          "p50": 2.927125,
+          "p95": 4.287875
+        }
+      }
+    }
+  ],
+  "artifact_sha256": {
+    "v1_library": "c21b55d306a6346d8bdce7aa645e17f48fbd378c5d2b243f7fb4582a028abd82",
+    "v2_candidate_library": "4429a7488ba427c002f43ade47e1f705da41a321446e5fe209c681ff51f1154c",
+    "benchmark": "4e384125e308897f214fb8b0ce08cf8014f9f069c44a4d44080fa1e4dd0b1f75"
+  }
+}

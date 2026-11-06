@@ -14,7 +14,7 @@ struct WindowTaskView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 10) {
             header
             captureCard
             if let blocked = presentation.rows.first(where: { $0.status == .blocked }) {
@@ -23,14 +23,18 @@ struct WindowTaskView: View {
             taskField
             destinationPicker
             controls
-            suggestions
+            if let creation = windowTask.creation {
+                TaskCreationStatusView(progress: creation, error: windowTask.error, openPane: actions.jump)
+            } else {
+                suggestions
+            }
             if let refusal = windowTask.destinationRefusal {
                 notice(refusal, color: Theme.amber)
             }
             if windowTask.screenCaptureAuthorized == false {
                 screenRecordingWarning
             }
-            if let error = windowTask.error {
+            if windowTask.creation == nil, let error = windowTask.error {
                 notice(error, color: Theme.red)
             }
             if let lastDelivery = windowTask.lastDelivery {
@@ -39,9 +43,9 @@ struct WindowTaskView: View {
             Spacer(minLength: 0)
             footer
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 9)
-        .padding(.bottom, 10)
+        .padding(.horizontal, Theme.Layout.pad)
+        .padding(.top, 30)
+        .padding(.bottom, 16)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
             guard !windowTask.isBusy else { return }
@@ -50,47 +54,47 @@ struct WindowTaskView: View {
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             appIcon
 
-            VStack(alignment: .leading, spacing: 1) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(windowTask.lock.displayTitle)
-                    .font(Theme.sans(12, weight: .semibold))
+                    .font(Theme.sans(Theme.TypeSize.title, weight: .semibold))
                     .foregroundStyle(Theme.textPrimary)
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Text(windowTask.lock.appName + " · 已锁定窗口")
-                    .font(Theme.code(8))
+                    .font(Theme.code(Theme.TypeSize.micro))
                     .foregroundStyle(Theme.textTertiary)
                     .lineLimit(1)
             }
 
             Spacer(minLength: 4)
 
-            HStack(spacing: 3) {
+            HStack(spacing: 4) {
                 Image(systemName: "lock.fill")
-                    .font(.system(size: 6.5, weight: .bold))
+                    .font(.system(size: 9, weight: .bold))
                 Text("锁定")
-                    .font(Theme.sans(8.5, weight: .medium))
+                    .font(Theme.sans(10.5, weight: .medium))
             }
             .foregroundStyle(Theme.mint)
-            .padding(.horizontal, 6)
-            .frame(height: 18)
+            .padding(.horizontal, 9)
+            .frame(height: 24)
             .background(Capsule().fill(Theme.mint.opacity(0.12)))
             .fixedSize()
 
             Button(action: actions.unlockWindow) {
                 Image(systemName: "lock.open")
-                    .font(.system(size: 9, weight: .medium))
+                    .font(.system(size: 11, weight: .medium))
                     .foregroundStyle(Theme.textTertiary)
-                    .frame(width: 22, height: 22)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.04)))
+                    .frame(width: 30, height: 30)
+                    .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.04)))
             }
             .buttonStyle(.plain)
             .help("解除锁定")
             .accessibilityLabel("解除窗口锁定")
         }
-        .frame(height: 28)
+        .frame(height: 36)
     }
 
     @ViewBuilder
@@ -100,102 +104,103 @@ struct WindowTaskView: View {
             Image(nsImage: icon)
                 .resizable()
                 .interpolation(.high)
-                .frame(width: 22, height: 22)
-                .clipShape(RoundedRectangle(cornerRadius: 5))
+                .frame(width: 28, height: 28)
+                .clipShape(RoundedRectangle(cornerRadius: 7))
         } else {
             Image(systemName: "macwindow")
-                .font(.system(size: 10, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(Theme.textSecondary)
-                .frame(width: 22, height: 22)
-                .background(RoundedRectangle(cornerRadius: 5).fill(Theme.field))
+                .frame(width: 28, height: 28)
+                .background(RoundedRectangle(cornerRadius: 7).fill(Theme.field))
         }
     }
 
     private var captureCard: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             ZStack {
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(Color.black.opacity(0.28))
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: 8)
                     .stroke(Theme.hairlineHigh, style: StrokeStyle(lineWidth: 0.7, dash: [3, 2]))
-                VStack(spacing: 3) {
+                VStack(spacing: 4) {
                     Image(systemName: "macwindow")
-                        .font(.system(size: 12, weight: .light))
+                        .font(.system(size: 15, weight: .light))
                         .foregroundStyle(Theme.textTertiary)
                     Text("\(Int(windowTask.lock.bounds.width)) × \(Int(windowTask.lock.bounds.height))")
-                        .font(Theme.code(7))
+                        .font(Theme.code(9.5))
                         .foregroundStyle(Theme.textTertiary)
                 }
             }
-            .frame(width: 92, height: 56)
+            .frame(width: 104, height: 62)
 
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("发送时截取这个窗口")
-                    .font(Theme.sans(9.5, weight: .medium))
+                    .font(Theme.sans(Theme.TypeSize.body, weight: .medium))
                     .foregroundStyle(Theme.textSecondary)
                 Text("截图只在按下发送时捕获，不会持续录屏。")
-                    .font(Theme.sans(8.5))
+                    .font(Theme.sans(Theme.TypeSize.caption))
                     .foregroundStyle(Theme.textTertiary)
                     .lineLimit(2)
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     Image(systemName: "eye.slash")
-                        .font(.system(size: 7, weight: .medium))
+                        .font(.system(size: 9, weight: .medium))
                     Text("岛不会读取窗口里其他的内容")
-                        .font(Theme.code(7.5))
+                        .font(Theme.code(9.5))
                 }
                 .foregroundStyle(Theme.textTertiary.opacity(0.9))
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 9)
-        .padding(.vertical, 7)
-        .frame(height: 72)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(height: 84)
         .background(
-            RoundedRectangle(cornerRadius: 10)
+            RoundedRectangle(cornerRadius: 12)
                 .fill(Theme.raised.opacity(0.55))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 10)
+                    RoundedRectangle(cornerRadius: 12)
                         .stroke(Theme.hairline, lineWidth: 0.6)
                 )
         )
     }
 
     private func blockedNotice(_ row: AgentRow) -> some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Circle()
                 .fill(Theme.amber)
-                .frame(width: 5, height: 5)
+                .frame(width: 6, height: 6)
             Text("\(row.title) 需要你先处理")
-                .font(Theme.sans(9.5, weight: .medium))
+                .font(Theme.sans(Theme.TypeSize.body, weight: .medium))
                 .foregroundStyle(Theme.textPrimary)
                 .lineLimit(1)
             Spacer(minLength: 4)
             Button(action: { actions.jump(row.id) }) {
                 Text("去终端")
-                    .font(Theme.sans(9, weight: .semibold))
+                    .font(Theme.sans(10.5, weight: .semibold))
                     .foregroundStyle(Color(red: 0.09, green: 0.07, blue: 0.03))
-                    .padding(.horizontal, 8)
-                    .frame(height: 20)
+                    .padding(.horizontal, 10)
+                    .frame(height: 26)
                     .background(Capsule().fill(Theme.amber))
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 9)
-        .frame(height: 30)
+        .padding(.horizontal, 12)
+        .frame(height: 34)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 10)
                 .fill(Theme.amberWash)
                 .overlay(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 10)
                         .stroke(Theme.amberLine, lineWidth: 0.6)
                 )
         )
     }
 
     private var taskField: some View {
-        TextField("让 agent 看这个窗口做什么…", text: draftBinding, axis: .vertical)
+        let placeholder = "让 agent 看这个窗口做什么…"
+        return TextField("", text: draftBinding, axis: .vertical)
             .textFieldStyle(.plain)
-            .font(Theme.sans(11))
+            .font(Theme.sans(Theme.TypeSize.body))
             .foregroundStyle(Theme.textPrimary)
             .lineLimit(3...6)
             .focused($taskFocused)
@@ -203,33 +208,40 @@ struct WindowTaskView: View {
             .onSubmit {
                 if windowTask.canSubmit { actions.submitWindowTask() }
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
-            .frame(minHeight: 84, alignment: .topLeading)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
+            .frame(minHeight: 110, alignment: .topLeading)
+            .fieldPlaceholder(
+                placeholder,
+                text: windowTask.draft,
+                insets: EdgeInsets(top: 10, leading: 12, bottom: 0, trailing: 0),
+                alignment: .topLeading
+            )
+            .accessibilityLabel(placeholder)
             .background(
-                RoundedRectangle(cornerRadius: 8)
+                RoundedRectangle(cornerRadius: 10)
                     .fill(Theme.field)
                     .overlay(
-                        RoundedRectangle(cornerRadius: 8)
+                        RoundedRectangle(cornerRadius: 10)
                             .stroke(taskFocused ? Theme.amberLine : Theme.hairline, lineWidth: 0.7)
                     )
             )
     }
 
     private var destinationPicker: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 4) {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 5) {
                 Text("发送到")
-                    .font(Theme.code(7.5, weight: .medium))
+                    .font(Theme.code(9.5, weight: .medium))
                     .tracking(0.8)
                     .foregroundStyle(Theme.textTertiary)
                 Spacer(minLength: 4)
                 Text(windowTask.destinationAgent == nil ? "新建 agent 并选择目录" : "投递到已有 agent")
-                    .font(Theme.code(7.5))
+                    .font(Theme.code(9.5))
                     .foregroundStyle(Theme.textTertiary)
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 5) {
+            ScrollView(.horizontal, showsIndicators: true) {
+                HStack(spacing: 6) {
                     destinationChip(pane: nil)
                     ForEach(promptableRows.prefix(8)) { row in
                         destinationChip(pane: row.id)
@@ -246,29 +258,29 @@ struct WindowTaskView: View {
         return Button {
             actions.windowTaskDestination(pane)
         } label: {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 if let row {
-                    AgentMarkView(kind: row.kind, size: 16)
+                    AgentMarkView(kind: row.kind, size: 20)
                     Text(row.title)
                         .lineLimit(1)
                 } else {
                     Image(systemName: "plus")
-                        .font(.system(size: 8, weight: .semibold))
-                        .frame(width: 16, height: 16)
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 20, height: 20)
                     Text("新 agent")
                         .lineLimit(1)
                 }
             }
-            .font(Theme.sans(8.5, weight: selected ? .semibold : .regular))
+            .font(Theme.sans(10.5, weight: selected ? .semibold : .regular))
             .foregroundStyle(selected ? Theme.textPrimary : Theme.textTertiary)
-            .padding(.horizontal, 7)
-            .frame(maxWidth: 150, alignment: .leading)
-            .frame(height: 28)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: 180, alignment: .leading)
+            .frame(height: 34)
             .background(
-                RoundedRectangle(cornerRadius: 7)
+                RoundedRectangle(cornerRadius: 9)
                     .fill(selected ? Theme.amber.opacity(0.08) : Color.white.opacity(0.03))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 7)
+                        RoundedRectangle(cornerRadius: 9)
                             .stroke(selected ? Theme.amberLine : Theme.hairline, lineWidth: 0.6)
                     )
             )
@@ -279,7 +291,7 @@ struct WindowTaskView: View {
     }
 
     private var controls: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             if windowTask.destinationAgent == nil {
                 Menu {
                     ForEach(AgentKindOption.allCases) { kind in
@@ -290,22 +302,22 @@ struct WindowTaskView: View {
                         }
                     }
                 } label: {
-                HStack(spacing: 4) {
-                    AgentMarkView(kind: windowTask.kind.rawValue, size: 15)
+                HStack(spacing: 5) {
+                    AgentMarkView(kind: windowTask.kind.rawValue, size: 18)
                     Text(windowTask.kind.displayName)
-                        .font(Theme.sans(9))
+                        .font(Theme.sans(10.5))
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 6, weight: .semibold))
+                        .font(.system(size: 8, weight: .semibold))
                         .foregroundStyle(Theme.textTertiary)
                 }
                 .foregroundStyle(Theme.textSecondary)
-                .padding(.horizontal, 7)
-                .frame(height: 26)
+                .padding(.horizontal, 10)
+                .frame(height: 34)
                 .background(
-                    RoundedRectangle(cornerRadius: 7)
+                    RoundedRectangle(cornerRadius: 9)
                         .fill(Color.white.opacity(0.03))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 7)
+                            RoundedRectangle(cornerRadius: 9)
                                 .stroke(Theme.hairline, lineWidth: 0.6)
                         )
                 )
@@ -315,31 +327,31 @@ struct WindowTaskView: View {
             .fixedSize()
             .disabled(windowTask.isBusy)
             } else {
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     Image(systemName: "camera")
-                        .font(.system(size: 7.5, weight: .medium))
+                        .font(.system(size: 9.5, weight: .medium))
                     Text("截图只附在这一条消息里")
-                        .font(Theme.code(7.5))
+                        .font(Theme.code(9.5))
                 }
                 .foregroundStyle(Theme.textTertiary)
             }
 
             if windowTask.destinationAgent == nil {
                 Button(action: actions.chooseWindowTaskCwd) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 5) {
                         Image(systemName: "folder")
-                            .font(.system(size: 8, weight: .medium))
+                            .font(.system(size: 10, weight: .medium))
                         Text(IslandFormat.folderName(windowTask.cwd))
                             .lineLimit(1)
                             .truncationMode(.middle)
                     }
-                    .font(Theme.sans(9))
+                    .font(Theme.sans(10.5))
                     .foregroundStyle(Theme.textSecondary)
-                    .padding(.horizontal, 7)
-                    .frame(maxWidth: 120, alignment: .leading)
-                    .frame(height: 26)
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: 140, alignment: .leading)
+                    .frame(height: 34)
                     .background(
-                        RoundedRectangle(cornerRadius: 7)
+                        RoundedRectangle(cornerRadius: 9)
                             .stroke(Theme.hairline, lineWidth: 0.6)
                     )
                 }
@@ -350,21 +362,21 @@ struct WindowTaskView: View {
 
             Spacer(minLength: 0)
             Button(action: actions.submitWindowTask) {
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     if windowTask.isBusy {
                         ProgressView().controlSize(.mini).scaleEffect(0.6)
                     } else {
                         Image(systemName: "camera.viewfinder")
-                            .font(.system(size: 8.5, weight: .medium))
+                            .font(.system(size: 10.5, weight: .medium))
                     }
                     Text(sendTitle)
-                        .font(Theme.sans(9.5, weight: .semibold))
+                        .font(Theme.sans(Theme.TypeSize.caption, weight: .semibold))
                 }
                 .foregroundStyle(windowTask.canSubmit ? Color(red: 0.09, green: 0.07, blue: 0.03) : Theme.textTertiary)
-                .padding(.horizontal, 10)
-                .frame(height: 28)
+                .padding(.horizontal, 12)
+                .frame(height: 34)
                 .background(
-                    RoundedRectangle(cornerRadius: 7)
+                    RoundedRectangle(cornerRadius: 9)
                         .fill(windowTask.canSubmit ? Theme.amber : Color.white.opacity(0.035))
                 )
             }
@@ -374,21 +386,21 @@ struct WindowTaskView: View {
     }
 
     private var suggestions: some View {
-        VStack(alignment: .leading, spacing: 5) {
+        VStack(alignment: .leading, spacing: 6) {
             Text("可以这样问")
-                .font(Theme.code(7.5, weight: .medium))
+                .font(Theme.code(9.5, weight: .medium))
                 .tracking(0.8)
                 .foregroundStyle(Theme.textTertiary)
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 ForEach(["总结这个窗口", "列出下一步", "找出风险点"], id: \.self) { suggestion in
                     Button {
                         actions.windowTaskDraft(suggestion)
                     } label: {
                         Text(suggestion)
-                            .font(Theme.sans(8.5))
+                            .font(Theme.sans(10.5))
                             .foregroundStyle(Theme.textSecondary)
-                            .padding(.horizontal, 8)
-                            .frame(height: 22)
+                            .padding(.horizontal, 10)
+                            .frame(height: 30)
                             .background(
                                 Capsule()
                                     .fill(Color.white.opacity(0.035))
@@ -406,53 +418,53 @@ struct WindowTaskView: View {
     }
 
     private var screenRecordingWarning: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: 8.5, weight: .semibold))
+                .font(.system(size: 10.5, weight: .semibold))
                 .foregroundStyle(Theme.amber)
             Text("屏幕录制未开启，无法附加截图。")
-                .font(Theme.sans(9))
+                .font(Theme.sans(Theme.TypeSize.caption))
                 .foregroundStyle(Theme.textSecondary)
             Spacer(minLength: 4)
             Button(action: actions.openScreenRecordingSettings) {
                 Text("去开启")
-                    .font(Theme.sans(9, weight: .semibold))
+                    .font(Theme.sans(10.5, weight: .semibold))
                     .foregroundStyle(Theme.blue)
             }
             .buttonStyle(.plain)
         }
-        .padding(.horizontal, 9)
-        .frame(height: 28)
-        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.amberWash))
+        .padding(.horizontal, 12)
+        .frame(height: 34)
+        .background(RoundedRectangle(cornerRadius: 10).fill(Theme.amberWash))
     }
 
     private var footer: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 8) {
             Text("⌘↩ 发送 · 截图仅发送时捕获")
-                .font(Theme.code(7.5))
+                .font(Theme.code(9.5))
                 .foregroundStyle(Theme.textTertiary)
             Spacer(minLength: 0)
             Text("目标窗口关闭后会自动解除锁定")
-                .font(Theme.code(7.5))
+                .font(Theme.code(9.5))
                 .foregroundStyle(Theme.textTertiary)
                 .lineLimit(1)
         }
-        .frame(height: 14)
+        .frame(height: 18)
     }
 
     private func notice(_ text: String, color: Color) -> some View {
         Text(text)
-            .font(Theme.sans(9))
+            .font(Theme.sans(Theme.TypeSize.caption))
             .foregroundStyle(color)
             .lineLimit(2)
-            .padding(.horizontal, 9)
-            .frame(maxWidth: .infinity, minHeight: 26, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 8).fill(color.opacity(0.08)))
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: 10).fill(color.opacity(0.08)))
     }
 
     private func deliveryLine(_ lastDelivery: String) -> some View {
         Text("已发送到 \(lastDelivery) · 已附截图")
-            .font(Theme.code(8))
+            .font(Theme.code(9.5))
             .foregroundStyle(Theme.mint.opacity(0.9))
             .lineLimit(1)
             .truncationMode(.middle)

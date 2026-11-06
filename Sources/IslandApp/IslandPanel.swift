@@ -115,6 +115,9 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     private let actions: IslandViewActions
     private var presentation: IslandPresentation
     private var placement: IslandPlacement
+    /// Frozen deck height. Row statuses change the presenter's natural height on
+    /// every tick; following it animates the panel while the list is being read.
+    private var lockedDeckHeight: CGFloat?
     private var animator: FrameAnimator?
     private var isOnScreen = false
     private var keyMonitor: Any?
@@ -128,13 +131,17 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     init(presentation: IslandPresentation, actions: IslandViewActions) {
         let metrics = ScreenMetrics.current()
         let placement = IslandGeometry.placement(for: metrics, statusItemFrame: nil)
+        let lockedDeckHeight = presentation.surface == .deck && presentation.windowTask == nil
+            ? presentation.deckHeight
+            : nil
         let frame = Self.frame(
             placement: placement,
             expanded: presentation.isExpanded,
             quickTask: presentation.quickTask != nil,
+            quickTaskHeight: presentation.quickTask?.height ?? IslandGeometry.quickTaskSize.height,
             surface: presentation.surface,
             dropActive: presentation.isDropActive,
-            deckHeight: presentation.deckHeight
+            deckHeight: lockedDeckHeight ?? presentation.deckHeight
         )
         let notch: CGRect?
         if case .notch(let rect, _) = placement {
@@ -142,16 +149,23 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         } else {
             notch = nil
         }
+        let anchor = IslandGeometry.dropAnchor(for: placement, panelFrame: frame)
+        let anchorScreen = IslandGeometry.dropScreenAnchor(for: placement)
 
         self.presentation = presentation
         self.actions = actions
         self.placement = placement
+        self.lockedDeckHeight = lockedDeckHeight
         self.panel = IslandPanel(contentRect: frame)
         self.hosting = NSHostingView(rootView: IslandRootView(
             presentation: presentation,
             actions: actions,
             notchWidth: notch?.width,
-            notchHeight: notch?.height ?? 0
+            notchHeight: notch?.height ?? 0,
+            anchorX: anchor.x,
+            anchorY: anchor.y,
+            anchorScreen: anchorScreen,
+            screens: Self.localScreenFrames(panelFrame: frame)
         ))
 
         super.init()
@@ -194,36 +208,40 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         let previous = presentation
 
         presentation = next
+        syncDeckHeightLock(previous: previous, next: next)
         refreshPlacement()
-        render()
 
         let target = Self.frame(
             placement: placement,
             expanded: next.isExpanded,
             quickTask: next.quickTask != nil,
+            quickTaskHeight: next.quickTask?.height ?? IslandGeometry.quickTaskSize.height,
             surface: next.surface,
             dropActive: next.isDropActive,
-            deckHeight: next.deckHeight
+            deckHeight: effectiveDeckHeight
         )
+        render(panelFrame: target)
+
         let shouldShow = placement.isNotch
             ? (next.isVisible || next.dropletVisible || next.isWindowDragActive)
             : (next.isExpanded || next.isWindowDragActive)
 
         let enteredDrop = next.surface == .drop && previous.surface != .drop
+        let leftDrop = previous.surface == .drop && next.surface != .drop
         if shouldShow {
             if !isOnScreen {
                 let start = IslandGeometry.frame(for: placement, expanded: false)
                 panel.setFrame(start, display: true)
                 panel.orderFrontRegardless()
                 isOnScreen = true
-                if enteredDrop {
+                if enteredDrop || leftDrop {
                     animator?.cancel()
                     panel.setFrame(target, display: true)
                 } else {
                     animator?.retarget(from: start, to: target)
                 }
                 logProof(tag: "show")
-            } else if enteredDrop {
+            } else if enteredDrop || leftDrop {
                 animator?.cancel()
                 panel.setFrame(target, display: true)
             } else {
@@ -265,10 +283,29 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// The height every frame computation uses. While the deck is open the
+    /// captured value wins, so live row statuses cannot resize the panel.
+    private var effectiveDeckHeight: CGFloat {
+        lockedDeckHeight ?? presentation.deckHeight
+    }
+
+    /// Captures the deck height when the deck opens, and releases the lock as
+    /// soon as a window task owns the panel or the surface changes.
+    private func syncDeckHeightLock(previous: IslandPresentation, next: IslandPresentation) {
+        guard next.surface == .deck, next.windowTask == nil else {
+            lockedDeckHeight = nil
+            return
+        }
+        if lockedDeckHeight == nil || previous.surface != .deck || previous.windowTask != nil {
+            lockedDeckHeight = next.deckHeight
+        }
+    }
+
     private static func frame(
         placement: IslandPlacement,
         expanded: Bool,
         quickTask: Bool,
+        quickTaskHeight: CGFloat,
         surface: IslandSurface,
         dropActive: Bool,
         deckHeight: CGFloat
@@ -277,14 +314,42 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             for: placement,
             expanded: expanded,
             quickTask: quickTask,
+            quickTaskHeight: quickTaskHeight,
             surface: surface,
             dropActive: dropActive,
-            deckHeight: deckHeight
+            deckHeight: deckHeight,
+            dropScreenFrame: desktopFrame()
         )
+    }
+
+    /// Every display, not just the one with the notch. The drop lives over the
+    /// real desktop so a window on any screen is reachable.
+    private static func desktopFrame() -> CGRect {
+        let frames = NSScreen.screens.map(\.frame)
+        guard let first = frames.first else { return .zero }
+        return frames.dropFirst().reduce(first) { $0.union($1) }
+    }
+
+    /// Screen frames in the panel's flipped local space, for composer clamping.
+    private static func localScreenFrames(panelFrame: CGRect) -> [CGRect] {
+        NSScreen.screens.map { screen in
+            CGRect(
+                x: screen.frame.minX - panelFrame.minX,
+                y: panelFrame.maxY - screen.frame.maxY,
+                width: screen.frame.width,
+                height: screen.frame.height
+            )
+        }
     }
 
     func makeKey() {
         panel.makeKeyAndOrderFront(nil)
+    }
+
+    /// During a drop the panel is the whole screen. This is the part that is
+    /// still the island: dropping an Option-drag here cancels the lock.
+    func isIslandDropCancelPoint(_ point: CGPoint) -> Bool {
+        IslandGeometry.dropCancelRegion(for: placement).contains(point)
     }
 
     var tetherAnchor: CGPoint? {
@@ -296,18 +361,24 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         }
     }
 
-    private func render() {
+    private func render(panelFrame: CGRect) {
         let notch: CGRect?
         if case .notch(let rect, _) = placement {
             notch = rect
         } else {
             notch = nil
         }
+        let anchor = IslandGeometry.dropAnchor(for: placement, panelFrame: panelFrame)
+        let anchorScreen = IslandGeometry.dropScreenAnchor(for: placement)
         hosting.rootView = IslandRootView(
             presentation: presentation,
             actions: actions,
             notchWidth: notch?.width,
-            notchHeight: notch?.height ?? 0
+            notchHeight: notch?.height ?? 0,
+            anchorX: anchor.x,
+            anchorY: anchor.y,
+            anchorScreen: anchorScreen,
+            screens: Self.localScreenFrames(panelFrame: panelFrame)
         )
     }
 
@@ -317,7 +388,8 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             for: metrics,
             statusItemFrame: statusItemFrameProvider?()
         )
-        if next != placement {
+        let moved = next != placement
+        if moved {
             placement = next
             appLog(
                 "placement=\(next.isNotch ? "notch" : "menuBar") "
@@ -329,10 +401,14 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
                 placement: placement,
                 expanded: presentation.isExpanded,
                 quickTask: presentation.quickTask != nil,
+                quickTaskHeight: presentation.quickTask?.height ?? IslandGeometry.quickTaskSize.height,
                 surface: presentation.surface,
                 dropActive: presentation.isDropActive,
-                deckHeight: presentation.deckHeight
+                deckHeight: effectiveDeckHeight
             )
+            if moved {
+                render(panelFrame: target)
+            }
             if panel.frame != target {
                 panel.setFrame(target, display: true)
             }
@@ -342,19 +418,18 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     func screenParametersChanged() {
         animator?.cancel()
         refreshPlacement()
-        render()
+        let target = Self.frame(
+            placement: placement,
+            expanded: presentation.isExpanded,
+            quickTask: presentation.quickTask != nil,
+            quickTaskHeight: presentation.quickTask?.height ?? IslandGeometry.quickTaskSize.height,
+            surface: presentation.surface,
+            dropActive: presentation.isDropActive,
+            deckHeight: effectiveDeckHeight
+        )
+        render(panelFrame: target)
         if isOnScreen {
-            panel.setFrame(
-                Self.frame(
-                    placement: placement,
-                    expanded: presentation.isExpanded,
-                    quickTask: presentation.quickTask != nil,
-                    surface: presentation.surface,
-                    dropActive: presentation.isDropActive,
-                    deckHeight: presentation.deckHeight
-                ),
-                display: true
-            )
+            panel.setFrame(target, display: true)
         }
         logState(tag: "screens")
         logProof(tag: "screens")
@@ -413,8 +488,8 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         let local = CGPoint(x: mouse.x - frame.minX, y: frame.maxY - mouse.y)
         let band = notchBandHeight
         let insideBar = local.y >= 0 && local.y <= band && local.x >= 0 && local.x <= frame.width
-        let droplet = CGPoint(x: frame.width / 2, y: band + 12)
-        let insideDroplet = hypot(local.x - droplet.x, local.y - droplet.y) <= 28
+        let droplet = CGPoint(x: frame.width / 2, y: band + 10)
+        let insideDroplet = hypot(local.x - droplet.x, local.y - droplet.y) <= 22
         let shouldIgnore = !(insideBar || insideDroplet)
         if panel.ignoresMouseEvents != shouldIgnore {
             panel.ignoresMouseEvents = shouldIgnore
@@ -431,7 +506,9 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
 
         if presentation.drop != nil {
             if stroke.key == .escape {
-                onEvent?(.escape)
+                // The overlay owns the composer's close motion: fade the card,
+                // send a detached drop home over 520 ms, then clear the drop.
+                NotificationCenter.default.post(name: .herdrDropEscape, object: nil)
                 return nil
             }
             if stroke.key == .return, stroke.modifiers.contains(.command) {
@@ -565,6 +642,12 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             }
         }
     }
+}
+
+extension Notification.Name {
+    /// Escape while a drop composer is up. The overlay animates the card away
+    /// and the drop home before asking the store to clear the drop.
+    static let herdrDropEscape = Notification.Name("HerdrIsland.dropEscape")
 }
 
 extension KeyStroke {

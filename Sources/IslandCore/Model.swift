@@ -85,6 +85,8 @@ public struct Agent: Identifiable, Sendable, Equatable {
     public let progress: Double?
     public let turn: UInt32?
     public let statusSince: Date?
+    /// Herdr's terminal content revision, independent of status transitions.
+    public let terminalRevision: UInt64?
 
     public init(
         pane: PaneID,
@@ -104,7 +106,8 @@ public struct Agent: Identifiable, Sendable, Equatable {
         lastLine: String? = nil,
         progress: Double? = nil,
         turn: UInt32? = nil,
-        statusSince: Date? = nil
+        statusSince: Date? = nil,
+        terminalRevision: UInt64? = nil
     ) {
         self.id = pane
         self.pane = pane
@@ -125,6 +128,7 @@ public struct Agent: Identifiable, Sendable, Equatable {
         self.progress = progress
         self.turn = turn
         self.statusSince = statusSince
+        self.terminalRevision = terminalRevision
     }
 
     public var acceptsPrompt: Bool {
@@ -137,7 +141,7 @@ public struct Agent: Identifiable, Sendable, Equatable {
             project: project, status: status, completionSeq: completionSeq,
             stateChangeSeq: stateChangeSeq, machine: machine, worktree: worktree,
             labels: labels, name: name, reason: reason, lastLine: lastLine,
-            progress: progress, turn: turn, statusSince: statusSince
+            progress: progress, turn: turn, statusSince: statusSince, terminalRevision: terminalRevision
         )
     }
 
@@ -147,7 +151,7 @@ public struct Agent: Identifiable, Sendable, Equatable {
             project: project, status: status, completionSeq: completionSeq,
             stateChangeSeq: stateChangeSeq, machine: machine, worktree: worktree,
             labels: labels, name: name, reason: reason, lastLine: lastLine,
-            progress: progress, turn: turn, statusSince: statusSince
+            progress: progress, turn: turn, statusSince: statusSince, terminalRevision: terminalRevision
         )
     }
 
@@ -173,7 +177,8 @@ public struct Agent: Identifiable, Sendable, Equatable {
             progress: progress,
             turn: turn,
             statusSince: facts.status.map { $0 == status ? (statusSince ?? facts.at) : facts.at }
-                ?? statusSince
+                ?? statusSince,
+            terminalRevision: terminalRevision
         )
     }
 }
@@ -216,6 +221,7 @@ public struct QueuedPrompt: Sendable, Equatable {
 public struct DropTaskState: Sendable, Equatable {
     public enum Phase: Sendable, Equatable {
         case composing
+        case capturing
         case creating
     }
 
@@ -224,8 +230,14 @@ public struct DropTaskState: Sendable, Equatable {
     public var cwd: String
     public var useWorktree: Bool
     public var branch: String
+    /// The window the drop landed on. `nil` means a plain task.
+    public var window: WindowTarget?
     public var phase: Phase
+    public var creation: TaskCreationProgress? = nil
     public var error: String?
+    /// The task now exists in Herdr. The composer holds this state for one
+    /// short exit motion so the drop can fly home before the panel collapses.
+    public var didCreate: Bool
 
     public init(
         draft: String = "",
@@ -233,26 +245,60 @@ public struct DropTaskState: Sendable, Equatable {
         cwd: String,
         useWorktree: Bool = false,
         branch: String,
+        window: WindowTarget? = nil,
         phase: Phase = .composing,
-        error: String? = nil
+        error: String? = nil,
+        didCreate: Bool = false
     ) {
         self.draft = draft
         self.kind = kind
         self.cwd = cwd
         self.useWorktree = useWorktree
         self.branch = branch
+        self.window = window
         self.phase = phase
         self.error = error
+        self.didCreate = didCreate
     }
 
     public var trimmedDraft: String {
         draft.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    public var isCapturing: Bool { phase == .capturing }
+    public var isCreating: Bool { phase == .creating }
+    /// A created task is no longer busy even though its phase still reads
+    /// creating. The composer is only waiting for its exit motion.
+    public var isBusy: Bool { (phase == .capturing || phase == .creating) && !didCreate }
+
     public var canSubmit: Bool {
         phase == .composing
+            && !didCreate
+            && creation?.pane == nil
             && !trimmedDraft.isEmpty
             && !cwd.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+}
+
+/// The text and choices from a drop the user closed without sending. The next
+/// drop starts from them so an accidental Esc or outside click does not
+/// destroy typed work.
+public struct DropDraftRecovery: Sendable, Equatable {
+    public var draft: String
+    public var kind: AgentKindOption
+    public var cwd: String
+    public var useWorktree: Bool
+
+    public init(
+        draft: String,
+        kind: AgentKindOption,
+        cwd: String,
+        useWorktree: Bool
+    ) {
+        self.draft = draft
+        self.kind = kind
+        self.cwd = cwd
+        self.useWorktree = useWorktree
     }
 }
 
@@ -282,7 +328,7 @@ public struct IslandRules: Sendable, Equatable {
         completionHold: TimeInterval = 8,
         staleAfter: TimeInterval = 5,
         pollInterval: TimeInterval = 1.5,
-        previewLines: Int = 8
+        previewLines: Int = TerminalText.previewLineLimit
     ) {
         self.autoExpandOnBlocked = autoExpandOnBlocked
         self.autoExpandOnCompletion = autoExpandOnCompletion
@@ -306,6 +352,7 @@ public struct BackendFailure: Error, Sendable, Equatable {
         case ghosttyNotFound
         case paneUnavailable
         case agentBlocked
+        case promptStalled
         case screenCapturePermission
         case windowUnavailable
         case other
@@ -407,7 +454,7 @@ public struct AgentRow: Identifiable, Sendable, Equatable {
     public let worktree: String?
     public let reason: AgentReason?
     public let lastLine: String?
-    public let waited: TimeInterval
+    public internal(set) var waited: TimeInterval
     public let progress: Double?
     public let turn: UInt32?
     public let isQueued: Bool
@@ -520,6 +567,10 @@ public struct PreviewPresentation: Sendable, Equatable {
         self.reason = reason
         self.isDecision = isDecision
     }
+
+    public var terminalLines: [String] {
+        TerminalText.lines(from: text ?? "")
+    }
 }
 
 public struct ComposerPresentation: Sendable, Equatable {
@@ -619,11 +670,13 @@ public struct TaskLaunchResult: Sendable, Equatable {
     public let pane: PaneID
     public let name: String
     public let worktree: String?
+    public let agent: Agent?
 
-    public init(pane: PaneID, name: String, worktree: String? = nil) {
+    public init(pane: PaneID, name: String, worktree: String? = nil, agent: Agent? = nil) {
         self.pane = pane
         self.name = name
         self.worktree = worktree
+        self.agent = agent
     }
 }
 
@@ -632,6 +685,7 @@ public struct QuickTaskPresentation: Sendable, Equatable {
     public let kind: AgentKindOption
     public let cwd: String
     public let isCreating: Bool
+    public var creation: TaskCreationProgress? = nil
     public let error: String?
 
     public init(
@@ -648,8 +702,11 @@ public struct QuickTaskPresentation: Sendable, Equatable {
         self.error = error
     }
 
+    public var height: CGFloat { error == nil ? 196 : 244 }
+
     public var canSubmit: Bool {
         !isCreating
+            && creation?.pane == nil
             && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !cwd.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -659,9 +716,17 @@ public struct DropTaskPresentation: Sendable, Equatable {
     public let draft: String
     public let kind: AgentKindOption
     public let cwd: String
+    public let herdrCwds: [String]
+    public let defaultCwd: String?
     public let useWorktree: Bool
     public let branch: String
+    /// Present when the drop landed on an app window.
+    public let window: WindowLockPresentation?
+    public let isCapturing: Bool
     public let isCreating: Bool
+    public let didCreate: Bool
+    public let screenCaptureAuthorized: Bool?
+    public var creation: TaskCreationProgress? = nil
     public let error: String?
     public let canSubmit: Bool
 
@@ -669,21 +734,35 @@ public struct DropTaskPresentation: Sendable, Equatable {
         draft: String,
         kind: AgentKindOption,
         cwd: String,
+        herdrCwds: [String] = [],
+        defaultCwd: String? = nil,
         useWorktree: Bool,
         branch: String,
+        window: WindowLockPresentation? = nil,
+        isCapturing: Bool = false,
         isCreating: Bool,
+        didCreate: Bool = false,
+        screenCaptureAuthorized: Bool? = nil,
         error: String?,
         canSubmit: Bool
     ) {
         self.draft = draft
         self.kind = kind
         self.cwd = cwd
+        self.herdrCwds = herdrCwds
+        self.defaultCwd = defaultCwd
         self.useWorktree = useWorktree
         self.branch = branch
+        self.window = window
+        self.isCapturing = isCapturing
         self.isCreating = isCreating
+        self.didCreate = didCreate
+        self.screenCaptureAuthorized = screenCaptureAuthorized
         self.error = error
         self.canSubmit = canSubmit
     }
+
+    public var isBusy: Bool { (isCapturing || isCreating) && !didCreate }
 }
 
 public struct IslandPresentation: Sendable, Equatable {
@@ -805,11 +884,19 @@ public protocol AgentActions: Sendable {
     func focusPane(_ pane: PaneID) async -> ActionResult
     func sendPrompt(_ pane: PaneID, _ text: String) async -> ActionResult
     func focusedPaneCwd() async -> String?
+    func paneCwds() async -> [String]
     func createTask(_ request: QuickTaskRequest) async -> Result<TaskLaunchResult, BackendFailure>
+    func createTask(_ request: QuickTaskRequest, onProgress: @escaping TaskCreationObserver) async -> Result<TaskLaunchResult, BackendFailure>
 }
 
 public extension AgentActions {
+    func createTask(_ request: QuickTaskRequest, onProgress: @escaping TaskCreationObserver) async -> Result<TaskLaunchResult, BackendFailure> {
+        await createTask(request)
+    }
+
     func focusedPaneCwd() async -> String? { nil }
+
+    func paneCwds() async -> [String] { [] }
 
     func createTask(_ request: QuickTaskRequest) async -> Result<TaskLaunchResult, BackendFailure> {
         .failure(BackendFailure(.commandFailed, "Task creation is not available."))

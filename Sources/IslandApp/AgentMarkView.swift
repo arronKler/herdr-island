@@ -119,33 +119,45 @@ struct AgentMarkView: View {
 
     @ViewBuilder
     private var glyph: some View {
+        AgentGlyphView(mark: mark, color: mark.tint)
+    }
+}
+
+/// The bare agent glyph, without the rounded avatar chrome. The droplet needs
+/// the mark by itself, tinted the way the design paints it.
+struct AgentGlyphView: View {
+    let mark: AgentMark
+    let color: Color
+
+    @ViewBuilder
+    var body: some View {
         switch mark {
         case .claude:
-            ClaudeMark().fill(mark.tint)
+            ClaudeMark().fill(color)
         case .codex:
-            CodexMark().stroke(mark.tint, style: StrokeStyle(lineWidth: 1.45, lineCap: .round, lineJoin: .round))
+            CodexMark().stroke(color, style: StrokeStyle(lineWidth: 1.45, lineCap: .round, lineJoin: .round))
         case .cursor:
-            CursorMark().fill(mark.tint)
+            CursorMark().fill(color)
         case .gemini:
-            SparkMark(points: 4).fill(mark.tint)
+            SparkMark(points: 4).fill(color)
         case .copilot:
-            CopilotMark().fill(mark.tint)
+            CopilotMark().fill(color)
         case .opencode:
-            OpenCodeMark().stroke(mark.tint, style: StrokeStyle(lineWidth: 1.7, lineJoin: .round))
+            OpenCodeMark().stroke(color, style: StrokeStyle(lineWidth: 1.7, lineJoin: .round))
         case .pi:
-            PiMark().fill(mark.tint)
+            PiMark().fill(color)
         case .cline:
-            ClineMark().stroke(mark.tint, style: StrokeStyle(lineWidth: 1.35, lineCap: .round))
+            ClineMark().stroke(color, style: StrokeStyle(lineWidth: 1.35, lineCap: .round))
         case .amp:
-            AmpMark().fill(mark.tint)
+            AmpMark().fill(color)
         case .grok:
-            GrokMark().stroke(mark.tint, style: StrokeStyle(lineWidth: 1.7, lineCap: .round))
+            GrokMark().stroke(color, style: StrokeStyle(lineWidth: 1.7, lineCap: .round))
         case .qwen:
-            QwenMark().stroke(mark.tint, style: StrokeStyle(lineWidth: 1.15, lineJoin: .round))
+            QwenMark().stroke(color, style: StrokeStyle(lineWidth: 1.15, lineJoin: .round))
         case .kimi:
-            KimiMark().stroke(mark.tint, style: StrokeStyle(lineWidth: 2.1, lineCap: .round))
+            KimiMark().stroke(color, style: StrokeStyle(lineWidth: 2.1, lineCap: .round))
         case .terminal:
-            TerminalMark().stroke(mark.tint, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
+            TerminalMark().stroke(color, style: StrokeStyle(lineWidth: 1.5, lineCap: .round, lineJoin: .round))
         }
     }
 }

@@ -7,18 +7,19 @@ public enum WindowPrompt {
         target: WindowTarget,
         screenshotPath: String,
         task: String,
-        capturedAt: Date = Date()
+        capturedAt: Date = Date(),
+        label: String = "Locked window"
     ) -> String {
         let appName = target.appName.trimmingCharacters(in: .whitespacesAndNewlines)
         let displayTitle = target.displayTitle
 
         let heading: String
         if displayTitle.isEmpty {
-            heading = "[Locked window]\(appName.isEmpty ? "" : " \(appName)")"
+            heading = "[\(label)]\(appName.isEmpty ? "" : " \(appName)")"
         } else if appName.isEmpty || displayTitle == appName {
-            heading = "[Locked window] \(displayTitle)"
+            heading = "[\(label)] \(displayTitle)"
         } else {
-            heading = "[Locked window] \(appName) — \"\(displayTitle)\""
+            heading = "[\(label)] \(appName) — \"\(displayTitle)\""
         }
 
         let formatter = ISO8601DateFormatter()

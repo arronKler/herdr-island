@@ -5,13 +5,15 @@ Herdr Island 把 Herdr 里的 agent 状态收进 macOS 摄像头刘海的左右�
 ## 界面
 
 - **环境条**。左右耳位于刘海两侧，左侧显示待处理或安静，右侧显示运行、完成或空闲。刘海下方 32pt 的透明延伸区只画水滴，不遮挡桌面点击；鼠标移到水滴或两耳上才接收事件。
-- **轻提示**。完成一轮时先出现 360 × 200 的 peek，列出一条完成结果；鼠标移入或点击后进入完整 deck。
-- **任务台**。宽度固定 560，高度随可见行数在 340 到 560 之间自适应。顶部是待处理、运行中、已完成、全部四个筛选，`/` 进入搜索。每一行带对应 agent 的图标和状态点；运行中的行显示最近一行终端输出，可以排队下一条消息，等待你处理的行有独立的操作区。
-- **详情**。620 × 552。左侧是分组 rail，右侧是当前 agent 的只读终端预览、阻塞原因、命令复制、去终端和稍后。
-- **新任务**。Control + Option + N 唤起 420 × 148 的输入框，沿用当前 Herdr pane 的目录和上次选择的模型，可选 worktree。
-- **窗口任务**。锁定窗口后出现。选目标 agent 或新建 agent，写下任务，发送时截取一张窗口 PNG。
+- **轻提示**。完成一轮时先出现 400 × 248 的 peek，列出一条完成结果；鼠标移入或点击后进入完整 deck。
+- **任务台**。宽度固定 560，高度随可见行数在 440 到 640 之间自适应。顶部是待处理、运行中、已完成、全部四个筛选，`/` 进入搜索。每一行带对应 agent 的图标和状态点；运行中的行显示最近一行终端输出，可以排队下一条消息，等待你处理的行有独立的操作区。
+- **详情**。660 × 640。左侧是分组 rail，右侧是当前 agent 的只读终端预览、阻塞原因、命令复制、去终端和稍后。
+- **新任务**。Control + Option + N 唤起 420 × 196 的输入框，沿用当前 Herdr pane 的目录和上次选择的模型，可选 worktree。
+- **窗口任务**。锁定窗口后出现，默认 560 × 510，遇到阻塞、权限缺口或错误提示时按需增高。选目标 agent 或新建 agent，写下任务，发送时截取一张窗口 PNG。
 - **水滴输入框**。拖动水滴时，水滴和刘海之间先拉出液态颈部；超过 96pt 后完全脱离，只剩一个小水珠，不保留连线。松手的位置出现涟漪，输入框锚定在落点上方。输入框支持多行任务、模型选择、目录选择和 worktree 开关。
 - Option + 拖动水滴是窗口锁定，不创建任务。锁定后窗口和岛之间显示一条跟随窗口移动的细线。
+
+界面使用统一的 10 / 11.5 / 12.5 / 13 / 13.5 / 15 / 17pt 字号阶梯，20pt 水平内边距，deck 与 detail 的顶部留出 62pt 的 crown（含刘海）。
 
 所有 agent 行都使用自己的图标和状态点，图标按 kind 区分 Claude、Codex、Cursor、Gemini、Copilot 等。界面文案为中文。
 
@@ -35,18 +37,19 @@ Herdr Island 把 Herdr 里的 agent 状态收进 macOS 摄像头刘海的左右�
 
 ## Herdr 能力
 
-- **状态同步**。1.5 秒轮询 `herdr agent list`，Unix socket 事件作为即时刷新信号。socket 断开时轮询继续工作。
+- **状态同步**。通过 Unix socket 直接读取 `agent.list` / `pane.list`，避免每次查询启动 CLI 和创建临时文件。每 1.5 秒采样，状态事件即时更新。直接读取不兼容或断线时回退 CLI，并冷却 10 秒后再尝试 socket；创建和提交等写操作不走自动重试。
 - **终端预览**。`herdr agent read --source recent-unwrapped` 读取最近输出，跳过被 TUI 换行折断的行。
 - **标签与目录**。读取 `state_labels`、`name` 和 `foreground_cwd`，优先用前台目录作为项目名。标签会显示在详情里，也参与搜索。
 - **发送**。只通过 `herdr agent prompt` 提交，不使用 `send-keys`。运行中的 agent 可以排队一条消息，本轮结束后自动投递；排队项可以取消。
-- **新任务**。依次执行 `herdr workspace create`、`herdr agent start`、`herdr agent prompt`，随后轮询自动接管新 pane。开启隔离时改用 `herdr worktree create --cwd ... --branch ... --label ... --no-focus`。
+- **新任务**。显示准备目录、启动模型、提交并确认三个真实阶段，以及等待耗时。Claude 通过 `herdr agent start -- -- <任务>` 传入首条任务，避免启动时文本粘贴成功但未提交；其他模型通过 `herdr agent prompt --wait` 确认启动。确认后自动选中新 pane，轮询和 socket 接管状态。开启隔离时改用 `herdr worktree create --cwd ... --branch ... --label ... --no-focus`。
+- **启动确认**。在模型启动前订阅新 pane，复用状态事件和已有采样确认 working / blocked / done，不再为创建任务另外启动每 400 毫秒一次的 CLI 查询。事件断开仍由周期采样兜底。减少的是应用的查询开销和确认延迟，模型冷启动仍取决于本机模型客户端。
 - **窗口截图**。ScreenCaptureKit 在发送时截取锁定窗口一张 PNG，把绝对路径、app 名、窗口标题、捕获时间和任务拼成 prompt。
 
 新任务的 worktree 不会带 `--trust-repository`。仓库是否可信由你在 Herdr 里确认。
 
 ## 安全边界
 
-blocked 是人必须亲自处理的闸门。Herdr Island 不会自动批准，也不会发送 `y` 或 Enter 去关闭批准提示。blocked 状态下唯一的操作是去终端，输入框会显示拒绝原因。发送消息只通过 `herdr agent prompt`，它本身会拒绝 blocked 的 agent。
+blocked 是人必须亲自处理的闸门。Herdr Island 不会自动批准，也不会发送 `y` 或 Enter 去关闭批准提示。blocked 状态下唯一的操作是去终端，输入框会显示拒绝原因。向已有 agent 发送消息只通过 `herdr agent prompt`，它本身会拒绝 blocked 的 agent。Claude 的首条任务作为新进程的启动参数传入，不模拟确认按键。
 
 新任务只向刚创建的 workspace 和 agent 提交内容，不会向已有 blocked agent 发送。新 agent 启动后如果进入 blocked，仍然需要你亲自处理。
 
@@ -82,7 +85,7 @@ open build/HerdrIsland.app
 | `--new-task <text>` | 启动后打开新任务输入框并预填文本，测试用 |
 | `--new-task-send` | 与 `--new-task` 一起用，预填后自动提交，会创建真实 agent |
 
-`--render` 写出 `collapsed`、`expanded`、`blocked`、`completed`、`quickTask`、`windowLocked`、`deckRunning`、`deckDone`、`deckCrowded`、`detail`、`drop` 十一张图，并用 `manifest.json` 记录尺寸和 headline。
+`--render` 写出 `collapsed`、`expanded`、`blocked`、`completed`、`quickTask`、`windowLocked`、`deckRunning`、`deckDone`、`deckCrowded`、`detail`、`drop` 及创建中的新任务、水滴任务和失败状态图，并用 `manifest.json` 记录尺寸和 headline。
 
 ## 结构
 
@@ -104,7 +107,8 @@ Tests/              核心行为测试和 Herdr 适配测试
 - 水滴只在有刘海的屏幕上常驻；没有刘海时窗口锁定暂不可用，其他功能不受影响。
 - 刘海是摄像头遮挡区，屏幕在它内部没有像素。刘海下的 32pt 区域是透明的，只有水滴和液态拖拽会画在那里。
 - 悬停展开依赖窗口能收到鼠标移动事件。面板不抢焦点，鼠标移入即展开，移出约 220ms 后收起，除非有 blocked、完成停留或未发送的草稿。
-- 新任务接口负责派发和跟踪，不保证任务本身一定完成。`agent start` 失败时已创建的 workspace 会保留，错误里带 pane ID。提交后等 TUI 稳定并确认 agent 进入 working；15 秒内仍未开始会提示 pane ID，需要你在 Herdr 里按一次 Return。
+- 新任务接口负责派发和跟踪，不保证任务本身一定完成。`agent start` 失败时已创建的 workspace 会保留，错误里带 pane ID。不会固定空等 TUI 稳定；提交后确认 working、blocked 或 done。启动或提交失败时保留草稿、当前阶段和终端入口；已有 pane 时禁止直接重复创建，需先去终端检查。
+- 多行 Claude 任务会在首次发送前确认真实空输入框就绪，原样保留换行和缩进。无法识别输入区或已有内容时最多检查 20 秒后安全退出，保留终端供检查，不补回车或重复发送任务。
 - 每个新任务创建一个独立 workspace，label 取任务文本前 40 个字符；开启隔离时创建 `island/<单词>` 分支。任务结束后可以在 Herdr 里关闭这个 workspace。
 
 ## 测试
@@ -114,3 +118,17 @@ swift test
 ```
 
 核心测试使用固定时钟和 fixture，不需要运行 Herdr。
+
+性能基准默认跳过，可按需运行：
+
+```bash
+# 只读，交替执行各 30 次 CLI / socket 查询，输出中位数和 p95
+ISLAND_BENCHMARK_READS=1 swift test --filter TaskCreationPerformanceTests/testLiveReadTransport
+
+# 会创建一个真实 Claude 任务，确认开始后清理该测试 workspace
+ISLAND_BENCHMARK_CREATE=1 swift test --filter TaskCreationPerformanceTests/testLiveTaskCreation
+```
+
+查询加速比与完整冷启动耗时分别报告，不用查询微基准替代端到端性能结论。
+
+完整链路的 [初始基线](docs/performance-baseline-2026-11-06.md) 和 [并行优化报告](docs/performance-optimization-2026-11-06.md) 包含原始样本、成功与失败数、源码/产物哈希及复跑命令。覆盖任务创建、预览、终端跳转、状态计算、拖动和截图；已达到的局部 10× 收益与尚未达到的端到端目标分别记录。

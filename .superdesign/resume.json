@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "whole-app": {
+      "targetKind": "existing-ui",
+      "projectId": "fcc6caf8-71fd-4407-b0cb-1def9b471a2f",
+      "activeDraftId": "e1da6c1c-851c-40e0-8589-1cb6210b10ff",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "6dc9f225-3225-4ea7-b648-1a175a223bbc",
+        "d73b4d6c-6f6d-4cc4-8a90-5c98ab4da868",
+        "c0e354f5-1f2e-4e7a-ab3b-9cbd54ef8b21",
+        "a8d9c9d7-b131-44fa-8e69-04e1a86075f4",
+        "d3fc5663-ca6c-4bf1-8b01-1a247431f4fd",
+        "654eb05b-da96-4c61-b37f-575e8e80d617",
+        "d7b2b80d-8cd0-4701-9b15-fecbf32489e0"
+      ],
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        ".superdesign/init/theme.md",
+        ".superdesign/init/routes.md"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "a9bdf98c3908fc29c19e15379a208e7dd346beefcfdb05b0cd1a898c28392c3a",
+        ".superdesign/init/theme.md": "0b86c414628ddf10c69ccd7629d48ae3080a6292c45212da27e073bc0bea656b",
+        ".superdesign/init/routes.md": "5d98ff99f63425c17b778e0c545ba7e9e651b53bd00500534dcac251fd001dc4"
+      },
+      "drafts": {
+        "e1da6c1c-851c-40e0-8589-1cb6210b10ff": {
+          "title": "HERDR ISLAND — KINETIC INSTRUMENT",
+          "visualDirection": "Kinetic Instrument — warm paper board, black instrument plates, white paper action cards, signal orange, sharp corners, Archivo Black / Inter / Space Mono",
+          "currentVersion": 5
+        }
+      },
+      "updatedAt": "2026-11-06T05:03:35Z"
+    }
+  }
+}

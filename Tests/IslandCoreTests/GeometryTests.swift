@@ -35,20 +35,20 @@ final class GeometryTests: XCTestCase {
         XCTAssertEqual(collapsed, CGRect(x: 699, y: 1053, width: 329, height: 64))
 
         let expanded = IslandGeometry.frame(for: placement, expanded: true)
-        XCTAssertEqual(expanded.size, CGSize(width: 560, height: 430))
+        XCTAssertEqual(expanded.size, CGSize(width: 560, height: 472))
         XCTAssertEqual(expanded.midX, notch.midX)
         XCTAssertEqual(expanded.maxY, notch.maxY)
-        XCTAssertEqual(expanded, CGRect(x: 583.5, y: 687, width: 560, height: 430))
+        XCTAssertEqual(expanded, CGRect(x: 583.5, y: 645, width: 560, height: 472))
 
         let quickTask = IslandGeometry.frame(
             for: placement,
             expanded: true,
             quickTask: true
         )
-        XCTAssertEqual(quickTask.size, CGSize(width: 420, height: 180))
+        XCTAssertEqual(quickTask.size, CGSize(width: 420, height: 228))
         XCTAssertEqual(quickTask.midX, notch.midX)
         XCTAssertEqual(quickTask.maxY, notch.maxY)
-        XCTAssertEqual(quickTask, CGRect(x: 653.5, y: 937, width: 420, height: 180))
+        XCTAssertEqual(quickTask, CGRect(x: 653.5, y: 889, width: 420, height: 228))
 
         XCTAssertTrue(IslandGeometry.isInsideNotch(CGPoint(x: notch.midX, y: notch.midY), placement: placement))
         XCTAssertFalse(IslandGeometry.isInsideNotch(CGPoint(x: notch.minX - 1, y: notch.midY), placement: placement))
@@ -59,7 +59,7 @@ final class GeometryTests: XCTestCase {
             quickTask: false,
             surface: .peek
         )
-        XCTAssertEqual(peek, CGRect(x: 683.5, y: 885, width: 360, height: 232))
+        XCTAssertEqual(peek, CGRect(x: 663.5, y: 837, width: 400, height: 280))
 
         let detail = IslandGeometry.frame(
             for: placement,
@@ -67,7 +67,7 @@ final class GeometryTests: XCTestCase {
             quickTask: false,
             surface: .detail
         )
-        XCTAssertEqual(detail, CGRect(x: 553.5, y: 533, width: 620, height: 584))
+        XCTAssertEqual(detail, CGRect(x: 533.5, y: 445, width: 660, height: 672))
 
         let drop = IslandGeometry.frame(
             for: placement,
@@ -76,8 +76,34 @@ final class GeometryTests: XCTestCase {
             surface: .drop,
             dropActive: true
         )
-        XCTAssertEqual(drop, CGRect(x: 503.5, y: 445, width: 720, height: 672))
+        XCTAssertEqual(drop, notchScreen.screenFrame)
         XCTAssertEqual(drop.maxY, notch.maxY)
+
+        let cancel = IslandGeometry.dropCancelRegion(for: placement)
+        XCTAssertTrue(cancel.contains(CGPoint(x: notch.midX, y: notch.minY - 10)))
+        XCTAssertTrue(cancel.contains(CGPoint(x: notch.midX, y: notch.midY)))
+        XCTAssertFalse(cancel.contains(CGPoint(x: notch.midX, y: notch.minY - 120)))
+
+        // The drop panel can span every display while the notch stays on one
+        // of them, so the droplet anchor is measured from the panel edge.
+        let desktop = CGRect(x: -1920, y: 0, width: 3648, height: 1117)
+        let spanning = IslandGeometry.frame(
+            for: placement,
+            expanded: true,
+            quickTask: false,
+            surface: .drop,
+            dropActive: true,
+            dropScreenFrame: desktop
+        )
+        XCTAssertEqual(spanning, desktop)
+
+        let anchor = IslandGeometry.dropAnchor(for: placement, panelFrame: desktop)
+        XCTAssertEqual(anchor.x, notch.midX - desktop.minX)
+        XCTAssertEqual(desktop.maxY - anchor.y, notch.minY + 2)
+        XCTAssertTrue(
+            CGRect(origin: .zero, size: desktop.size)
+                .contains(CGPoint(x: anchor.x, y: anchor.y))
+        )
     }
 
     func testMenuBarFrameClampsToScreen() throws {
@@ -105,7 +131,7 @@ final class GeometryTests: XCTestCase {
         XCTAssertTrue(bounds.contains(collapsed))
 
         let expanded = IslandGeometry.frame(for: placement, expanded: true)
-        XCTAssertEqual(expanded, CGRect(x: 232, y: 8, width: 560, height: 398))
+        XCTAssertEqual(expanded, CGRect(x: 232, y: 8, width: 560, height: 440))
         XCTAssertTrue(bounds.contains(expanded))
 
         let quickTask = IslandGeometry.frame(
@@ -113,7 +139,7 @@ final class GeometryTests: XCTestCase {
             expanded: true,
             quickTask: true
         )
-        XCTAssertEqual(quickTask, CGRect(x: 372, y: 8, width: 420, height: 148))
+        XCTAssertEqual(quickTask, CGRect(x: 372, y: 8, width: 420, height: 196))
         XCTAssertTrue(bounds.contains(quickTask))
 
         let drop = IslandGeometry.frame(
@@ -126,11 +152,69 @@ final class GeometryTests: XCTestCase {
         XCTAssertEqual(drop.size, IslandGeometry.dropCanvasSize)
         XCTAssertEqual(drop.origin, CGPoint(x: 72, y: 8))
 
+        let desktop = CGRect(x: -1280, y: 0, width: 3360, height: 1440)
+        let spanning = IslandGeometry.frame(
+            for: placement,
+            expanded: true,
+            quickTask: false,
+            surface: .drop,
+            dropActive: true,
+            dropScreenFrame: desktop
+        )
+        XCTAssertEqual(spanning, desktop)
+        let dropAnchor = IslandGeometry.dropAnchor(for: placement, panelFrame: desktop)
+        XCTAssertEqual(dropAnchor.x, anchor.midX - desktop.minX)
+        XCTAssertEqual(desktop.maxY - dropAnchor.y, anchor.minY)
+
         XCTAssertFalse(IslandGeometry.isInsideNotch(CGPoint(x: 400, y: 300), placement: placement))
+
+        let cancel = IslandGeometry.dropCancelRegion(for: placement)
+        XCTAssertTrue(cancel.contains(CGPoint(x: anchor.midX, y: anchor.midY)))
+        XCTAssertTrue(cancel.contains(CGPoint(x: collapsed.midX, y: collapsed.midY)))
+        XCTAssertFalse(cancel.contains(CGPoint(x: 400, y: 300)))
 
         let fallback = IslandGeometry.placement(for: screen, statusItemFrame: nil)
         XCTAssertFalse(fallback.isNotch)
         XCTAssertTrue(bounds.contains(IslandGeometry.frame(for: fallback, expanded: false)))
         XCTAssertTrue(bounds.contains(IslandGeometry.frame(for: fallback, expanded: true)))
+    }
+
+    func testComposerStaysOnTheDisplayUnderTheDrop() {
+        let external = CGRect(x: 0, y: 0, width: 1920, height: 1080)
+        let builtIn = CGRect(x: 1920, y: 0, width: 1728, height: 1117)
+        let card = CGSize(width: 340, height: 225)
+        let panel = CGSize(width: 3648, height: 1117)
+
+        // A drop near the external display's right edge clamps to that
+        // display instead of straddling the seam.
+        let nearSeam = IslandGeometry.composerPlacement(
+            point: CGPoint(x: 1910, y: 400),
+            panelSize: panel,
+            cardSize: card,
+            screens: [external, builtIn]
+        )
+        XCTAssertEqual(nearSeam.origin.x, 1920 - 340 - 12)
+        XCTAssertEqual(nearSeam.origin.y, 408)
+        XCTAssertFalse(nearSeam.above)
+        XCTAssertLessThanOrEqual(nearSeam.origin.x + 340, external.maxX)
+
+        // Near the bottom the card flips above the drop.
+        let nearBottom = IslandGeometry.composerPlacement(
+            point: CGPoint(x: 900, y: 1060),
+            panelSize: panel,
+            cardSize: card,
+            screens: [external, builtIn]
+        )
+        XCTAssertTrue(nearBottom.above)
+        XCTAssertEqual(nearBottom.origin.y, 1060 - 225 - 8)
+
+        // Fixtures have no screen list and keep the whole-panel clamp.
+        let fallback = IslandGeometry.composerPlacement(
+            point: CGPoint(x: 1910, y: 400),
+            panelSize: panel,
+            cardSize: card,
+            screens: []
+        )
+        XCTAssertEqual(fallback.origin.x, 1910 - 170)
     }
 }

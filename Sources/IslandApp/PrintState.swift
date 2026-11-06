@@ -18,7 +18,7 @@ enum PrintState {
         }
         appLog("print-state binary=\(environment.binary.path) socket=\(environment.socket.path)")
 
-        let cli = HerdrCLI(binary: environment.binary)
+        let cli = HerdrCLI(binary: environment.binary, socketURL: environment.socket)
         do {
             let agents = try await cli.listAgents()
             var state = IslandState(rules: rules)

@@ -1,0 +1,15 @@
+{
+  "close_check_ms": 1.575458,
+  "closed_rejected": true,
+  "cold_ms": 185.1085,
+  "helper_exited": true,
+  "resize_matches_quartz": true,
+  "resize_replaced_handle": true,
+  "scenario": "external own helper window; metadata only; actual process exit for closed-window check",
+  "warm_ms": 0.240417,
+  "source_hashes": {
+    "/tmp/island-capture-review-sources/WindowCaptureLookup.swift": "3a19c65883d03ce9dcb610e6646e149148b8e0b1b8a68c302591323b673a3383",
+    "/tmp/island-capture-review-sources/WindowCaptureService.swift": "b4dd211d40da2c695bd6a2aabb40435e21abb253ca0e80ec657c7589f35e09ef"
+  },
+  "recorded_at": "2026-11-06T13:32:49.714907+00:00"
+}

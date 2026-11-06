@@ -17,6 +17,12 @@ public enum IslandReducer {
             state.socketStatus = status
             return []
         case .tick:
+            if let deadline = state.launchFeedbackUntil, now >= deadline {
+                state.launchFeedbackUntil = nil
+                if state.canAutoCollapse, state.blockedAttention.isEmpty, state.completionExpiry.isEmpty {
+                    state.manualOpen = false
+                }
+            }
             pruneExpiredCompletions(&state, now: now)
             return []
         case .hotKey:
@@ -69,20 +75,26 @@ public enum IslandReducer {
             guard let pane = state.selection, state.agents[pane] != nil else { return [] }
             return [.focusPane(pane)]
         case .jump(let pane):
+            if [state.quickTask?.creation?.pane, state.drop?.creation?.pane, state.windowTask?.creation?.pane].contains(pane) {
+                return [.focusPane(pane)]
+            }
             guard state.agents[pane] != nil else { return [] }
             state.selection = pane
             loadSelectedPreviewIfNeeded(&state)
             return [.focusPane(pane)] + pendingPreviewEffect(&state)
         case .select(let pane):
+            state.launchFeedbackUntil = nil
             guard state.agents[pane] != nil else { return [] }
             state.selection = pane
             loadSelectedPreviewIfNeeded(&state)
             return pendingPreviewEffect(&state)
         case .moveSelection(let delta):
+            state.launchFeedbackUntil = nil
             moveSelection(&state, delta: delta)
             loadSelectedPreviewIfNeeded(&state)
             return pendingPreviewEffect(&state)
         case .setFilter(let filter):
+            state.launchFeedbackUntil = nil
             state.filter = filter
             state.query = ""
             state.isSearching = false
@@ -90,18 +102,21 @@ public enum IslandReducer {
             loadSelectedPreviewIfNeeded(&state)
             return pendingPreviewEffect(&state)
         case .setQuery(let query):
+            state.launchFeedbackUntil = nil
             state.query = query
             state.isSearching = true
             ensureVisibleSelection(&state)
             loadSelectedPreviewIfNeeded(&state)
             return pendingPreviewEffect(&state)
         case .setSearching(let active):
+            state.launchFeedbackUntil = nil
             state.isSearching = active
             if !active { state.query = "" }
             ensureVisibleSelection(&state)
             loadSelectedPreviewIfNeeded(&state)
             return pendingPreviewEffect(&state)
         case .openDeck:
+            state.launchFeedbackUntil = nil
             state.manualOpen = true
             state.detailOpen = false
             state.isSearching = false
@@ -111,13 +126,13 @@ public enum IslandReducer {
             loadSelectedPreviewIfNeeded(&state)
             return pendingPreviewEffect(&state)
         case .openDetail(let pane):
+            state.launchFeedbackUntil = nil
             guard state.agents[pane] != nil else { return [] }
             state.selection = pane
             state.detailOpen = true
             state.manualOpen = true
             state.hoverOpen = false
             state.banner = nil
-            state.previews[pane] = nil
             loadSelectedPreviewIfNeeded(&state)
             return pendingPreviewEffect(&state)
         case .backToDeck:
@@ -154,6 +169,7 @@ public enum IslandReducer {
             }
             return []
         case .setComposerFocus(let focused):
+            if focused { state.launchFeedbackUntil = nil }
             state.composerFocused = focused
             if !focused {
                 pruneExpiredCompletions(&state, now: now)
@@ -161,6 +177,7 @@ public enum IslandReducer {
             return []
         case .lostFocus:
             state.composerFocused = false
+            if let deadline = state.launchFeedbackUntil, now < deadline { return [] }
             if state.blockedAttention.isEmpty,
                state.completionExpiry.isEmpty,
                !state.hasDraft,
@@ -189,6 +206,7 @@ public enum IslandReducer {
             state.banner = nil
             return []
         case .openQuickTask(let cwd, let kind):
+            guard !state.isCreatingTask else { return [] }
             state.quickTask = QuickTaskState(kind: kind, cwd: cwd)
             state.banner = nil
             return []
@@ -198,20 +216,24 @@ public enum IslandReducer {
             }
             return []
         case .setQuickTaskDraft(let text):
+            guard state.quickTask?.phase != .creating else { return [] }
             state.quickTask?.draft = text
             return []
         case .setQuickTaskKind(let kind):
+            guard state.quickTask?.phase != .creating else { return [] }
             state.quickTask?.kind = kind
             return []
         case .setQuickTaskCwd(let path):
+            guard state.quickTask?.phase != .creating else { return [] }
             state.quickTask?.cwd = path
             return []
         case .submitQuickTask(let name):
-            guard var task = state.quickTask, task.phase == .editing else { return [] }
+            guard var task = state.quickTask, task.phase == .editing, task.creation?.pane == nil else { return [] }
             let text = task.draft.trimmingCharacters(in: .whitespacesAndNewlines)
             let cwd = task.cwd.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty, !cwd.isEmpty else { return [] }
             task.phase = .creating
+            task.creation = TaskCreationProgress(startedAt: now)
             task.error = nil
             state.quickTask = task
             let label = String(text.prefix(40)).replacingOccurrences(of: "\n", with: " ")
@@ -222,6 +244,25 @@ public enum IslandReducer {
                 cwd: cwd,
                 label: label
             ))]
+        case .quickTaskProgress(let progress):
+            guard state.quickTask?.phase == .creating else { return [] }
+            state.quickTask?.creation = progress
+            return []
+        case .dropTaskProgress(let progress):
+            guard state.drop?.phase == .creating || state.drop?.phase == .capturing else { return [] }
+            // The first progress event lands after the screenshot exists.
+            state.drop?.phase = .creating
+            state.drop?.creation = progress
+            return []
+        case .windowTaskCreated(let token, let launch):
+            guard state.windowTask?.pendingToken == token, state.windowTask?.phase == .sending else { return [] }
+            if let agent = launch.agent { state.agents[agent.id] = agent }
+            state.windowTask?.destinationAgent = launch.pane
+            return finishWindowTask(&state, token: token, result: .success(launch.name))
+        case .windowTaskProgress(let token, let progress):
+            guard state.windowTask?.pendingToken == token, state.windowTask?.phase == .sending else { return [] }
+            state.windowTask?.creation = progress
+            return []
         case .quickTaskResult(let result):
             switch result {
             case .success(let launch):
@@ -229,6 +270,7 @@ public enum IslandReducer {
                     state.agentWorktrees[launch.pane] = branch
                 }
                 state.quickTask = nil
+                followLaunchedTask(&state, launch, now: now)
                 return [.sampleNow]
             case .failure(let failure):
                 if var task = state.quickTask {
@@ -241,8 +283,17 @@ public enum IslandReducer {
                 return [.sampleNow]
             }
         case .beginDrop(let cwd, let kind, let branch):
+            guard !state.isCreatingTask else { return [] }
             if state.drop == nil {
-                state.drop = DropTaskState(kind: kind, cwd: cwd, branch: branch)
+                var drop = DropTaskState(kind: kind, cwd: cwd, branch: branch)
+                if let recovery = state.dropDraftRecovery {
+                    drop.draft = recovery.draft
+                    drop.kind = recovery.kind
+                    drop.cwd = recovery.cwd
+                    drop.useWorktree = recovery.useWorktree
+                    state.dropDraftRecovery = nil
+                }
+                state.drop = drop
             }
             state.dropActive = true
             state.detailOpen = false
@@ -254,35 +305,61 @@ public enum IslandReducer {
             state.dropActive = state.drop != nil
             return []
         case .openDropComposer:
-            if state.drop == nil {
-                return []
-            }
+            guard let drop = state.drop else { return [] }
+            guard !drop.isBusy else { return [] }
             state.drop?.phase = .composing
             state.dropActive = true
             return []
         case .closeDropComposer:
-            guard state.drop?.phase != .creating else { return [] }
+            guard state.drop?.isBusy != true else { return [] }
+            let created = state.drop?.didCreate == true
+            if !created, let drop = state.drop, !drop.trimmedDraft.isEmpty {
+                state.dropDraftRecovery = DropDraftRecovery(
+                    draft: drop.draft,
+                    kind: drop.kind,
+                    cwd: drop.cwd,
+                    useWorktree: drop.useWorktree
+                )
+            }
             state.drop = nil
             state.dropActive = false
-            state.banner = nil
+            // A sent drop hands off to the deck's success banner.
+            if !created {
+                state.banner = nil
+            }
             return []
         case .setDropDraft(let text):
+            guard state.drop?.isBusy != true else { return [] }
             state.drop?.draft = text
             return []
         case .setDropKind(let kind):
+            guard state.drop?.isBusy != true else { return [] }
             state.drop?.kind = kind
             return []
         case .setDropCwd(let path):
+            guard state.drop?.isBusy != true else { return [] }
             state.drop?.cwd = path
             return []
+        case .setDropWindow(let target):
+            guard state.drop?.isBusy != true else { return [] }
+            state.drop?.window = target
+            return []
+        case .setDropHerdrCwds(let paths):
+            state.dropHerdrCwds = paths
+            return []
+        case .setDropDefaultCwd(let path):
+            state.dropDefaultCwd = path
+            return []
         case .setDropWorktree(let enabled):
+            guard state.drop?.isBusy != true else { return [] }
             state.drop?.useWorktree = enabled
             return []
         case .submitDropTask(let name):
-            return submitDropTask(&state, name: name)
+            return submitDropTask(&state, name: name, now: now)
         case .dropTaskResult(let result):
-            return finishDropTask(&state, result: result)
+            return finishDropTask(&state, result: result, now: now)
         case .lockWindow(let target, let kind, let cwd):
+            guard !state.isCreatingTask else { return [] }
             return applyLock(&state, target: target, kind: kind, cwd: cwd)
         case .unlockWindow:
             clearWindowLock(&state)
@@ -380,7 +457,8 @@ public enum IslandReducer {
         _ state: inout IslandState,
         name: String
     ) -> [IslandEffect] {
-        guard let lock = state.windowLock, var task = state.windowTask, task.phase == .editing else {
+        guard let lock = state.windowLock, var task = state.windowTask, task.phase == .editing,
+              task.creation?.pane == nil else {
             return []
         }
         let text = task.trimmedDraft
@@ -490,6 +568,7 @@ public enum IslandReducer {
         task.phase = .editing
         switch result {
         case .success(let description):
+            task.creation = nil
             task.draft = ""
             task.error = nil
             task.lastDelivery = description
@@ -554,13 +633,13 @@ public enum IslandReducer {
             let wasBlocked = prior?.status == .blocked
             let isBlocked = agent.status == .blocked
 
+            if let prior, previewContentChanged(from: prior, to: agent) {
+                state.previewsNeedingRefresh.insert(agent.id)
+            }
+
             if isBlocked {
                 let enteredBlocked = !wasBlocked
                 let escalated = wasBlocked && prior?.stateChangeSeq != agent.stateChangeSeq
-                if enteredBlocked || escalated {
-                    state.previews[agent.id] = nil
-                    state.previewRequests.remove(agent.id)
-                }
                 let dismissedSeq = state.dismissedBlockedSeq[agent.id]
                 if (enteredBlocked || escalated),
                    dismissedSeq != agent.stateChangeSeq,
@@ -571,8 +650,6 @@ public enum IslandReducer {
             } else {
                 state.blockedAttention.remove(agent.id)
                 state.dismissedBlockedSeq[agent.id] = nil
-                state.previews[agent.id] = nil
-                state.previewRequests.remove(agent.id)
             }
 
             if hadBaseline {
@@ -603,6 +680,8 @@ public enum IslandReducer {
         state.seenCompletionSeq = state.seenCompletionSeq.filter { present.contains($0.key) }
         state.previews = state.previews.filter { present.contains($0.key) }
         state.previewRequests.formIntersection(present)
+        state.previewsNeedingRefresh.formIntersection(present)
+        state.previewLoadsInFlight.formIntersection(present)
         state.drafts = state.drafts.filter { present.contains($0.key) }
         state.sendsInFlight.formIntersection(present)
         state.queued = state.queued.filter { present.contains($0.key) }
@@ -650,11 +729,10 @@ public enum IslandReducer {
         state.agents[facts.pane] = agent
 
         if let status = facts.status, status != previousStatus {
+            state.previewsNeedingRefresh.insert(facts.pane)
             agent = agent.with(statusSince: facts.at)
             state.agents[facts.pane] = agent
             if status == .blocked {
-                state.previews[facts.pane] = nil
-                state.previewRequests.remove(facts.pane)
                 if state.rules.autoExpandOnBlocked,
                    state.dismissedBlockedSeq[facts.pane] != agent.stateChangeSeq {
                     state.blockedAttention.insert(facts.pane)
@@ -665,8 +743,6 @@ public enum IslandReducer {
             } else {
                 state.blockedAttention.remove(facts.pane)
                 state.dismissedBlockedSeq[facts.pane] = nil
-                state.previews[facts.pane] = nil
-                state.previewRequests.remove(facts.pane)
             }
             if status == .working {
                 state.completionExpiry[facts.pane] = nil
@@ -702,7 +778,7 @@ public enum IslandReducer {
             state.windowTask = nil
             return
         }
-        guard task.phase == .editing else { return }
+        guard task.phase == .editing, task.lastDelivery == nil else { return }
         if let pane = task.destinationAgent, state.agents[pane]?.acceptsPrompt != true {
             task.destinationAgent = defaultWindowTaskAgent(state)
             state.windowTask = task
@@ -726,6 +802,7 @@ public enum IslandReducer {
     }
 
     private static func dismissAttention(_ state: inout IslandState) {
+        state.launchFeedbackUntil = nil
         for agent in state.agents.values where agent.status == .blocked {
             state.dismissedBlockedSeq[agent.id] = agent.stateChangeSeq
         }
@@ -766,14 +843,8 @@ public enum IslandReducer {
         let rows = state.orderedAgents
         let query = state.query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if state.isSearching, !query.isEmpty {
-            return rows.filter { agent in
-                [agent.title, agent.project, agent.kind, agent.status.rawValue, agent.machine, agent.name ?? ""]
-                    .joined(separator: " ")
-                    .lowercased()
-                    .contains(query)
-                    || agent.labels.keys.joined(separator: " ").lowercased().contains(query)
-                    || agent.labels.values.joined(separator: " ").lowercased().contains(query)
-            }
+            let matches = state.matchingAgentIDs(query: query)
+            return rows.filter { matches.contains($0.id) }
         }
 
         switch state.filter {
@@ -830,14 +901,33 @@ public enum IslandReducer {
         guard state.isExpanded,
               state.surface == .deck || state.surface == .detail,
               let pane = state.selection,
-              state.agents[pane] != nil else { return }
+              state.agents[pane] != nil,
+              !state.previewLoadsInFlight.contains(pane) else { return }
+        if state.previewsNeedingRefresh.remove(pane) != nil {
+            // A refresh has its own in-flight state: loaded text remains visible.
+            state.previewRequests.insert(pane)
+            state.previewLoadsInFlight.insert(pane)
+            if case .loaded = state.previews[pane] { return }
+            state.previews[pane] = .loading
+            return
+        }
         switch state.previews[pane] {
         case .none, .failed:
             state.previews[pane] = .loading
             state.previewRequests.insert(pane)
+            state.previewLoadsInFlight.insert(pane)
         default:
             break
         }
+    }
+
+    private static func previewContentChanged(from previous: Agent, to current: Agent) -> Bool {
+        previous.status != current.status
+            || previous.stateChangeSeq != current.stateChangeSeq
+            || previous.completionSeq != current.completionSeq
+            || previous.terminalRevision != current.terminalRevision
+            || previous.lastLine != current.lastLine
+            || previous.kind != current.kind
     }
 
     private static func pendingPreviewEffect(_ state: inout IslandState) -> [IslandEffect] {
@@ -895,6 +985,7 @@ public enum IslandReducer {
         state.completionExpiry[pane] = nil
         state.previews[pane] = nil
         state.previewRequests.remove(pane)
+        state.previewsNeedingRefresh.remove(pane)
         state.detailOpen = false
         if state.selection == pane {
             state.selection = state.orderedAgents.first {
@@ -911,18 +1002,37 @@ public enum IslandReducer {
 
     private static func submitDropTask(
         _ state: inout IslandState,
-        name: String
+        name: String,
+        now: Date
     ) -> [IslandEffect] {
-        guard var task = state.drop, task.phase == .composing else { return [] }
+        guard var task = state.drop, task.canSubmit else { return [] }
         let text = task.trimmedDraft
         let cwd = task.cwd.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty, !cwd.isEmpty else { return [] }
+        let label = String(text.prefix(40)).replacingOccurrences(of: "\n", with: " ")
+        if let window = task.window {
+            task.phase = .capturing
+            task.creation = nil
+            task.error = nil
+            state.drop = task
+            state.dropActive = true
+            return [.captureDropWindow(DropWindowCaptureRequest(
+                token: UUID(),
+                target: window,
+                text: text,
+                kind: task.kind,
+                cwd: cwd,
+                name: name,
+                label: label,
+                worktreeBranch: task.useWorktree ? task.branch : nil
+            ))]
+        }
         task.phase = .creating
+        task.creation = TaskCreationProgress(startedAt: now)
         task.error = nil
         state.drop = task
         state.dropActive = true
-        let label = String(text.prefix(40)).replacingOccurrences(of: "\n", with: " ")
-        return [.createQuickTask(QuickTaskRequest(
+        return [.createDropTask(QuickTaskRequest(
             name: name,
             text: text,
             kind: task.kind,
@@ -932,22 +1042,52 @@ public enum IslandReducer {
         ))]
     }
 
+    private static func followLaunchedTask(_ state: inout IslandState, _ launch: TaskLaunchResult, now: Date) {
+        if let agent = launch.agent { state.agents[agent.id] = agent }
+        if launch.agent?.status == .blocked, state.rules.autoExpandOnBlocked {
+            state.blockedAttention.insert(launch.pane)
+        }
+        state.selection = launch.pane
+        state.launchFeedbackUntil = now.addingTimeInterval(4)
+        state.manualOpen = true
+        state.detailOpen = false
+        state.filter = .all
+        state.isSearching = false
+        state.query = ""
+        state.banner = Banner(
+            text: launch.agent?.status == .blocked ? "新任务等待你处理，请去终端。" : "任务已提交，正在跟踪。",
+            isError: false,
+            source: .send
+        )
+    }
+
     private static func finishDropTask(
         _ state: inout IslandState,
-        result: Result<TaskLaunchResult, BackendFailure>
+        result: Result<TaskLaunchResult, BackendFailure>,
+        now: Date
     ) -> [IslandEffect] {
         switch result {
         case .success(let launch):
             if let branch = launch.worktree {
                 state.agentWorktrees[launch.pane] = branch
             }
-            state.drop = nil
-            state.dropActive = false
-            state.banner = Banner(
-                text: launch.worktree == nil ? "已创建新任务。" : "已创建新任务 · \(launch.worktree!)",
-                isError: false,
-                source: .send
-            )
+            // Keep the composer for one exit motion. The overlay sees
+            // didCreate, plays the send-home return, then closes the drop.
+            if var task = state.drop {
+                task.didCreate = true
+                let progress = task.creation
+                task.creation = TaskCreationProgress(
+                    stage: progress?.stage ?? .workspace,
+                    startedAt: progress?.startedAt ?? now,
+                    pane: progress?.pane ?? launch.pane
+                )
+                state.drop = task
+                state.dropActive = true
+            } else {
+                state.drop = nil
+                state.dropActive = false
+            }
+            followLaunchedTask(&state, launch, now: now)
             return [.sampleNow]
         case .failure(let failure):
             if var task = state.drop {
@@ -1033,16 +1173,28 @@ public enum IslandReducer {
         result: Result<String, BackendFailure>
     ) -> [IslandEffect] {
         state.previewRequests.remove(pane)
+        state.previewLoadsInFlight.remove(pane)
         guard state.agents[pane] != nil else {
             state.previews[pane] = nil
+            state.previewsNeedingRefresh.remove(pane)
             return []
         }
         switch result {
         case .success(let text):
             state.previews[pane] = .loaded(text)
         case .failure(let failure):
+            if case .loaded = state.previews[pane] {
+                // A transient refresh failure should not blank useful content.
+                // Retry on the next sample/selection, never recursively here.
+                state.previewsNeedingRefresh.insert(pane)
+                return []
+            }
             state.previews[pane] = .failed(failure)
+            return []
         }
-        return []
+        // If output changed during the read, coalesce those invalidations into
+        // one follow-up read. Hidden panes wait until selected again.
+        loadSelectedPreviewIfNeeded(&state)
+        return pendingPreviewEffect(&state)
     }
 }

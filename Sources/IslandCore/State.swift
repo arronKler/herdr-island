@@ -10,6 +10,7 @@ public struct QuickTaskState: Sendable, Equatable {
     public var kind: AgentKindOption
     public var cwd: String
     public var phase: Phase
+    public var creation: TaskCreationProgress? = nil
     public var error: String?
 
     public init(
@@ -28,15 +29,49 @@ public struct QuickTaskState: Sendable, Equatable {
 }
 
 public struct IslandState: Sendable, Equatable {
+    var isCreatingTask: Bool {
+        quickTask?.phase == .creating || (drop?.isBusy ?? false)
+            || windowTask?.phase == .sending || windowTask?.phase == .capturing
+    }
+
     public var rules: IslandRules
-    public internal(set) var agents: [PaneID: Agent]
+    public internal(set) var agents: [PaneID: Agent] {
+        didSet {
+            let changed = Set(agents.compactMap { pane, agent in oldValue[pane] == agent ? nil : pane })
+            guard !changed.isEmpty || agents.count != oldValue.count else { return }
+            // Output revisions and last lines do not affect sort/search keys.
+            // Preserve those indices while creating a separate cache version.
+            let sameMembers = agents.count == oldValue.count && changed.allSatisfy { oldValue[$0] != nil }
+            let sameOrder = sameMembers && changed.allSatisfy { pane in
+                agents[pane]?.status == oldValue[pane]?.status && agents[pane]?.title == oldValue[pane]?.title
+            }
+            let sameSearch = sameMembers && changed.allSatisfy { pane in
+                guard let agent = agents[pane], let prior = oldValue[pane] else { return false }
+                return agent.title == prior.title && agent.project == prior.project
+                    && agent.kind == prior.kind && agent.status == prior.status
+                    && agent.machine == prior.machine && agent.name == prior.name && agent.labels == prior.labels
+            }
+            agentIndex = agentIndex.copy(reusingOrder: sameOrder, reusingSearch: sameSearch)
+            rowCache = sameOrder ? rowCache.copy(changed: changed) : AgentRowCache()
+        }
+    }
+    private var agentIndex = AgentIndexCache()
+    var rowCache = AgentRowCache()
     public internal(set) var baselineEstablished: Bool
     public internal(set) var lastGeneration: UInt64
     public internal(set) var seenCompletionSeq: [PaneID: UInt64]
+    public internal(set) var launchFeedbackUntil: Date? = nil
     public internal(set) var manualOpen: Bool
     public internal(set) var blockedAttention: Set<PaneID>
     public internal(set) var dismissedBlockedSeq: [PaneID: UInt64]
-    public internal(set) var completionExpiry: [PaneID: Date]
+    public internal(set) var completionExpiry: [PaneID: Date] {
+        didSet {
+            if completionExpiry != oldValue {
+                agentIndex = AgentIndexCache()
+                rowCache = AgentRowCache()
+            }
+        }
+    }
     public internal(set) var selection: PaneID?
     public internal(set) var pointerInside: Bool
     public internal(set) var hoverOpen: Bool
@@ -45,6 +80,9 @@ public struct IslandState: Sendable, Equatable {
     public internal(set) var sendsInFlight: Set<PaneID>
     public internal(set) var previews: [PaneID: PreviewOutcome]
     public internal(set) var previewRequests: Set<PaneID>
+    // Keep the last successful text visible while changed terminal content loads.
+    var previewsNeedingRefresh: Set<PaneID> = []
+    var previewLoadsInFlight: Set<PaneID> = []
     public internal(set) var banner: Banner?
     public internal(set) var consecutiveFailures: Int
     public internal(set) var lastSampleAt: Date?
@@ -61,6 +99,9 @@ public struct IslandState: Sendable, Equatable {
     public internal(set) var queued: [PaneID: QueuedPrompt]
     public internal(set) var drop: DropTaskState?
     public internal(set) var dropActive: Bool
+    public internal(set) var dropDraftRecovery: DropDraftRecovery?
+    public internal(set) var dropHerdrCwds: [String] = []
+    public internal(set) var dropDefaultCwd: String? = nil
     public internal(set) var agentWorktrees: [PaneID: String]
 
     public init(rules: IslandRules = .default) {
@@ -97,6 +138,9 @@ public struct IslandState: Sendable, Equatable {
         self.queued = [:]
         self.drop = nil
         self.dropActive = false
+        self.dropDraftRecovery = nil
+        self.dropHerdrCwds = []
+        self.dropDefaultCwd = nil
         self.agentWorktrees = [:]
     }
 
@@ -139,15 +183,17 @@ public struct IslandState: Sendable, Equatable {
     }
 
     public var orderedAgents: [Agent] {
-        agents.values.sorted { lhs, rhs in
-            let lr = rank(lhs)
-            let rr = rank(rhs)
-            if lr != rr { return lr < rr }
-            let lt = lhs.title.lowercased()
-            let rt = rhs.title.lowercased()
-            if lt != rt { return lt < rt }
-            return lhs.id.rawValue < rhs.id.rawValue
-        }
+        agentIndex.ordered(in: self)
+    }
+
+    /// Shared by keyboard selection and presentation so a search has the same
+    /// matches in both places, without rebuilding every task's text per keypress.
+    public func matchesSearch(_ agent: Agent, query: String) -> Bool {
+        matchingAgentIDs(query: query).contains(agent.id)
+    }
+
+    public func matchingAgentIDs(query: String) -> Set<PaneID> {
+        agentIndex.matches(query: query, in: self)
     }
 
     public func rank(_ agent: Agent) -> Int {
@@ -164,5 +210,78 @@ public struct IslandState: Sendable, Equatable {
 
     public var pendingCompletionIDs: Set<PaneID> {
         Set(completionExpiry.keys)
+    }
+}
+
+/// A derived cache belongs to one immutable version of the agent collection.
+/// State copies may share it; every input mutation replaces it. The lock keeps
+/// otherwise independent readers of a Sendable state safe, and cache contents
+/// deliberately do not participate in state equality.
+private final class AgentIndexCache: @unchecked Sendable, Equatable {
+    private let lock = NSLock()
+    private var orderedIDs: [PaneID]?
+    private var search: [PaneID: [String]]?
+    private var lastQuery: String?
+    private var lastMatches: Set<PaneID> = []
+
+    static func == (_ lhs: AgentIndexCache, _ rhs: AgentIndexCache) -> Bool { true }
+
+    func copy(reusingOrder: Bool, reusingSearch: Bool) -> AgentIndexCache {
+        lock.lock()
+        defer { lock.unlock() }
+        let copy = AgentIndexCache()
+        if reusingOrder { copy.orderedIDs = orderedIDs }
+        if reusingSearch {
+            copy.search = search
+            copy.lastQuery = lastQuery
+            copy.lastMatches = lastMatches
+        }
+        return copy
+    }
+
+    func ordered(in state: IslandState) -> [Agent] {
+        lock.lock()
+        defer { lock.unlock() }
+        prepareOrder(state)
+        return (orderedIDs ?? []).compactMap { state.agents[$0] }
+    }
+
+    func matches(query: String, in state: IslandState) -> Set<PaneID> {
+        lock.lock()
+        defer { lock.unlock() }
+        if query == lastQuery { return lastMatches }
+        prepareSearch(state)
+        lastMatches = Set((search ?? [:]).compactMap { pane, fields in
+            fields.contains { $0.contains(query) } ? pane : nil
+        })
+        lastQuery = query
+        return lastMatches
+    }
+
+    private func prepareOrder(_ state: IslandState) {
+        guard orderedIDs == nil else { return }
+        let entries = state.agents.values.map { agent in
+            (agent: agent, rank: state.rank(agent), title: agent.title.lowercased())
+        }
+        orderedIDs = entries.sorted { lhs, rhs in
+            if lhs.rank != rhs.rank { return lhs.rank < rhs.rank }
+            if lhs.title != rhs.title { return lhs.title < rhs.title }
+            return lhs.agent.id < rhs.agent.id
+        }.map { $0.agent.id }
+    }
+
+    private func prepareSearch(_ state: IslandState) {
+        guard search == nil else { return }
+        var index: [PaneID: [String]] = [:]
+        index.reserveCapacity(state.agents.count)
+        for agent in state.agents.values {
+            index[agent.id] = [
+                [agent.title, agent.project, agent.kind, agent.status.rawValue, agent.machine, agent.name ?? ""]
+                    .joined(separator: " ").lowercased(),
+                agent.labels.keys.sorted().joined(separator: " ").lowercased(),
+                agent.labels.values.sorted().joined(separator: " ").lowercased(),
+            ]
+        }
+        search = index
     }
 }

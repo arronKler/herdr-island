@@ -25,6 +25,33 @@ final class PolicyTests: XCTestCase {
         XCTAssertEqual(MessagePolicy.normalizedDraft("  hi\n"), "hi")
     }
 
+    func testDropDirectoryPrefersLastThenDefaultThenFocusedThenHome() {
+        XCTAssertEqual(
+            DropDirectoryPolicy.initialCwd(
+                last: "/last", defaultCwd: "/default", focused: "/focused", home: "/home"
+            ),
+            DropDirectoryPolicy.Choice(path: "/last", isExplicit: true)
+        )
+        XCTAssertEqual(
+            DropDirectoryPolicy.initialCwd(
+                last: nil, defaultCwd: "/default", focused: "/focused", home: "/home"
+            ),
+            DropDirectoryPolicy.Choice(path: "/default", isExplicit: true)
+        )
+        XCTAssertEqual(
+            DropDirectoryPolicy.initialCwd(
+                last: "", defaultCwd: "  ", focused: "/focused", home: "/home"
+            ),
+            DropDirectoryPolicy.Choice(path: "/focused", isExplicit: false)
+        )
+        XCTAssertEqual(
+            DropDirectoryPolicy.initialCwd(
+                last: nil, defaultCwd: nil, focused: nil, home: "/home"
+            ),
+            DropDirectoryPolicy.Choice(path: "/home", isExplicit: false)
+        )
+    }
+
     func testKeyboardRouterPassesTextEditingKeysThrough() {
         XCTAssertEqual(KeyboardRouter.route(KeyStroke(key: .return), composerFocused: true), .passThrough)
         XCTAssertEqual(KeyboardRouter.route(KeyStroke(key: .other), composerFocused: true), .passThrough)

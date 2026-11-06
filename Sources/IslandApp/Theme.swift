@@ -38,9 +38,29 @@ enum Theme {
     static let textSecondary = textPrimary.opacity(0.62)
     static let textTertiary = textPrimary.opacity(0.36)
 
-    static let mono = Font.system(size: 10, weight: .regular, design: .monospaced)
-    static let monoSmall = Font.system(size: 8.5, weight: .regular, design: .monospaced)
-    static let monoMedium = Font.system(size: 9, weight: .medium, design: .monospaced)
+    /// The readability scale shared by every island surface. Keep new text on
+    /// these steps instead of inventing half-point sizes.
+    enum TypeSize {
+        static let micro: CGFloat = 10
+        static let caption: CGFloat = 11.5
+        static let body: CGFloat = 12.5
+        static let row: CGFloat = 13
+        static let lead: CGFloat = 13.5
+        static let title: CGFloat = 15
+        static let display: CGFloat = 17
+        static let mono: CGFloat = 10
+        static let terminal: CGFloat = 11.5
+    }
+
+    /// Surfaces share one horizontal gutter. Top spacing is set per surface
+    /// because the notch height changes between displays.
+    enum Layout {
+        static let pad: CGFloat = 20
+    }
+
+    static let mono = Font.system(size: TypeSize.mono, weight: .regular, design: .monospaced)
+    static let monoSmall = Font.system(size: 9.5, weight: .regular, design: .monospaced)
+    static let monoMedium = Font.system(size: TypeSize.mono, weight: .medium, design: .monospaced)
 
     static func sans(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .default)
@@ -215,10 +235,10 @@ struct KeyCap: View {
 
     var body: some View {
         Text(text)
-            .font(Theme.code(8, weight: .medium))
+            .font(Theme.code(9.5, weight: .medium))
             .foregroundStyle(Theme.textSecondary)
             .padding(.horizontal, 4)
-            .frame(minWidth: 15, minHeight: 14)
+            .frame(minWidth: 16, minHeight: 16)
             .background(
                 RoundedRectangle(cornerRadius: 3)
                     .fill(Color.white.opacity(0.04))
@@ -227,5 +247,29 @@ struct KeyCap: View {
                             .stroke(Theme.hairline, lineWidth: 0.6)
                     )
             )
+    }
+}
+
+extension View {
+    /// AppKit-backed text fields ignore the color of a `prompt` and fall back to
+    /// the system placeholder, which resolves against the app appearance and is
+    /// nearly invisible on our surfaces. An empty field draws its own instead.
+    func fieldPlaceholder(
+        _ placeholder: String,
+        text: String,
+        insets: EdgeInsets = EdgeInsets(),
+        alignment: Alignment = .leading
+    ) -> some View {
+        overlay(alignment: alignment) {
+            if text.isEmpty {
+                Text(placeholder)
+                    .font(Theme.sans(Theme.TypeSize.body))
+                    .foregroundStyle(Theme.textTertiary)
+                    .lineLimit(1)
+                    .padding(insets)
+                    .allowsHitTesting(false)
+                    .accessibilityHidden(true)
+            }
+        }
     }
 }

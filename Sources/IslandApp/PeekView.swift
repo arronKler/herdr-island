@@ -39,9 +39,9 @@ struct PeekView: View {
                 Spacer(minLength: 6)
                 footer
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 8)
-            .padding(.bottom, 10)
+            .padding(.horizontal, 18)
+            .padding(.top, 14)
+            .padding(.bottom, 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -93,21 +93,21 @@ struct PeekView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 8) {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
             Text(headline)
-                .font(Theme.sans(14, weight: .semibold))
+                .font(Theme.sans(Theme.TypeSize.display, weight: .semibold))
                 .foregroundStyle(completed.isEmpty ? Theme.amber : Theme.mint)
                 .lineLimit(1)
             Text(subline)
-                .font(Theme.code(9))
+                .font(Theme.code(Theme.TypeSize.micro))
                 .foregroundStyle(Theme.textTertiary)
                 .lineLimit(1)
             Spacer(minLength: 4)
             Button(action: actions.openDeck) {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 10, weight: .semibold))
                     .foregroundStyle(Theme.textTertiary)
-                    .frame(width: 18, height: 18)
+                    .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -117,95 +117,95 @@ struct PeekView: View {
     }
 
     private var list: some View {
-        VStack(spacing: 2) {
-            ForEach(Array(completed.prefix(2))) { row in
+        VStack(spacing: 4) {
+            ForEach(Array(completed.prefix(1))) { row in
                 rowButton(row, tone: .done)
             }
             ForEach(Array(needs.prefix(completed.isEmpty ? 2 : 1))) { row in
                 rowButton(row, tone: .blocked)
             }
             if completed.isEmpty, needs.isEmpty {
-                HStack(spacing: 9) {
+                HStack(spacing: 10) {
                     ZStack {
                         Circle().fill(Theme.mintWash)
                         Image(systemName: "checkmark")
-                            .font(.system(size: 8, weight: .bold))
+                            .font(.system(size: 10, weight: .bold))
                             .foregroundStyle(Theme.mint)
                     }
-                    .frame(width: 18, height: 18)
-                    VStack(alignment: .leading, spacing: 1) {
+                    .frame(width: 22, height: 22)
+                    VStack(alignment: .leading, spacing: 2) {
                         Text("全部安静")
-                            .font(Theme.sans(10.5, weight: .medium))
+                            .font(Theme.sans(Theme.TypeSize.body, weight: .medium))
                             .foregroundStyle(Theme.textPrimary)
                         Text("\(presentation.summary.working) 个 agent 正在运行")
-                            .font(Theme.sans(9))
+                            .font(Theme.sans(Theme.TypeSize.caption))
                             .foregroundStyle(Theme.textTertiary)
                     }
                     Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 6)
-                .padding(.vertical, 7)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 8)
             }
         }
-        .padding(.top, 8)
+        .padding(.top, 12)
     }
 
     private func rowButton(_ row: AgentRow, tone: AgentStatus) -> some View {
         Button {
             actions.openDetail(row.id)
         } label: {
-            HStack(spacing: 7) {
-                AgentMarkView(kind: row.kind, size: 18, status: tone)
+            HStack(spacing: 10) {
+                AgentMarkView(kind: row.kind, size: 22, status: tone)
 
-                VStack(alignment: .leading, spacing: 1) {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(row.title)
-                        .font(Theme.sans(10.5, weight: .medium))
+                        .font(Theme.sans(Theme.TypeSize.body, weight: .medium))
                         .foregroundStyle(Theme.textPrimary)
                         .lineLimit(1)
                     Text("\(row.project) · \(tone == .blocked ? IslandFormat.reason(row.reason) : IslandFormat.ago(row.waited))")
-                        .font(Theme.sans(9))
+                        .font(Theme.sans(Theme.TypeSize.caption))
                         .foregroundStyle(Theme.textTertiary)
                         .lineLimit(1)
-                    if let lastLine = row.lastLine, !lastLine.isEmpty {
+                    if tone == .blocked, let lastLine = row.lastLine, !lastLine.isEmpty {
                         Text(lastLine)
-                            .font(Theme.code(8.5))
+                            .font(Theme.code(Theme.TypeSize.micro))
                             .foregroundStyle(Theme.textTertiary)
                             .lineLimit(1)
                     }
                 }
                 Spacer(minLength: 4)
                 Text(tone == .done ? "打开" : "待处理")
-                    .font(Theme.code(8))
+                    .font(Theme.code(Theme.TypeSize.micro))
                     .foregroundStyle(tone == .done ? Theme.textTertiary : Theme.amber)
             }
-            .padding(.horizontal, 6)
-            .padding(.vertical, 6)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 7)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .background(
-            RoundedRectangle(cornerRadius: 7)
+            RoundedRectangle(cornerRadius: 9)
                 .fill(Color.clear)
         )
     }
 
     private var footer: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 10) {
             Text(footnote)
-                .font(Theme.code(8.5))
+                .font(Theme.code(Theme.TypeSize.micro))
                 .foregroundStyle(Theme.textTertiary)
                 .lineLimit(1)
             Spacer(minLength: 4)
             Button(action: actions.openDeck) {
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     Text("打开面板")
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 7, weight: .semibold))
+                        .font(.system(size: 9, weight: .semibold))
                 }
-                .font(Theme.code(8.5, weight: .medium))
+                .font(Theme.code(Theme.TypeSize.caption, weight: .medium))
                 .foregroundStyle(Theme.amber)
-                .padding(.horizontal, 7)
-                .frame(height: 21)
+                .padding(.horizontal, 10)
+                .frame(height: 26)
                 .background(
                     Capsule()
                         .fill(Theme.amber.opacity(0.06))
@@ -214,7 +214,7 @@ struct PeekView: View {
             }
             .buttonStyle(.plain)
         }
-        .padding(.top, 7)
+        .padding(.top, 10)
         .overlay(alignment: .top) { Hairline() }
     }
 

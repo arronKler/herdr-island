@@ -1,5 +1,6 @@
 import AppKit
 import Foundation
+import HerdrKit
 
 struct LaunchOptions {
     var renderDirectory: String?
@@ -9,6 +10,8 @@ struct LaunchOptions {
     var logPath: String?
     var newTaskText: String?
     var newTaskSend = false
+    var settings = false
+    var captureProbeWindow: UInt32?
 }
 
 func parseLaunchOptions(_ arguments: [String]) -> LaunchOptions {
@@ -39,6 +42,11 @@ func parseLaunchOptions(_ arguments: [String]) -> LaunchOptions {
             }
         case "--new-task-send":
             options.newTaskSend = true
+        case "--settings":
+            options.settings = true
+        case "--capture-probe-window":
+            index += 1
+            if index < arguments.count { options.captureProbeWindow = UInt32(arguments[index]) }
         default:
             break
         }
@@ -58,11 +66,34 @@ if launchOptions.printState {
     exit(code)
 }
 
+if let windowID = launchOptions.captureProbeWindow {
+    let application = NSApplication.shared
+    application.setActivationPolicy(.prohibited)
+    Task { @MainActor in exit(await WindowCaptureProbe.run(windowID: windowID)) }
+    application.run()
+    exit(1)
+}
+
 if let directory = launchOptions.renderDirectory {
     let application = NSApplication.shared
     application.setActivationPolicy(.prohibited)
     let code = RenderHarness.run(directory: directory)
     exit(code)
+}
+
+if launchOptions.settings {
+    let application = NSApplication.shared
+    application.setActivationPolicy(.accessory)
+    let environment = try? HerdrLocator.resolve()
+    let controller = SettingsWindowController(
+        rules: IslandSettings.rules(),
+        herdrPath: environment?.binary.path ?? "herdr not found",
+        socketPath: environment?.socket.path ?? HerdrLocator.socketURL().path,
+        onChange: { _ in }
+    )
+    controller.show()
+    application.run()
+    exit(0)
 }
 
 let application = NSApplication.shared

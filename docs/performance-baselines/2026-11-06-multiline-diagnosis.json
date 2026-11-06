@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-06",
+  "scope": "Synthetic Claude multiline first-prompt diagnostics; no real task data, terminal contents, paths, environment, or credentials retained.",
+  "herdr_version": "0.9.5",
+  "timing_note": "Diagnostic phases have separate monotonic origins. Gated send followed interactive inspection and is NOT a cold-start benchmark.",
+  "early_ready": {
+    "payload": "Reply exactly MULTILINE_PROBE_7Q.\nDo not use tools, edit files, or run commands.",
+    "cli_ready_ms": 5459.6415,
+    "status": "idle",
+    "interactive_ready": true,
+    "visible_chars_before_first_prompt": 30,
+    "input_marker_present": false,
+    "single_prompt_error": {
+      "code": "agent_prompt_stalled",
+      "message": "agent prompt produced no observed working or blocked state within 5000 ms; current status is idle"
+    },
+    "subsequent_diagnosis": "The exact synthetic multiline payload was found retained in the composer; a diagnostic Enter on this owned pane confirmed input had not submitted.",
+    "diagnostic_enter_only": true,
+    "payload_resends": 0,
+    "cleanup_success": true,
+    "cleanup_verification": "pane_not_found"
+  },
+  "gated_send": {
+    "payload": "Reply exactly MULTILINE_GATED_9R.\n\tDo not use tools, edit files, or run commands.",
+    "cli_ready_ms": 6097.8305,
+    "cli_ready_visible_chars": 30,
+    "first_sample_with_composer_ms": 9321.337,
+    "composer_shape": "Claude Code header, two horizontal rules, and prompt: ❯ NBSP ESC[0m ESC[2m Try \"<dim suggestion>\" ESC[0m",
+    "identity_binding": [
+      "pane_id",
+      "terminal_id",
+      "name",
+      "agent",
+      "agent_status",
+      "interactive_ready",
+      "completion_seq",
+      "state_change_seq"
+    ],
+    "consecutive_empty_composer_samples": 2,
+    "payload_submission_count": 1,
+    "enter_recovery_count": 0,
+    "model_prewarm_messages": 0,
+    "prompt_confirm_ms_after_gate": 604.5143329999999,
+    "confirmed_status": "working",
+    "completed_ms_after_gate": 4561.753875,
+    "completion_observed": true,
+    "cleanup_success": true,
+    "cleanup_verification": "pane_not_found"
+  },
+  "production_policy": {
+    "claude_multiline_payload": "preserved verbatim",
+    "readiness_timeout_ms": 20000,
+    "poll_interval_ms": 150,
+    "required_consecutive_samples": 2,
+    "unrecognized_or_nonempty_ui": "fail without sending; retain pane for user recovery",
+    "automatic_payload_resend": false,
+    "automatic_enter_recovery": false
+  },
+  "diagnostic_workspaces_remaining": 0
+}

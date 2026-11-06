@@ -3,7 +3,7 @@ import Foundation
 public enum IslandPresenter {
     public static func present(_ state: IslandState, now: Date) -> IslandPresentation {
         let health = health(state, now: now)
-        let rows = state.orderedAgents.map { agent in
+        let rows = state.rowCache.rows(in: state, now: now) { agent in
             AgentRow(
                 id: agent.id,
                 title: agent.title,
@@ -28,9 +28,22 @@ public enum IslandPresenter {
             )
         }
 
-        let working = rows.filter { $0.status == .working }.count
-        let blocked = rows.filter { $0.status == .blocked }.count
-        let idle = rows.filter { $0.status == .idle }.count
+        var working = 0
+        var blocked = 0
+        var idle = 0
+        var needs = 0
+        var done = 0
+        for row in rows {
+            switch row.status {
+            case .working: working += 1
+            case .blocked:
+                blocked += 1
+                if !isDismissed(state, row) { needs += 1 }
+            case .idle: idle += 1
+            case .done, .unknown: break
+            }
+            if row.status == .done || row.isPendingCompletion { done += 1 }
+        }
         let summary = IslandSummary(
             working: working,
             blocked: blocked,
@@ -57,9 +70,9 @@ public enum IslandPresenter {
         let deckGroups = makeGroups(state, rows: deckRows)
         let deckHeight = makeDeckHeight(state, rows: deckRows, groups: deckGroups)
         let filterCounts = DeckFilterCounts(
-            needs: rows.filter { $0.status == .blocked && !isDismissed(state, $0) }.count,
+            needs: needs,
             running: working,
-            done: rows.filter { $0.status == .done || $0.isPendingCompletion }.count,
+            done: done,
             total: rows.count
         )
 
@@ -104,13 +117,8 @@ public enum IslandPresenter {
     private static func makeDeckRows(_ state: IslandState, rows: [AgentRow]) -> [AgentRow] {
         let query = state.query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         if state.isSearching, !query.isEmpty {
-            return rows.filter { row in
-                [row.title, row.project, row.kind, row.status.rawValue, row.machine, row.name ?? ""]
-                    .joined(separator: " ")
-                    .lowercased()
-                    .contains(query)
-                    || row.labels.joined(separator: " ").lowercased().contains(query)
-            }
+            let matches = state.matchingAgentIDs(query: query)
+            return rows.filter { matches.contains($0.id) }
         }
 
         switch state.filter {
@@ -138,27 +146,54 @@ public enum IslandPresenter {
         rows: [AgentRow],
         groups: [DeckGroup]
     ) -> CGFloat {
-        guard state.windowTask == nil else { return IslandGeometry.deckSize.height }
+        guard state.windowTask == nil else {
+            return windowTaskHeight(state)
+        }
 
         let listHeight: CGFloat
         if rows.isEmpty {
-            listHeight = 168
+            listHeight = 190
         } else {
-            var height: CGFloat = 10
+            var height: CGFloat = 0
             if state.filter == .all, !state.isSearching {
-                height += CGFloat(groups.count) * 23
+                height += CGFloat(groups.count) * 24
             }
             for row in rows {
-                height += row.status == .blocked ? 77 : 42
+                height += row.status == .blocked ? 74 : 54
             }
-            height += CGFloat(max(0, rows.count - 1)) * 5
+            height += CGFloat(max(0, rows.count - 1)) * 8
             listHeight = height
         }
 
-        let chrome: CGFloat = 9 + 28 + 8 + 30 + 8 + 68 + 10
-        let extra: CGFloat = (state.isSearching ? 16 : 0) + (state.banner == nil ? 0 : 30)
+        let chrome: CGFloat = 30 + 32 + 12 + 36 + 12 + 96 + 9 + 24 + 16
+        let extra: CGFloat = (state.isSearching ? 24 : 0) + (state.banner == nil ? 0 : 38)
         let natural = chrome + extra + listHeight
         return min(max(natural, IslandGeometry.deckMinHeight), IslandGeometry.deckMaxHeight)
+    }
+
+    private static func windowTaskHeight(_ state: IslandState) -> CGFloat {
+        var height = IslandGeometry.windowTaskSize.height
+        if state.agents.values.contains(where: { $0.status == .blocked }) { height += 44 }
+        if windowTaskRefusal(state) != nil { height += 42 }
+        if state.screenCaptureAuthorized == false { height += 44 }
+        if state.windowTask?.error != nil { height += 42 }
+        if state.windowTask?.creation != nil { height += 64 }
+        if state.windowTask?.lastDelivery != nil { height += 28 }
+        return height
+    }
+
+    private static func windowTaskRefusal(_ state: IslandState) -> String? {
+        guard let task = state.windowTask else { return nil }
+        if let pane = task.destinationAgent {
+            if let agent = state.agents[pane] {
+                return MessagePolicy.refusal(for: agent)
+            }
+            return "那个 agent 不在了。"
+        }
+        if task.cwd.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "给新 agent 选一个目录。"
+        }
+        return nil
     }
 
     private static func makeGroups(_ state: IslandState, rows: [AgentRow]) -> [DeckGroup] {
@@ -218,25 +253,15 @@ public enum IslandPresenter {
     private static func makeWindowTask(_ state: IslandState) -> WindowTaskPresentation? {
         guard let lock = state.windowLock, let task = state.windowTask else { return nil }
 
-        let refusal: String?
-        if let pane = task.destinationAgent {
-            if let agent = state.agents[pane] {
-                refusal = MessagePolicy.refusal(for: agent)
-            } else {
-                refusal = "那个 agent 不在了。"
-            }
-        } else if task.cwd.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            refusal = "给新 agent 选一个目录。"
-        } else {
-            refusal = nil
-        }
+        let refusal = windowTaskRefusal(state)
 
         let canSubmit = task.phase == .editing
+            && task.creation?.pane == nil
             && !task.trimmedDraft.isEmpty
             && refusal == nil
             && state.screenCaptureAuthorized != false
 
-        return WindowTaskPresentation(
+        var presentation = WindowTaskPresentation(
             lock: WindowLockPresentation(target: lock),
             draft: task.draft,
             destinationAgent: task.destinationAgent,
@@ -250,31 +275,43 @@ public enum IslandPresenter {
             destinationRefusal: refusal,
             screenCaptureAuthorized: state.screenCaptureAuthorized
         )
+        presentation.creation = task.creation
+        return presentation
     }
 
     private static func makeQuickTask(_ state: IslandState) -> QuickTaskPresentation? {
         guard let task = state.quickTask else { return nil }
-        return QuickTaskPresentation(
+        var presentation = QuickTaskPresentation(
             draft: task.draft,
             kind: task.kind,
             cwd: task.cwd,
             isCreating: task.phase == .creating,
             error: task.error
         )
+        presentation.creation = task.creation
+        return presentation
     }
 
     private static func makeDrop(_ state: IslandState) -> DropTaskPresentation? {
         guard let task = state.drop else { return nil }
-        return DropTaskPresentation(
+        var presentation = DropTaskPresentation(
             draft: task.draft,
             kind: task.kind,
             cwd: task.cwd,
+            herdrCwds: state.dropHerdrCwds,
+            defaultCwd: state.dropDefaultCwd,
             useWorktree: task.useWorktree,
             branch: task.branch,
-            isCreating: task.phase == .creating,
+            window: task.window.map(WindowLockPresentation.init),
+            isCapturing: task.isCapturing,
+            isCreating: task.isCreating && !task.didCreate,
+            didCreate: task.didCreate,
+            screenCaptureAuthorized: state.screenCaptureAuthorized,
             error: task.error,
             canSubmit: task.canSubmit
         )
+        presentation.creation = task.creation
+        return presentation
     }
 
     private static func health(_ state: IslandState, now: Date) -> BackendHealth {
@@ -403,22 +440,105 @@ public enum IslandPresenter {
     }
 }
 
+/// Row text, preview digests and labels change independently of the clock and
+/// draft input. Reuse their parsed values while still computing exact elapsed
+/// time for every presentation; no timer value is frozen by this cache.
+final class AgentRowCache: @unchecked Sendable, Equatable {
+    private let lock = NSLock()
+    private var cached: [AgentRow]?
+    private var statusTimes: [Date?] = []
+    private var rowIndices: [PaneID: Int] = [:]
+    private var dirty: Set<PaneID> = []
+    private var selected: PaneID?
+    private var previews: [PaneID: PreviewOutcome] = [:]
+    private var queued: [PaneID: QueuedPrompt] = [:]
+    private var sampledAt: Date?
+
+    static func == (_ lhs: AgentRowCache, _ rhs: AgentRowCache) -> Bool { true }
+
+    func copy(changed: Set<PaneID>) -> AgentRowCache {
+        lock.lock()
+        defer { lock.unlock() }
+        let copy = AgentRowCache()
+        copy.cached = cached
+        copy.statusTimes = statusTimes
+        copy.rowIndices = rowIndices
+        copy.dirty = dirty.union(changed)
+        copy.selected = selected
+        copy.previews = previews
+        copy.queued = queued
+        copy.sampledAt = sampledAt
+        return copy
+    }
+
+    func rows(in state: IslandState, now: Date, build: (Agent) -> AgentRow) -> [AgentRow] {
+        lock.lock()
+        defer { lock.unlock() }
+        if cached == nil || selected != state.selection || previews != state.previews || queued != state.queued {
+            let agents = state.orderedAgents
+            cached = agents.map(build)
+            statusTimes = agents.map(\.statusSince)
+            rowIndices = Dictionary(uniqueKeysWithValues: agents.enumerated().map { ($0.element.id, $0.offset) })
+            dirty.removeAll()
+            selected = state.selection
+            previews = state.previews
+            queued = state.queued
+            sampledAt = now
+        }
+        if !dirty.isEmpty {
+            for pane in dirty {
+                guard let index = rowIndices[pane], let agent = state.agents[pane] else { continue }
+                var row = build(agent)
+                // Every cached row uses the same epoch; the returned copy is
+                // projected to now below, including when the wall clock moves back.
+                row.waited = agent.statusSince.map { max(0, (sampledAt ?? now).timeIntervalSince($0)) } ?? 0
+                cached?[index] = row
+                statusTimes[index] = agent.statusSince
+            }
+            dirty.removeAll()
+        }
+        var rows = cached ?? []
+        if sampledAt != now {
+            for index in rows.indices {
+                if let since = statusTimes[index] {
+                    rows[index].waited = max(0, now.timeIntervalSince(since))
+                }
+            }
+        }
+        return rows
+    }
+}
+
 enum PreviewDigest {
+    private static let promptLineLimit = 12
+    private static let promptKeywords = [
+        "allow", "approve", "permission", "proceed", "continue",
+        "log in", "login", "sign in",
+        "允许", "批准", "确认", "继续", "登录",
+    ]
+    private static let boxEdges = CharacterSet(charactersIn: "│╭╮╰╯┌┐└┘ ❯›»")
+    private static let borderScalars = CharacterSet(charactersIn: "─━═╭╮╰╯┌┐└┘│├┤┬┴┼┃║╔╗╚╝╠╣╦╩╬ -_+|")
+
     static func lastLine(_ text: String) -> String? {
-        text.split(whereSeparator: \.isNewline)
+        TerminalText.lines(from: text)
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .last { !$0.isEmpty }
     }
 
     static func question(_ text: String) -> String? {
-        let lines = text.split(whereSeparator: \.isNewline)
-            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
-            .filter { !$0.isEmpty }
-        guard let first = lines.first else { return nil }
-        if let question = lines.first(where: { $0.contains("?") || $0.contains("？") }) {
+        let raw = promptRows(text)
+        let rows = raw.map(stripBox)
+        if let question = rows.last(where: endsWithQuestionMark)
+            ?? rows.last(where: containsQuestionMark) {
             return question
         }
-        return first
+        if let prompt = rows.first(where: containsPromptKeyword) {
+            return prompt
+        }
+        if let content = boxedContent(raw) {
+            return stripBox(content)
+        }
+        return nil
     }
 
     static func command(_ text: String) -> String? {
@@ -426,13 +546,17 @@ enum PreviewDigest {
             #"\$\s+([^\n]+)"#,
             #"Bash\(([^)]+)\)"#,
         ]
-        for pattern in patterns {
-            if let regex = try? NSRegularExpression(pattern: pattern) {
-                let range = NSRange(text.startIndex..<text.endIndex, in: text)
-                if let match = regex.firstMatch(in: text, range: range),
+        for row in allRows(text).reversed() {
+            let candidate = stripBox(row)
+            for pattern in patterns {
+                if let regex = try? NSRegularExpression(pattern: pattern),
+                   let match = regex.firstMatch(
+                       in: candidate,
+                       range: NSRange(candidate.startIndex..<candidate.endIndex, in: candidate)
+                   ),
                    match.numberOfRanges > 1,
-                   let captured = Range(match.range(at: 1), in: text) {
-                    let value = text[captured].trimmingCharacters(in: .whitespacesAndNewlines)
+                   let captured = Range(match.range(at: 1), in: candidate) {
+                    let value = candidate[captured].trimmingCharacters(in: .whitespacesAndNewlines)
                     if !value.isEmpty { return value }
                 }
             }
@@ -441,7 +565,7 @@ enum PreviewDigest {
     }
 
     static func reason(_ text: String) -> AgentReason {
-        let lower = text.lowercased()
+        let lower = promptRows(text).joined(separator: "\n").lowercased()
         if lower.contains("allow") || lower.contains("approve") || lower.contains("approval")
             || lower.contains("permission") || lower.contains("允许") || lower.contains("批准") {
             return .approval
@@ -450,9 +574,49 @@ enum PreviewDigest {
             || lower.contains("sign in") || lower.contains("登录") {
             return .auth
         }
-        if text.contains("?") || text.contains("？") {
+        if lower.contains("?") || lower.contains("？") {
             return .question
         }
         return .input
+    }
+
+    /// The approval or login prompt sits at the bottom of the terminal. Scanning
+    /// only the newest rows keeps earlier output from supplying the question.
+    private static func promptRows(_ text: String) -> [String] {
+        Array(allRows(text).suffix(promptLineLimit))
+    }
+
+    private static func allRows(_ text: String) -> [String] {
+        TerminalText.lines(from: text)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+    }
+
+    private static func containsQuestionMark(_ row: String) -> Bool {
+        row.contains("?") || row.contains("？")
+    }
+
+    private static func endsWithQuestionMark(_ row: String) -> Bool {
+        guard let last = row.last else { return false }
+        return last == "?" || last == "？"
+    }
+
+    private static func containsPromptKeyword(_ row: String) -> Bool {
+        let lower = row.lowercased()
+        return promptKeywords.contains { lower.contains($0) }
+    }
+
+    private static func stripBox(_ row: String) -> String {
+        row.trimmingCharacters(in: boxEdges)
+    }
+
+    private static func isBorder(_ row: String) -> Bool {
+        row.unicodeScalars.allSatisfy { borderScalars.contains($0) }
+    }
+
+    private static func boxedContent(_ rows: [String]) -> String? {
+        guard let top = rows.firstIndex(where: isBorder),
+              let bottom = rows[(top + 1)...].firstIndex(where: isBorder) else { return nil }
+        return rows[(top + 1)..<bottom].first { !stripBox($0).isEmpty }
     }
 }

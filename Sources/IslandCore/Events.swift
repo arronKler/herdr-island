@@ -36,6 +36,9 @@ public enum IslandEvent: Sendable, Equatable {
     case setQuickTaskKind(AgentKindOption)
     case setQuickTaskCwd(String)
     case submitQuickTask(name: String)
+    case quickTaskProgress(TaskCreationProgress)
+    case dropTaskProgress(TaskCreationProgress)
+    case windowTaskProgress(token: UUID, progress: TaskCreationProgress)
     case quickTaskResult(Result<TaskLaunchResult, BackendFailure>)
     case beginDrop(cwd: String, kind: AgentKindOption, branch: String)
     case endDrop
@@ -44,6 +47,9 @@ public enum IslandEvent: Sendable, Equatable {
     case setDropDraft(String)
     case setDropKind(AgentKindOption)
     case setDropCwd(String)
+    case setDropWindow(WindowTarget?)
+    case setDropHerdrCwds([String])
+    case setDropDefaultCwd(String?)
     case setDropWorktree(Bool)
     case submitDropTask(name: String)
     case dropTaskResult(Result<TaskLaunchResult, BackendFailure>)
@@ -59,6 +65,7 @@ public enum IslandEvent: Sendable, Equatable {
     case submitWindowTask(name: String)
     case windowCapturePermission(Bool)
     case windowCaptureResult(WindowCaptureRequest, Result<String, BackendFailure>)
+    case windowTaskCreated(token: UUID, launch: TaskLaunchResult)
     case windowTaskResult(token: UUID, result: Result<String, BackendFailure>)
 }
 
@@ -68,6 +75,8 @@ public enum IslandEffect: Sendable, Equatable {
     case focusPane(PaneID)
     case sendPrompt(PaneID, String)
     case createQuickTask(QuickTaskRequest)
+    case createDropTask(QuickTaskRequest)
+    case captureDropWindow(DropWindowCaptureRequest)
     case requestScreenCapturePermission
     case captureWindow(WindowCaptureRequest)
     case deliverWindowTask(WindowDeliveryRequest)

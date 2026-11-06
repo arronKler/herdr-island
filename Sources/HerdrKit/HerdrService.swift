@@ -15,6 +15,8 @@ public actor HerdrService: AgentSource, AgentActions {
     private var generation: UInt64 = 0
     private var sampling = false
     private var lastInvalidation = Date.distantPast
+    private var sampledPanes: [PaneID] = []
+    private var taskObservers: [PaneID: AsyncStream<NativeTaskLaunch.Observation>.Continuation] = [:]
 
     public init(
         cli: HerdrCLI,
@@ -59,6 +61,8 @@ public actor HerdrService: AgentSource, AgentActions {
     }
 
     public func stop() async {
+        for observer in taskObservers.values { observer.finish() }
+        taskObservers.removeAll()
         pollTask?.cancel()
         pollTask = nil
         await socket?.stop()
@@ -115,94 +119,105 @@ public actor HerdrService: AgentSource, AgentActions {
         }
     }
 
+    public func paneCwds() async -> [String] {
+        do {
+            return try await cli.paneCwds()
+        } catch {
+            log("pane list failed: \(Self.backendFailure(error).message)")
+            return []
+        }
+    }
+
     public func createTask(
         _ request: QuickTaskRequest
     ) async -> Result<TaskLaunchResult, BackendFailure> {
-        let pane: PaneID
-        let worktree: String?
-        if let branch = request.worktreeBranch {
-            do {
+        await createTask(request, onProgress: { _ in })
+    }
+
+    public func createTask(
+        _ request: QuickTaskRequest,
+        onProgress: @escaping TaskCreationObserver
+    ) async -> Result<TaskLaunchResult, BackendFailure> {
+        let startedAt = Date()
+        let clock = ContinuousClock()
+        let start = clock.now
+        var stage = TaskCreationStage.workspace
+        var pane: PaneID?
+        var worktree: String?
+        await onProgress(TaskCreationProgress(startedAt: startedAt))
+        do {
+            if let branch = request.worktreeBranch {
                 let launch = try await cli.createWorktree(
-                    cwd: request.cwd,
-                    branch: branch,
-                    label: request.label,
-                    timeout: 10
+                    cwd: request.cwd, branch: branch, label: request.label, timeout: 10
                 )
                 pane = launch.pane
                 worktree = launch.worktree
-            } catch {
-                return .failure(Self.stageFailure(error, "create a Herdr worktree"))
+            } else {
+                pane = try await cli.createWorkspace(cwd: request.cwd, label: request.label, timeout: 10)
             }
-        } else {
-            do {
-                pane = try await cli.createWorkspace(
-                    cwd: request.cwd,
-                    label: request.label,
-                    timeout: 10
+            guard let pane else { throw BackendFailure(.decode, "未获得新终端。") }
+            log("task \(request.name): workspace ready after \(start.duration(to: clock.now))")
+            stage = .agent
+            await onProgress(TaskCreationProgress(stage: stage, startedAt: startedAt, pane: pane))
+            let agent: Agent
+            if request.kind == .claude, NativeTaskLaunch.supportsNativePrompt(request.text) {
+                let observations = await observeTask(pane)
+                defer { taskObservers.removeValue(forKey: pane)?.finish() }
+                agent = try await NativeTaskLaunch.confirm(
+                    cli: cli, request: request, pane: pane, startedAt: startedAt,
+                    observations: observations,
+                    onProgress: onProgress
                 )
-                worktree = nil
-            } catch {
-                return .failure(Self.stageFailure(error, "create a Herdr workspace"))
+            } else {
+                try await cli.startAgent(name: request.name, kind: request.kind.rawValue, pane: pane, timeout: 50)
+                if request.kind == .claude {
+                    try await ClaudeComposerReadiness.wait(
+                        pane: pane, name: request.name,
+                        readIdentity: { [cli] in try await cli.startupIdentity(pane: pane) },
+                        readScreen: { [cli] in try await cli.startupVisibleANSI(pane: pane) }
+                    )
+                }
+                log("task \(request.name): agent ready after \(start.duration(to: clock.now))")
+                stage = .submission
+                await onProgress(TaskCreationProgress(stage: stage, startedAt: startedAt, pane: pane))
+                do {
+                    agent = try await cli.promptAndConfirm(pane: pane, text: request.text)
+                } catch let failure as BackendFailure where failure.kind == .promptStalled {
+                    // Observe queued input longer without ever sending it twice.
+                    agent = try await cli.confirmInitialPrompt(pane: pane)
+                }
             }
-        }
-
-        do {
-            try await cli.startAgent(
-                name: request.name,
-                kind: request.kind.rawValue,
-                pane: pane,
-                timeout: 50
-            )
+            log("task \(request.name): submission confirmed after \(start.duration(to: clock.now))")
+            return .success(TaskLaunchResult(pane: pane, name: request.name, worktree: worktree, agent: agent))
         } catch {
-            return .failure(Self.stageFailure(
-                error,
-                "start \(request.kind.displayName) in \(pane.rawValue)"
-            ))
+            let failure = Self.backendFailure(error)
+            log("task \(request.name): \(stage) failed after \(start.duration(to: clock.now))")
+            let message: String
+            if let pane {
+                let recovery = stage == .submission
+                    ? "请去终端检查任务是否已提交，避免重复发送。"
+                    : "请去终端检查启动、登录或授权提示。"
+                let title = request.kind == .claude ? "启动与提交" : stage.title
+                message = "\(title)未完成，终端 \(pane.rawValue) 已保留。\(recovery)"
+            } else {
+                message = request.worktreeBranch == nil ? "创建工作区失败，可重试。" : "创建 worktree 失败，可重试。"
+            }
+            return .failure(BackendFailure(failure.kind, "\(message) \(failure.message)"))
         }
-
-        // A freshly started TUI can accept text into its composer but miss the
-        // Enter that submits it. Let the TUI settle, then confirm the turn began.
-        try? await Task.sleep(nanoseconds: 2_000_000_000)
-
-        do {
-            try await cli.prompt(pane: pane, text: request.text, timeout: 10)
-        } catch {
-            return .failure(Self.stageFailure(
-                error,
-                "submit the task to \(pane.rawValue); the workspace was created"
-            ))
-        }
-
-        guard await taskStarted(pane: pane, timeout: 15) else {
-            return .failure(BackendFailure(
-                .commandFailed,
-                "The new agent in \(pane.rawValue) did not start the task. Open the workspace and press Return to submit it."
-            ))
-        }
-
-        log("created \(request.name) in \(pane.rawValue)")
-        return .success(TaskLaunchResult(pane: pane, name: request.name, worktree: worktree))
     }
 
-    private func taskStarted(pane: PaneID, timeout: TimeInterval) async -> Bool {
-        let deadline = Date().addingTimeInterval(timeout)
-        repeat {
-            if let agents = try? await cli.listAgents(timeout: 2),
-               let agent = agents.first(where: { $0.pane == pane }),
-               agent.status == .working
-                   || agent.status == .blocked
-                   || agent.status == .done
-                   || agent.completionSeq != nil {
-                return true
-            }
-            try? await Task.sleep(nanoseconds: 500_000_000)
-        } while Date() < deadline
-        return false
+    private func observeTask(_ pane: PaneID) async -> AsyncStream<NativeTaskLaunch.Observation>? {
+        guard socket != nil, pollTask != nil else { return nil }
+        let (stream, observer) = AsyncStream<NativeTaskLaunch.Observation>.makeStream(bufferingPolicy: .unbounded)
+        taskObservers[pane] = observer
+        // Subscribe before launch, including the new pane while it is still a
+        // shell and absent from agent.list. Periodic samples cover reconnect gaps.
+        await updateSubscription()
+        return stream
     }
 
-    private static func stageFailure(_ error: Error, _ stage: String) -> BackendFailure {
-        let failure = backendFailure(error)
-        return BackendFailure(failure.kind, "Could not \(stage). \(failure.message)")
+    private func updateSubscription() async {
+        await socket?.updatePanes(Array(Set(sampledPanes).union(taskObservers.keys)))
     }
 
     private func pollLoop() async {
@@ -223,12 +238,18 @@ public actor HerdrService: AgentSource, AgentActions {
 
         do {
             let agents = try await cli.listAgents()
+            sampledPanes = agents.map(\.pane)
+            for agent in agents { taskObservers[agent.pane]?.yield(.snapshot(agent)) }
             continuation?.yield(.snapshot(AgentSnapshot(
                 generation: generation,
                 sampledAt: Date(),
                 agents: agents
             )))
-            await socket?.updatePanes(agents.map(\.pane))
+            await updateSubscription()
+        } catch is CancellationError {
+            // Rebuilding a socket subscription cancels its in-flight refresh.
+            // This is not a backend outage and must not flash a connection error.
+            return
         } catch {
             let failure = Self.backendFailure(error)
             log("agent list failed: \(failure.message)")
@@ -237,6 +258,7 @@ public actor HerdrService: AgentSource, AgentActions {
     }
 
     private func socketFacts(_ facts: AgentFacts) {
+        taskObservers[facts.pane]?.yield(.facts(facts))
         continuation?.yield(.facts(facts))
     }
 

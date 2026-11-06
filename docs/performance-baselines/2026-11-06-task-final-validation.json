@@ -1,0 +1,200 @@
+{
+  "checksum": 0,
+  "metadata": {
+    "appkit_run_loop": true,
+    "probe_workspaces_closed": 4
+  },
+  "metrics": {
+    "task.cold_confirm": {
+      "errors": [],
+      "failed_ms": [],
+      "failures": 0,
+      "first_ms": 22268.016084,
+      "kind": "live",
+      "max_ms": 22268.016084,
+      "median_ms": 17802.172625,
+      "min_ms": 6654.484041,
+      "n": 3,
+      "p95_ms": null,
+      "samples_ms": [
+        22268.016084,
+        17802.172625,
+        6654.484041
+      ]
+    },
+    "task.first_completion": {
+      "errors": [],
+      "failed_ms": [],
+      "failures": 0,
+      "first_ms": 40102.767375,
+      "kind": "live",
+      "max_ms": 43334.20375,
+      "median_ms": 40102.767375,
+      "min_ms": 13519.4365,
+      "n": 3,
+      "p95_ms": null,
+      "samples_ms": [
+        40102.767375,
+        43334.20375,
+        13519.4365
+      ]
+    },
+    "task.multiline_confirm": {
+      "errors": [],
+      "failed_ms": [],
+      "failures": 0,
+      "first_ms": 13339.879166,
+      "kind": "live",
+      "max_ms": 13339.879166,
+      "median_ms": 13339.879166,
+      "min_ms": 13339.879166,
+      "n": 1,
+      "p95_ms": null,
+      "samples_ms": [
+        13339.879166
+      ]
+    },
+    "task.multiline_first_completion": {
+      "errors": [],
+      "failed_ms": [],
+      "failures": 0,
+      "first_ms": 16338.538125,
+      "kind": "live",
+      "max_ms": 16338.538125,
+      "median_ms": 16338.538125,
+      "min_ms": 16338.538125,
+      "n": 1,
+      "p95_ms": null,
+      "samples_ms": [
+        16338.538125
+      ]
+    },
+    "task.workspace": {
+      "errors": [],
+      "failed_ms": [],
+      "failures": 0,
+      "first_ms": 52.800709,
+      "kind": "live",
+      "max_ms": 89.77475,
+      "median_ms": 39.961417,
+      "min_ms": 26.035792,
+      "n": 4,
+      "p95_ms": null,
+      "samples_ms": [
+        52.800709,
+        26.035792,
+        27.122125,
+        89.77475
+      ]
+    }
+  },
+  "notes": [],
+  "recorded_at": "2026-11-06T14:35:14Z",
+  "manifest": {
+    "git_head": "5a841982f97b4a62e484303a062635ac51f9a447",
+    "working_tree_dirty": true,
+    "source_sha256": {
+      "Sources/HerdrKit/ClaudeComposerReadiness.swift": "a50ee4f340929798f70d9f06b5f70f42328277e971c0757c1a5afe680ea24ee5",
+      "Sources/HerdrKit/GhosttyFocuser.swift": "91732e5954a79f0b9faa1033af4ab2275a7b5d9c3b9733da0bf6e5ddda3f20a0",
+      "Sources/HerdrKit/HerdrCLI.swift": "815a7507a2e18a382ab0dcafee6970474131641aeb0969681366d9d8d827fe6e",
+      "Sources/HerdrKit/HerdrLocator.swift": "0509da78c0debb0a8cb44d03cc06adc36dab6625872464d6973dc83f49465eb8",
+      "Sources/HerdrKit/HerdrRPC.swift": "56ebe32df47d991cd43eb7cc05aeee305ba39e0e8e457983b8a60f98337b51c9",
+      "Sources/HerdrKit/HerdrService.swift": "51b59a8e3efb16dd2364d0c621e38bafd8a8563835dfdc3b75955aafc664eba4",
+      "Sources/HerdrKit/HerdrSocket.swift": "42902268d7ccccc63e3d394b67626d41d0a8074692848bb73dc4dd7124e4cba9",
+      "Sources/HerdrKit/HerdrWire.swift": "dc85622a3f2b252d153b59470e1e71688834910a33d6e4eb2d5a16a7e141f3c2",
+      "Sources/HerdrKit/NativeTaskLaunch.swift": "57358fe28108af89b33d55e4fa5ea6c67be6029ef2e95d86c953a02303760edc",
+      "Sources/HerdrKit/WindowPrompt.swift": "987a3107dc194019202361fdded1565e180e7a3c0d97107c9570556809fb734a",
+      "Sources/IslandApp/AgentMarkView.swift": "c052710fe3d2600ff10fdc0cd80e04fb5569075e870ef3e3570e9bfd30f20f9f",
+      "Sources/IslandApp/AppDelegate.swift": "9b01a92ed65d5135c939c2e6a96ceba4f3e9d3d9b2cb002c335cd3743e488723",
+      "Sources/IslandApp/DeckView.swift": "d2224015add8112d3202b361c07064bc464034d7874543a99654223ee2bb4084",
+      "Sources/IslandApp/DemoSource.swift": "dd3ee184cdc7bf25b5302026ec8b682770e07095877e467385544370b2c7b8f8",
+      "Sources/IslandApp/DesignMark.swift": "3a40ff6c3f525b8d206ac88b5374a12d4ea809b231abec40ef8cfd2c1cecf2e9",
+      "Sources/IslandApp/DesignMarkData.swift": "39a1bd9579b31e4c4e5b6f1d54412a5857957db7da710456d81762af70b68345",
+      "Sources/IslandApp/DetailView.swift": "6e35d88c246bbf08c4166d6d2c532d4150de4b902d4404cc98a40d6fcdc0d0f0",
+      "Sources/IslandApp/DropletView.swift": "f2236d5168426adfb4ae4a89ddd314f1616c054ff25c8886c827dd511a2607fa",
+      "Sources/IslandApp/ExpandedView.swift": "cfafe395caa8bb5cf7512e33e69e2a30c1fbb310defdf4954a04fb40eb44c6bb",
+      "Sources/IslandApp/Formatting.swift": "f941fb3052beeab22c641a9fbe94da7141baae2a46e50cb8d5e35b0c30f0e32b",
+      "Sources/IslandApp/HotKey.swift": "5f90456da37813f3df945802f642670f5220f35309ceef9444ba40740105d9c7",
+      "Sources/IslandApp/IslandButton.swift": "dbf143f4a0dedc7eaea5794e21e6bcbe66ed13b838b0d254d3bb5e385ef16f81",
+      "Sources/IslandApp/IslandPanel.swift": "3591051cb89cd025a243b0e0ce40d6abbb44d381167b05d12da0f195007254e1",
+      "Sources/IslandApp/IslandRootView.swift": "4b4479aea674568f7401518683c5f364e8b85a9f3bb39e7c72c2fae2c09e5c0c",
+      "Sources/IslandApp/IslandSettings.swift": "797ddc1735801db88d25d03333c6c6da399368040b0ae29c5bc5c69290fa9289",
+      "Sources/IslandApp/IslandStore.swift": "66fbecc2a5c4fdcc26259100f7c97ecc36af90ed0c9a10766d0569e7bd353695",
+      "Sources/IslandApp/IslandViewActions.swift": "3018ba502e794c37bdb1da448a6ba48523afe3bd5604fa69d664da6833193457",
+      "Sources/IslandApp/LiquidDropOverlay.swift": "331e6a41ef79805f9bcb2c8955c63664701a00dc0ba0fada7f05f2f0f0c6836d",
+      "Sources/IslandApp/LiquidDropView.swift": "764bb43130bc7bc9a8a679566e0528bc1df3d9f30002ca47b79686eac5165cb0",
+      "Sources/IslandApp/Log.swift": "4f983b67d387b0e9ed657ebb86f071489d5a594323c21d20e544d02cc6d8de12",
+      "Sources/IslandApp/NotchEarsView.swift": "02730e25841e5dbd7be320caa91e7a54f2ae87cb2630fa94ff8f2659a4163e4f",
+      "Sources/IslandApp/PeekView.swift": "c910c3fe502157771433c68ab52bbb8f83f4e3795430504421d4903ecfa824c4",
+      "Sources/IslandApp/PrintState.swift": "8714e700fb0c0cdedf5165fd345ca8ad4998d1eacddbf228923da0c26698c572",
+      "Sources/IslandApp/QuickTaskView.swift": "b383b6ef912a3ed783d9910500835d70b34fd1bc00680912c13758d414624160",
+      "Sources/IslandApp/RenderHarness.swift": "758016358f0f90bcc5eed5f8c22e71243f4360095e958f9ee2cc9c9bf29d18b0",
+      "Sources/IslandApp/SettingsView.swift": "cc35343d8334c152b2fcc2efd0b091809a8c4cf28a84e3bbdaddee14f42681c7",
+      "Sources/IslandApp/StatusItemController.swift": "a49efb721a7275e05ff0f8cc4ba9562d8939ea6c85a0dc5a230c502d4528cda3",
+      "Sources/IslandApp/TaskCreationStatusView.swift": "1aeccbbc11f774a8f087e94323a4a42fda3de280684997f46376f42a147d868e",
+      "Sources/IslandApp/Theme.swift": "4b004bb6888e619651210493938ef3243769f0ae2cfe01f5d4a6e9179288416d",
+      "Sources/IslandApp/WindowCaptureLookup.swift": "3a19c65883d03ce9dcb610e6646e149148b8e0b1b8a68c302591323b673a3383",
+      "Sources/IslandApp/WindowCaptureProbe.swift": "e57617e8888aa94f54cb5182c3bf9e02b32dc6bef9f9be82010eab79a8f91767",
+      "Sources/IslandApp/WindowCaptureService.swift": "b3b302dc526f439a3a3c73a8c4cae2a2ac3ea10a388a3126bdd2a2723708626d",
+      "Sources/IslandApp/WindowDragCoordinator.swift": "9e96bc37fd731ae39d84bddc446892da381ba8afcece0b149ff971a208aad86b",
+      "Sources/IslandApp/WindowTaskView.swift": "ad261764c42acdde26e50431c586210411b7b43317f25a55978348b3391eeefb",
+      "Sources/IslandApp/WindowTetherController.swift": "2a718001cb607b4136d0ae5c190c1caa722505f060ad2d6fa5a958a87f923e48",
+      "Sources/IslandApp/main.swift": "a9f188d663ac8f4f09795db615f591310b9b7e366c7159977275cd4d36e7984f",
+      "Sources/IslandCore/Events.swift": "31e6824569548412ac14721a7267c59ef4c35c240d53f87cea31b7583ab1954b",
+      "Sources/IslandCore/Fixtures.swift": "8fd84c302de8801e6e0536f1413f62ee9d202363f6b47935d91fe718e7757edf",
+      "Sources/IslandCore/Geometry.swift": "9d8bf716a932e0f66027629c5a76b732756785b6711e8abb37091c203453c638",
+      "Sources/IslandCore/Model.swift": "cdf2d9899bc4b4ebdab400ca66d92090f77839d372de7806f55324018272919c",
+      "Sources/IslandCore/Policy.swift": "30936894240a53a0be1722fd5b34bfdec7bb900a7879ed7e8e0a9691ea4080bd",
+      "Sources/IslandCore/Presenter.swift": "a7f89ca738f38b43312ae3dd244de865160c22a5f7858a31771deb5e23b38ee0",
+      "Sources/IslandCore/Reducer.swift": "eae49d23d7addefbd33215967b2b83ddc80510eb157a4a0c45c69005d94ddfea",
+      "Sources/IslandCore/State.swift": "1eafd0d1239b225de42483636ad01ee5c62cd7ede0ecee81d00ff675a458200a",
+      "Sources/IslandCore/TaskCreation.swift": "6e0de04ea1af66175e3ea36e84cc791d5a5611e47f7acff47ae82c3ffa5b38a2",
+      "Sources/IslandCore/TerminalText.swift": "0601204d12182713abee3880d7f6a2f745a8c6a973bbb2930fddde9b3a87d48b",
+      "Sources/IslandCore/WindowLock.swift": "6d4dff335d6ea92a9041d44188de6160bf1d0afbfb4678c6de4e1000cf1938a1"
+    },
+    "artifact_sha256": {
+      ".build/out/Products/Release/libHerdrKit.a": "68b68c749167986c26574ff9af13e4de02ac95c34e25b7622da3e9907b847443",
+      ".build/out/Products/Release/libIslandCore.a": "11bd6ae6227ec3fa34344b5e0fb4233681dceda8cb675875489d4de05930bf81",
+      "build/HerdrIsland.app/Contents/MacOS/HerdrIsland": "360534c60a491d20b815b22b9fc5da2f207b0ef89253db63a9e7944fe9a621de"
+    },
+    "system": "ProductName:\t\tmacOS\nProductVersion:\t\t26.6.2\nBuildVersion:\t\t25G83",
+    "machine": "Mac15,7",
+    "logical_cpus": 12,
+    "memory_bytes": 38654705664,
+    "swift_version": "Apple Swift version 6.4.2 (swiftlang-6.4.2.1.9 clang-2100.4.1.1)\nTarget: arm64-apple-macosx26.0",
+    "herdr_version": "herdr 0.9.5",
+    "host_before": {
+      "load_average": [
+        17.36865234375,
+        17.00927734375,
+        13.5419921875
+      ],
+      "swift_frontend_count": 0
+    },
+    "live_tasks_enabled": true,
+    "live_multiline_enabled": true,
+    "tasks_only": true,
+    "measurement_basis": "Frozen prebuilt release libraries/application; not a clean HEAD checkout.",
+    "sources_newer_than_library": [],
+    "harness_sha256": "799497ad54a221105b3fc7a8b32cb9192a628a15e51c1fe1eea490e72b36f54a",
+    "fixture_sha256": "cb67c0629dd3ee1d215aa7e43f8da814a9e773c5fdaf7c85022835733d7a1c6e",
+    "runner_sha256": "66d6d390ae6d2542bea28691dc691ef7696290e66bfec47bb9e61bf94a8f3dbb",
+    "capture_source_sha256": {
+      "WindowCaptureLookup.swift": "3a19c65883d03ce9dcb610e6646e149148b8e0b1b8a68c302591323b673a3383",
+      "WindowCaptureService.swift": "b3b302dc526f439a3a3c73a8c4cae2a2ac3ea10a388a3126bdd2a2723708626d",
+      "WindowDragCoordinator.swift": "9e96bc37fd731ae39d84bddc446892da381ba8afcece0b149ff971a208aad86b"
+    },
+    "completed": true,
+    "elapsed_run_seconds": 121.73655141699999,
+    "host_after": {
+      "load_average": [
+        17.8115234375,
+        19.3017578125,
+        16.02099609375
+      ],
+      "swift_frontend_count": 0
+    },
+    "sources_changed_during_run": []
+  },
+  "app_capture_probes": []
+}

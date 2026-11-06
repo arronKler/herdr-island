@@ -11,19 +11,24 @@ struct QuickTaskView: View {
         VStack(alignment: .leading, spacing: 7) {
             header
             input
-            controls
-            if let error = quickTask.error {
+            if let creation = quickTask.creation {
+                TaskCreationStatusView(progress: creation, error: quickTask.error, openPane: actions.jump)
+                    .padding(.top, 4)
+            } else {
+                controls
+            }
+            if quickTask.creation == nil, let error = quickTask.error {
                 Text(error)
-                    .font(Theme.sans(9))
+                    .font(Theme.sans(Theme.TypeSize.caption))
                     .foregroundStyle(Theme.red)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
-            footer
+            if quickTask.creation == nil { footer }
         }
-        .padding(.horizontal, 14)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
+        .padding(.horizontal, Theme.Layout.pad)
+        .padding(.top, 16)
+        .padding(.bottom, 14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {
             DispatchQueue.main.async { focused = true }
@@ -31,98 +36,87 @@ struct QuickTaskView: View {
     }
 
     private var footer: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 6) {
             Image(systemName: "sparkles")
-                .font(.system(size: 7, weight: .medium))
+                .font(.system(size: 9, weight: .medium))
                 .foregroundStyle(Theme.textTertiary)
             Text("在 \(IslandFormat.folderName(quickTask.cwd)) 新建 \(quickTask.kind.displayName)，不改动现有终端")
-                .font(Theme.code(8))
+                .font(Theme.code(9.5))
                 .foregroundStyle(Theme.textSecondary.opacity(0.85))
                 .lineLimit(1)
             Spacer(minLength: 4)
             Text("⌘↩ 开始")
-                .font(Theme.code(8))
+                .font(Theme.code(9.5))
                 .foregroundStyle(Theme.textTertiary)
         }
-        .frame(height: 14)
+        .frame(height: 18)
     }
 
     private var header: some View {
-        HStack(spacing: 7) {
-            AgentMarkView(kind: quickTask.kind.rawValue, size: 18)
+        HStack(spacing: 9) {
+            AgentMarkView(kind: quickTask.kind.rawValue, size: 22)
             Text("新任务")
-                .font(Theme.sans(12, weight: .semibold))
+                .font(Theme.sans(Theme.TypeSize.title, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
             Text("从当前目录开始")
-                .font(Theme.code(8.5))
+                .font(Theme.code(Theme.TypeSize.micro))
                 .foregroundStyle(Theme.textTertiary)
             Spacer(minLength: 4)
-            if quickTask.isCreating {
-                ProgressView()
-                    .controlSize(.mini)
-                Text("正在启动 \(quickTask.kind.displayName)…")
-                    .font(Theme.code(8.5))
-                    .foregroundStyle(Theme.textSecondary)
-            }
             Button(action: actions.closeQuickTask) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.textTertiary)
-                    .frame(width: 20, height: 20)
-                    .background(RoundedRectangle(cornerRadius: 5).fill(Color.white.opacity(0.04)))
+                    .frame(width: 26, height: 26)
+                    .background(RoundedRectangle(cornerRadius: 7).fill(Color.white.opacity(0.04)))
             }
             .buttonStyle(.plain)
             .disabled(quickTask.isCreating)
             .help("关闭 (esc)")
             .accessibilityLabel("关闭新任务输入框")
         }
-        .frame(height: 20)
+        .frame(height: 26)
     }
 
     private var input: some View {
-        HStack(spacing: 6) {
-            TextField("给 \(quickTask.kind.displayName) 一个任务…", text: draftBinding)
+        let placeholder = "给 \(quickTask.kind.displayName) 一个任务…"
+        return HStack(spacing: 8) {
+            TextField("", text: draftBinding)
                 .textFieldStyle(.plain)
-                .font(Theme.sans(11))
+                .font(Theme.sans(Theme.TypeSize.body))
                 .foregroundStyle(Theme.textPrimary)
                 .focused($focused)
                 .disabled(quickTask.isCreating)
                 .onSubmit { actions.submitQuickTask() }
-                .padding(.horizontal, 9)
-                .frame(height: 32)
+                .padding(.horizontal, 12)
+                .frame(height: 38)
+                .fieldPlaceholder(
+                    placeholder,
+                    text: quickTask.draft,
+                    insets: EdgeInsets(top: 0, leading: 12, bottom: 0, trailing: 0)
+                )
+                .accessibilityLabel(placeholder)
                 .background(
-                    RoundedRectangle(cornerRadius: 8)
+                    RoundedRectangle(cornerRadius: 9)
                         .fill(Theme.field)
                         .overlay(
-                            RoundedRectangle(cornerRadius: 8)
+                            RoundedRectangle(cornerRadius: 9)
                                 .stroke(focused ? Theme.amberLine : .clear, lineWidth: 0.7)
                         )
                 )
-            Button(action: actions.submitQuickTask) {
-                HStack(spacing: 4) {
-                    Text(quickTask.isCreating ? "启动中" : "开始")
-                        .font(Theme.sans(9.5, weight: .semibold))
-                    if !quickTask.isCreating {
-                        Image(systemName: "return")
-                            .font(.system(size: 7, weight: .semibold))
-                            .opacity(0.7)
-                    }
-                }
-                .foregroundStyle(quickTask.canSubmit ? Color(red: 0.09, green: 0.07, blue: 0.03) : Theme.textTertiary)
-                .padding(.horizontal, 10)
-                .frame(height: 32)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(quickTask.canSubmit ? Theme.amber : Color.white.opacity(0.04))
-                )
+            IslandButton(
+                title: quickTask.isCreating ? "创建中" : (quickTask.creation?.pane == nil ? "开始" : "已创建"),
+                trailingIcon: quickTask.isCreating ? nil : "return",
+                tier: .primary,
+                size: .large,
+                isEnabled: quickTask.canSubmit
+            ) {
+                actions.submitQuickTask()
             }
-            .buttonStyle(.plain)
-            .disabled(!quickTask.canSubmit)
         }
     }
 
     private var controls: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: 6) {
             ForEach(AgentKindOption.primary) { kind in
                 kindChip(kind)
             }
@@ -135,30 +129,30 @@ struct QuickTaskView: View {
                     }
                 }
             } label: {
-                HStack(spacing: 3) {
+                HStack(spacing: 4) {
                     if AgentKindOption.more.contains(quickTask.kind) {
-                        AgentMarkView(kind: quickTask.kind.rawValue, size: 14)
+                        AgentMarkView(kind: quickTask.kind.rawValue, size: 18)
                     } else {
                         Image(systemName: "ellipsis")
-                            .font(.system(size: 8, weight: .semibold))
+                            .font(.system(size: 10, weight: .semibold))
                     }
                     Text(AgentKindOption.more.contains(quickTask.kind) ? quickTask.kind.displayName : "更多")
-                        .font(Theme.sans(8.5))
+                        .font(Theme.sans(10.5))
                         .lineLimit(1)
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 6, weight: .semibold))
+                        .font(.system(size: 8, weight: .semibold))
                 }
                 .foregroundStyle(AgentKindOption.more.contains(quickTask.kind) ? Theme.amber : Theme.textTertiary)
-                .padding(.horizontal, 7)
-                .frame(maxWidth: 84)
-                .frame(height: 24)
+                .padding(.horizontal, 9)
+                .frame(maxWidth: 104)
+                .frame(height: 30)
                 .background(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 8)
                         .fill(AgentKindOption.more.contains(quickTask.kind)
                             ? Theme.amber.opacity(0.07)
                             : Color.white.opacity(0.03))
                         .overlay(
-                            RoundedRectangle(cornerRadius: 6)
+                            RoundedRectangle(cornerRadius: 8)
                                 .stroke(AgentKindOption.more.contains(quickTask.kind)
                                     ? Theme.amberLine
                                     : Theme.hairline, lineWidth: 0.6)
@@ -171,20 +165,20 @@ struct QuickTaskView: View {
             .disabled(quickTask.isCreating)
 
             Button(action: actions.chooseQuickTaskCwd) {
-                HStack(spacing: 4) {
+                HStack(spacing: 5) {
                     Image(systemName: "folder")
-                        .font(.system(size: 8, weight: .medium))
+                        .font(.system(size: 10, weight: .medium))
                     Text(IslandFormat.folderName(quickTask.cwd))
                         .lineLimit(1)
                         .truncationMode(.middle)
                 }
-                .font(Theme.sans(8.5))
+                .font(Theme.sans(10.5))
                 .foregroundStyle(Theme.textSecondary)
-                .padding(.horizontal, 7)
-                .frame(maxWidth: 96, alignment: .leading)
-                .frame(height: 24)
+                .padding(.horizontal, 9)
+                .frame(maxWidth: 120, alignment: .leading)
+                .frame(height: 30)
                 .background(
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: 8)
                         .stroke(Theme.hairline, lineWidth: 0.6)
                 )
             }
@@ -201,19 +195,19 @@ struct QuickTaskView: View {
         return Button {
             actions.quickTaskKind(kind)
         } label: {
-            HStack(spacing: 4) {
-                AgentMarkView(kind: kind.rawValue, size: 15)
+            HStack(spacing: 5) {
+                AgentMarkView(kind: kind.rawValue, size: 18)
                 Text(kind.displayName)
-                    .font(Theme.sans(8.5, weight: selected ? .semibold : .regular))
+                    .font(Theme.sans(10.5, weight: selected ? .semibold : .regular))
             }
             .foregroundStyle(selected ? Theme.textPrimary : Theme.textTertiary)
-            .padding(.horizontal, 5)
-            .frame(height: 24)
+            .padding(.horizontal, 8)
+            .frame(height: 30)
             .background(
-                RoundedRectangle(cornerRadius: 6)
+                RoundedRectangle(cornerRadius: 8)
                     .fill(selected ? Theme.amber.opacity(0.07) : Color.white.opacity(0.02))
                     .overlay(
-                        RoundedRectangle(cornerRadius: 6)
+                        RoundedRectangle(cornerRadius: 8)
                             .stroke(selected ? Theme.amberLine : Theme.hairline, lineWidth: 0.6)
                     )
             )

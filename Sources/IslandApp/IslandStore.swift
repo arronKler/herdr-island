@@ -61,8 +61,13 @@ final class IslandStore: ObservableObject {
     }
 
     func handle(_ event: IslandEvent) {
+        let previousWindow = state.drop?.window ?? state.windowLock
         let effects = IslandReducer.reduce(&state, event, now: Date())
         publish()
+        if let target = state.drop?.window ?? state.windowLock,
+           target.windowID != previousWindow?.windowID || target.ownerPID != previousWindow?.ownerPID {
+            Task { await WindowCaptureService.prepare(target) }
+        }
         for effect in effects {
             run(effect)
         }
@@ -138,11 +143,40 @@ final class IslandStore: ObservableObject {
         let kind = AgentKindOption(
             rawValue: UserDefaults.standard.string(forKey: Self.quickTaskKindKey) ?? ""
         ) ?? .claude
-        let directory = cachedFocusedCwd
-            ?? FileManager.default.homeDirectoryForCurrentUser.path
-        dropCwdChosen = false
-        handle(.beginDrop(cwd: directory, kind: kind, branch: nextBranch()))
+        let last = Self.existingDirectory(
+            UserDefaults.standard.string(forKey: Self.dropLastCwdKey)
+        )
+        let defaultCwd = Self.existingDirectory(
+            UserDefaults.standard.string(forKey: Self.dropDefaultCwdKey)
+        )
+        let choice = DropDirectoryPolicy.initialCwd(
+            last: last,
+            defaultCwd: defaultCwd,
+            focused: cachedFocusedCwd,
+            home: FileManager.default.homeDirectoryForCurrentUser.path
+        )
+        dropCwdChosen = choice.isExplicit
+        handle(.beginDrop(cwd: choice.path, kind: kind, branch: nextBranch()))
+        handle(.setDropDefaultCwd(defaultCwd))
         refreshFocusedCwd(updateOpenTask: false, updateDrop: true)
+        refreshDropCwds()
+    }
+
+    private func refreshDropCwds() {
+        let actions = self.actions
+        Task { [weak self] in
+            let cwds = await actions.paneCwds()
+            let existing = cwds.filter { Self.existingDirectory($0) != nil }
+            await MainActor.run { self?.handle(.setDropHerdrCwds(existing)) }
+        }
+    }
+
+    private nonisolated static func existingDirectory(_ path: String?) -> String? {
+        guard let path, !path.isEmpty else { return nil }
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory),
+              isDirectory.boolValue else { return nil }
+        return path
     }
 
     func endDrop() { handle(.endDrop) }
@@ -154,10 +188,18 @@ final class IslandStore: ObservableObject {
         handle(.setDropKind(kind))
     }
     func setDropCwd(_ path: String) {
+        UserDefaults.standard.set(path, forKey: Self.dropLastCwdKey)
         dropCwdChosen = true
         handle(.setDropCwd(path))
     }
+
+    func setDropDefaultCwd(_ path: String) {
+        UserDefaults.standard.set(path, forKey: Self.dropDefaultCwdKey)
+        handle(.setDropDefaultCwd(path))
+    }
+
     func setDropWorktree(_ enabled: Bool) { handle(.setDropWorktree(enabled)) }
+    func setDropWindow(_ target: WindowTarget?) { handle(.setDropWindow(target)) }
 
     func submitDropTask() {
         let suffix = UUID().uuidString
@@ -196,6 +238,8 @@ final class IslandStore: ObservableObject {
     }
 
     private static let quickTaskKindKey = "herdrIsland.quickTaskKind"
+    private static let dropLastCwdKey = "herdrIsland.dropLastCwd"
+    private static let dropDefaultCwdKey = "herdrIsland.dropDefaultCwd"
 
     func lockWindow(_ target: WindowTarget) {
         let kind = AgentKindOption(
@@ -271,6 +315,69 @@ final class IslandStore: ObservableObject {
         onPresentationChange?(next)
     }
 
+    private func createQuickTask(_ request: QuickTaskRequest) {
+        let actions = self.actions
+        Task { [weak self] in
+            let result = await actions.createTask(request) { [weak self] progress in
+                await self?.handle(.quickTaskProgress(progress))
+            }
+            await MainActor.run {
+                self?.handle(.quickTaskResult(result))
+            }
+        }
+    }
+
+    private func createDropTask(_ request: QuickTaskRequest) {
+        let actions = self.actions
+        Task { [weak self] in
+            let result = await actions.createTask(request) { [weak self] progress in
+                await self?.handle(.dropTaskProgress(progress))
+            }
+            await MainActor.run {
+                self?.handle(.dropTaskResult(result))
+            }
+        }
+    }
+
+    /// The drop composer waits here while the window is captured, then hands
+    /// the same request to the normal task creation path with the screenshot
+    /// path folded into the prompt.
+    private func captureDropWindow(_ request: DropWindowCaptureRequest) {
+        Task { [weak self] in
+            guard let self else { return }
+            let granted = WindowCaptureService.requestPermission()
+            handle(.windowCapturePermission(granted))
+            guard granted else {
+                handle(.dropTaskResult(.failure(BackendFailure(
+                    .screenCapturePermission,
+                    "屏幕录制未开启，无法截取窗口。请开启后重试。"
+                ))))
+                return
+            }
+
+            switch await WindowCaptureService.capture(request.target) {
+            case .success(let path):
+                let prompt = WindowPrompt.text(
+                    target: request.target,
+                    screenshotPath: path,
+                    task: request.text,
+                    label: "Window"
+                )
+                handle(.dropTaskProgress(TaskCreationProgress(startedAt: Date())))
+                createDropTask(QuickTaskRequest(
+                    name: request.name,
+                    text: prompt,
+                    kind: request.kind,
+                    cwd: request.cwd,
+                    label: request.label,
+                    worktreeBranch: request.worktreeBranch
+                ))
+            case .failure(let failure):
+                handle(.dropTaskResult(.failure(failure)))
+            }
+        }
+    }
+
     private func run(_ effect: IslandEffect) {
         switch effect {
         case .sampleNow:
@@ -313,19 +420,13 @@ final class IslandStore: ObservableObject {
             }
 
         case .createQuickTask(let request):
-            let actions = self.actions
-            let isDrop = state.drop != nil
-            Task { [weak self] in
-                let result = await actions.createTask(request)
-                await MainActor.run {
-                    guard let self else { return }
-                    if isDrop {
-                        self.handle(.dropTaskResult(result))
-                    } else {
-                        self.handle(.quickTaskResult(result))
-                    }
-                }
-            }
+            createQuickTask(request)
+
+        case .createDropTask(let request):
+            createDropTask(request)
+
+        case .captureDropWindow(let request):
+            captureDropWindow(request)
 
         case .requestScreenCapturePermission:
             let granted = WindowCaptureService.requestPermission()
@@ -365,10 +466,13 @@ final class IslandStore: ObservableObject {
                         kind: kind,
                         cwd: cwd,
                         label: label
-                    ))
+                    )) { [weak self] progress in
+                        await self?.handle(.windowTaskProgress(token: request.token, progress: progress))
+                    }
                     switch outcome {
                     case .success(let launch):
-                        result = .success(launch.name)
+                        self?.handle(.windowTaskCreated(token: request.token, launch: launch))
+                        return
                     case .failure(let failure):
                         result = .failure(failure)
                     }
