@@ -56,6 +56,7 @@ public enum IslandEvent: Sendable, Equatable {
     case lockWindow(WindowTarget, kind: AgentKindOption, cwd: String)
     case unlockWindow
     case windowTargetClosed
+    case dropWindowClosed
     case beginWindowDrag
     case endWindowDrag
     case setWindowTaskDraft(String)

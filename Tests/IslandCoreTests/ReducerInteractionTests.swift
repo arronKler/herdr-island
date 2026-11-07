@@ -572,6 +572,73 @@ final class ReducerInteractionTests: XCTestCase {
         XCTAssertEqual(p.drop?.window?.windowID, 4242)
     }
 
+    func testHotKeyKeepsDropWhileWindowCaptureIsRunning() {
+        var state = windowDropState()
+        _ = state.apply(.submitDropTask(name: "island-preview"))
+        XCTAssertEqual(state.drop?.phase, .capturing)
+
+        _ = state.apply(.hotKey)
+        XCTAssertEqual(state.drop?.phase, .capturing)
+        XCTAssertTrue(state.dropActive)
+
+        _ = state.apply(.escape)
+        XCTAssertEqual(state.drop?.phase, .capturing)
+        XCTAssertTrue(state.dropActive)
+    }
+
+    func testLockDismissesAnOpenDropAndKeepsItsDraft() {
+        var state = windowDropState()
+        _ = state.apply(.lockWindow(
+            WindowTarget(
+                windowID: 4242,
+                ownerPID: 999,
+                appName: "Feishu",
+                bundleIdentifier: "com.bytedance.feishu",
+                title: "Q4 planning review",
+                bounds: CGRect(x: 420, y: 180, width: 900, height: 620)
+            ),
+            kind: .claude,
+            cwd: "/tmp/pairfob"
+        ))
+
+        XCTAssertNil(state.drop)
+        XCTAssertFalse(state.dropActive)
+        XCTAssertNotNil(state.windowLock)
+        XCTAssertEqual(state.dropDraftRecovery?.draft, "Review this window")
+    }
+
+    func testDropWindowClosedClearsTheWindowButKeepsTheDraft() {
+        var state = windowDropState()
+        _ = state.apply(.dropWindowClosed)
+
+        XCTAssertNil(state.drop?.window)
+        XCTAssertEqual(state.drop?.draft, "Review this window")
+        XCTAssertEqual(state.drop?.error, "目标窗口已关闭，已改为不带截图的任务。")
+    }
+
+    func testLockWindowDuringCreationShowsFeedback() {
+        var state = windowDropState()
+        _ = state.apply(.submitDropTask(name: "island-preview"))
+        XCTAssertEqual(state.drop?.phase, .capturing)
+
+        let effects = state.apply(.lockWindow(
+            WindowTarget(
+                windowID: 4242,
+                ownerPID: 999,
+                appName: "Feishu",
+                bundleIdentifier: "com.bytedance.feishu",
+                title: "Q4 planning review",
+                bounds: CGRect(x: 420, y: 180, width: 900, height: 620)
+            ),
+            kind: .claude,
+            cwd: "/tmp/pairfob"
+        ))
+
+        XCTAssertTrue(effects.isEmpty)
+        XCTAssertEqual(state.drop?.phase, .capturing)
+        XCTAssertEqual(state.banner?.text, "当前任务仍在创建，结束后再锁定窗口。")
+    }
+
     func testDropWindowCaptureFailureKeepsTheWindowContext() {
         var state = windowDropState()
         _ = state.apply(.submitDropTask(name: "island-preview"))

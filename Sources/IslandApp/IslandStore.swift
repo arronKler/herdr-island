@@ -159,7 +159,6 @@ final class IslandStore: ObservableObject {
         handle(.beginDrop(cwd: choice.path, kind: kind, branch: nextBranch()))
         handle(.setDropDefaultCwd(defaultCwd))
         refreshFocusedCwd(updateOpenTask: false, updateDrop: true)
-        refreshDropCwds()
     }
 
     private func refreshDropCwds() {
@@ -180,7 +179,13 @@ final class IslandStore: ObservableObject {
     }
 
     func endDrop() { handle(.endDrop) }
-    func openDropComposer() { handle(.openDropComposer) }
+    func openDropComposer() {
+        handle(.openDropComposer)
+        guard state.drop?.phase == .composing else { return }
+        // The composer is the only surface that lists pane directories, so the
+        // second pane.list read happens only when it actually opens.
+        refreshDropCwds()
+    }
     func closeDropComposer() { handle(.closeDropComposer) }
     func setDropDraft(_ text: String) { handle(.setDropDraft(text)) }
     func setDropKind(_ kind: AgentKindOption) {
@@ -253,6 +258,7 @@ final class IslandStore: ObservableObject {
 
     func unlockWindow() { handle(.unlockWindow) }
     func windowTargetClosed() { handle(.windowTargetClosed) }
+    func dropWindowClosed() { handle(.dropWindowClosed) }
     func beginWindowDrag() { handle(.beginWindowDrag) }
     func endWindowDrag() { handle(.endWindowDrag) }
     func setWindowTaskDraft(_ text: String) { handle(.setWindowTaskDraft(text)) }
@@ -345,7 +351,7 @@ final class IslandStore: ObservableObject {
     private func captureDropWindow(_ request: DropWindowCaptureRequest) {
         Task { [weak self] in
             guard let self else { return }
-            let granted = WindowCaptureService.requestPermission()
+            let granted = await WindowCaptureService.requestPermission()
             handle(.windowCapturePermission(granted))
             guard granted else {
                 handle(.dropTaskResult(.failure(BackendFailure(
@@ -429,8 +435,10 @@ final class IslandStore: ObservableObject {
             captureDropWindow(request)
 
         case .requestScreenCapturePermission:
-            let granted = WindowCaptureService.requestPermission()
-            handle(.windowCapturePermission(granted))
+            Task { [weak self] in
+                let granted = await WindowCaptureService.requestPermission()
+                self?.handle(.windowCapturePermission(granted))
+            }
 
         case .captureWindow(let request):
             Task { [weak self] in

@@ -120,6 +120,10 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     private var lockedDeckHeight: CGFloat?
     private var animator: FrameAnimator?
     private var isOnScreen = false
+    /// True while we hide the panel ourselves. Without this, `resignKey()`
+    /// synchronously posts `windowDidResignKey`, which re-enters the store and
+    /// applies the collapse again, recursing until the stack overflows.
+    private var isHidingPanel = false
     private var keyMonitor: Any?
     private var mouseMonitor: Any?
     private var localMouseMonitor: Any?
@@ -255,9 +259,11 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             }
         } else if isOnScreen, !next.isWindowDragActive {
             animator?.cancel()
+            isOnScreen = false
+            isHidingPanel = true
             panel.resignKey()
             panel.orderOut(nil)
-            isOnScreen = false
+            isHidingPanel = false
             appLog("panel hidden")
         }
 
@@ -296,7 +302,12 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             lockedDeckHeight = nil
             return
         }
-        if lockedDeckHeight == nil || previous.surface != .deck || previous.windowTask != nil {
+        if lockedDeckHeight == nil
+            || previous.surface != .deck
+            || previous.windowTask != nil
+            || previous.filter != next.filter
+            || previous.query != next.query
+            || previous.isSearching != next.isSearching {
             lockedDeckHeight = next.deckHeight
         }
     }
@@ -436,7 +447,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     }
 
     func windowDidResignKey(_ notification: Notification) {
-        guard panel.isVisible else { return }
+        guard panel.isVisible, !isHidingPanel else { return }
         onLostFocus?()
     }
 

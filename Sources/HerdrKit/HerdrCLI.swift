@@ -82,7 +82,15 @@ public actor HerdrCLI {
 
     private func startupRead(_ method: String, params: [String: HerdrRPCValue], arguments: [String]) async throws -> Data {
         try Task.checkCancellation()
-        if let readRPC { return try await readRPC.request(method: method, params: params, timeout: 0.75) }
+        if let readRPC {
+            do {
+                return try await readRPC.request(method: method, params: params, timeout: 0.75)
+            } catch {
+                // Startup reads are safe to retry through the CLI; mutations are
+                // not. One slow or stale socket read must not abort a launch.
+                try Task.checkCancellation()
+            }
+        }
         let output = try await run(arguments, timeout: 0.75)
         guard output.status == 0 else { throw failure(from: output, arguments: arguments) }
         return Data(output.stdout.utf8)
@@ -301,6 +309,10 @@ public actor HerdrCLI {
         do {
             let data = try await readRPC.request(method: method, timeout: min(timeout ?? defaultTimeout, 0.75))
             return try decode(data)
+        } catch is HerdrRPCError {
+            // A valid server refusal is not a broken transport. Let this read
+            // fall back to the CLI without disabling every socket query.
+            return nil
         } catch {
             try Task.checkCancellation()
             // A disconnected/older server should not add a failed socket attempt
@@ -317,7 +329,7 @@ public actor HerdrCLI {
         }
         guard let response = try? JSONDecoder().decode(Response.self, from: Data(output.stdout.utf8)),
               let agent = response.result.agent.domainAgent(), agent.pane == pane,
-              [.working, .blocked, .done].contains(agent.status) else {
+              [.working, .blocked, .done].contains(agent.status) || agent.completionSeq != nil else {
             throw BackendFailure(.decode, "Herdr 未返回新任务的启动确认。")
         }
         return agent

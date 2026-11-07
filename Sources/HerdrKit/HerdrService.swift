@@ -1,6 +1,15 @@
 import Foundation
 import IslandCore
 
+/// Records the creation stage reported by the observation tasks that confirm a
+/// native Claude launch, so a failure after submission gets the right recovery.
+private actor TaskCreationStageTracker {
+    private var stage: TaskCreationStage
+    init(_ stage: TaskCreationStage) { self.stage = stage }
+    func update(_ next: TaskCreationStage) { stage = next }
+    func current() -> TaskCreationStage { stage }
+}
+
 public actor HerdrService: AgentSource, AgentActions {
     private let cli: HerdrCLI
     private let socketURL: URL
@@ -141,7 +150,7 @@ public actor HerdrService: AgentSource, AgentActions {
         let startedAt = Date()
         let clock = ContinuousClock()
         let start = clock.now
-        var stage = TaskCreationStage.workspace
+        let stageTracker = TaskCreationStageTracker(.workspace)
         var pane: PaneID?
         var worktree: String?
         await onProgress(TaskCreationProgress(startedAt: startedAt))
@@ -157,16 +166,20 @@ public actor HerdrService: AgentSource, AgentActions {
             }
             guard let pane else { throw BackendFailure(.decode, "未获得新终端。") }
             log("task \(request.name): workspace ready after \(start.duration(to: clock.now))")
-            stage = .agent
-            await onProgress(TaskCreationProgress(stage: stage, startedAt: startedAt, pane: pane))
+            await stageTracker.update(.agent)
+            await onProgress(TaskCreationProgress(stage: .agent, startedAt: startedAt, pane: pane))
             let agent: Agent
             if request.kind == .claude, NativeTaskLaunch.supportsNativePrompt(request.text) {
                 let observations = await observeTask(pane)
                 defer { taskObservers.removeValue(forKey: pane)?.finish() }
+                let trackedProgress: TaskCreationObserver = { progress in
+                    await stageTracker.update(progress.stage)
+                    await onProgress(progress)
+                }
                 agent = try await NativeTaskLaunch.confirm(
                     cli: cli, request: request, pane: pane, startedAt: startedAt,
                     observations: observations,
-                    onProgress: onProgress
+                    onProgress: trackedProgress
                 )
             } else {
                 try await cli.startAgent(name: request.name, kind: request.kind.rawValue, pane: pane, timeout: 50)
@@ -178,8 +191,8 @@ public actor HerdrService: AgentSource, AgentActions {
                     )
                 }
                 log("task \(request.name): agent ready after \(start.duration(to: clock.now))")
-                stage = .submission
-                await onProgress(TaskCreationProgress(stage: stage, startedAt: startedAt, pane: pane))
+                await stageTracker.update(.submission)
+                await onProgress(TaskCreationProgress(stage: .submission, startedAt: startedAt, pane: pane))
                 do {
                     agent = try await cli.promptAndConfirm(pane: pane, text: request.text)
                 } catch let failure as BackendFailure where failure.kind == .promptStalled {
@@ -191,6 +204,7 @@ public actor HerdrService: AgentSource, AgentActions {
             return .success(TaskLaunchResult(pane: pane, name: request.name, worktree: worktree, agent: agent))
         } catch {
             let failure = Self.backendFailure(error)
+            let stage = await stageTracker.current()
             log("task \(request.name): \(stage) failed after \(start.duration(to: clock.now))")
             let message: String
             if let pane {

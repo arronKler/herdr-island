@@ -21,6 +21,9 @@ final class WindowDragCoordinator {
 
     private let excludingPID: Int32
     private var mode: Mode = .idle
+    /// Called when the attached window disappears, so the store can drop the
+    /// stale window task context instead of failing every later capture.
+    var onTargetClosed: (() -> Void)?
     private var sawMove = false
     private var overlayWindow: DragHighlightWindow?
     private var overlayScreenFrame: CGRect?
@@ -237,6 +240,7 @@ final class WindowDragCoordinator {
             missedPolls += 1
             if missedPolls >= 3 {
                 clearAttachment()
+                onTargetClosed?()
             }
             return
         }

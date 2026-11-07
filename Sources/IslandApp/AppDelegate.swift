@@ -82,6 +82,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let dragCoordinator = WindowDragCoordinator(
             excludingPID: ProcessInfo.processInfo.processIdentifier
         )
+        dragCoordinator.onTargetClosed = { [weak store] in store?.dropWindowClosed() }
         self.dragCoordinator = dragCoordinator
         let tetherController = WindowTetherController(
             anchorProvider: { [weak panelController] in panelController?.tetherAnchor }

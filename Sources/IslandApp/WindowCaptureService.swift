@@ -22,13 +22,18 @@ enum WindowCaptureService {
         CGPreflightScreenCaptureAccess()
     }
 
-    /// Asks the system for Screen Recording access. Triggers the TCC prompt when needed.
-    @MainActor
-    static func requestPermission() -> Bool {
+    /// Asks the system for Screen Recording access. Triggers the TCC prompt when
+    /// needed. `CGRequestScreenCaptureAccess` blocks until the user answers, so
+    /// it must not run on the main actor.
+    static func requestPermission() async -> Bool {
         if CGPreflightScreenCaptureAccess() {
             return true
         }
-        return CGRequestScreenCaptureAccess()
+        return await withCheckedContinuation { continuation in
+            DispatchQueue.global(qos: .userInitiated).async {
+                continuation.resume(returning: CGRequestScreenCaptureAccess())
+            }
+        }
     }
 
     /// Captures `target` and returns the absolute path of a freshly written PNG.

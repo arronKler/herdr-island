@@ -31,7 +31,7 @@ public enum IslandReducer {
                     state.quickTask = nil
                 }
             } else if state.drop != nil {
-                if state.drop?.phase != .creating {
+                if state.drop?.phase == .composing {
                     state.drop = nil
                     state.dropActive = false
                 }
@@ -53,7 +53,7 @@ public enum IslandReducer {
                 return []
             }
             if state.drop != nil {
-                if state.drop?.phase != .creating {
+                if state.drop?.phase == .composing {
                     state.drop = nil
                     state.dropActive = false
                     state.banner = nil
@@ -359,7 +359,14 @@ public enum IslandReducer {
         case .dropTaskResult(let result):
             return finishDropTask(&state, result: result, now: now)
         case .lockWindow(let target, let kind, let cwd):
-            guard !state.isCreatingTask else { return [] }
+            guard !state.isCreatingTask else {
+                state.banner = Banner(
+                    text: "当前任务仍在创建，结束后再锁定窗口。",
+                    isError: false,
+                    source: .info
+                )
+                return []
+            }
             return applyLock(&state, target: target, kind: kind, cwd: cwd)
         case .unlockWindow:
             clearWindowLock(&state)
@@ -376,6 +383,11 @@ public enum IslandReducer {
                 isError: false,
                 source: .info
             )
+            return []
+        case .dropWindowClosed:
+            guard state.drop?.window != nil else { return [] }
+            state.drop?.window = nil
+            state.drop?.error = "目标窗口已关闭，已改为不带截图的任务。"
             return []
         case .beginWindowDrag:
             state.windowDragActive = true
@@ -426,6 +438,19 @@ public enum IslandReducer {
         kind: AgentKindOption,
         cwd: String
     ) -> [IslandEffect] {
+        // Option-dragging takes over from an open drop composer. Keep its draft
+        // for the next drop instead of letting the hidden drop shadow the
+        // window task we are about to create.
+        if let drop = state.drop, !drop.isBusy, !drop.didCreate, !drop.trimmedDraft.isEmpty {
+            state.dropDraftRecovery = DropDraftRecovery(
+                draft: drop.draft,
+                kind: drop.kind,
+                cwd: drop.cwd,
+                useWorktree: drop.useWorktree
+            )
+        }
+        state.drop = nil
+        state.dropActive = false
         state.windowLock = target
         state.windowTask = WindowTaskState(
             destinationAgent: defaultWindowTaskAgent(state),

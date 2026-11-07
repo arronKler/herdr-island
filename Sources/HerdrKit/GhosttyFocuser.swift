@@ -40,7 +40,7 @@ public struct GhosttyFocuser: Sendable {
                         continuation.resume(returning: .success(.exactTerminal(tty: tty)))
                         return
                     } catch let failure as BackendFailure {
-                        if [.automationDenied, .timeout, .ghosttyNotFound].contains(failure.kind) {
+                        if failure.kind == .automationDenied {
                             continuation.resume(returning: .failure(failure))
                             return
                         }

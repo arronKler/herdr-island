@@ -632,7 +632,7 @@ final class LiquidDropSurfaceView: NSView {
             onDragMove(local, screenPoint(event))
             return
         }
-        if !moved, hypot(local.x - start.x, local.y - start.y) > 0.6 {
+        if !moved, hypot(local.x - start.x, local.y - start.y) > 4 {
             moved = true
         }
         target = local
@@ -641,6 +641,7 @@ final class LiquidDropSurfaceView: NSView {
 
     override func mouseUp(with event: NSEvent) {
         let local = convert(event.locationInWindow, from: nil)
+        let pressOrigin = pressStart
         let wasOption = optionDragging
         let wasPress = pressStart != nil
         pressStart = nil
@@ -658,20 +659,25 @@ final class LiquidDropSurfaceView: NSView {
         }
         dragging = false
         NSCursor.openHand.set()
-        onDragEnd(local, screenPoint(event), detached)
-        finishDrag(at: local)
+        if let pressOrigin, hypot(local.x - pressOrigin.x, local.y - pressOrigin.y) > 4 {
+            moved = true
+        }
+        let releaseDetached = detached
+            || hypot(local.x - anchor.x, local.y - anchor.y) > breakDistance
+        onDragEnd(local, screenPoint(event), releaseDetached)
+        finishDrag(at: local, detachedAtRelease: releaseDetached)
         window?.invalidateCursorRects(for: self)
         updateTimer()
     }
 
-    private func finishDrag(at local: CGPoint) {
+    private func finishDrag(at local: CGPoint, detachedAtRelease: Bool) {
         let a = anchor
-        let distance = hypot(point.x - a.x, point.y - a.y)
+        let distance = hypot(local.x - a.x, local.y - a.y)
         if !moved {
             onTap(point, detached)
             return
         }
-        if distance > breakDistance || detached {
+        if distance > breakDistance || detachedAtRelease {
             detach()
             rest = point
             let token = UUID()
