@@ -362,80 +362,10 @@ struct DetailView: View {
     }
 
     private var terminal: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(red: 0.035, green: 0.039, blue: 0.051))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Theme.hairline, lineWidth: 0.6)
-                )
-            if presentation.preview?.isLoading == true {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.mini)
-                    Text("正在读取终端…")
-                        .font(Theme.code(Theme.TypeSize.terminal))
-                        .foregroundStyle(Theme.textTertiary)
-                }
-            } else if let failure = presentation.preview?.failure {
-                Text(failure)
-                    .font(Theme.code(Theme.TypeSize.terminal))
-                    .foregroundStyle(Theme.red)
-                    .padding(12)
-            } else {
-                GeometryReader { geometry in
-                    ScrollViewReader { proxy in
-                        ScrollView([.horizontal, .vertical], showsIndicators: true) {
-                            VStack(alignment: .leading, spacing: 1) {
-                                ForEach(Array(terminalLines.enumerated()), id: \.offset) { index, line in
-                                    terminalLine(line, viewportWidth: geometry.size.width - 24)
-                                        .id(index)
-                                }
-                            }
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 10)
-                        }
-                        .defaultScrollAnchor(UnitPoint(x: 0, y: 1))
-                        .onAppear { scrollTerminalToBottom(proxy) }
-                        .onChange(of: presentation.preview?.text) { scrollTerminalToBottom(proxy) }
-                        .onChange(of: geometry.size.height) { scrollTerminalToBottom(proxy) }
-                    }
-                }
-            }
-        }
-        .frame(maxHeight: .infinity)
-        .frame(minHeight: 170)
-    }
-
-    private var terminalLines: [String] {
-        let lines = presentation.preview?.terminalLines ?? []
-        if lines.isEmpty { return ["（终端暂时没有输出）"] }
-        return lines
-    }
-
-    private func scrollTerminalToBottom(_ proxy: ScrollViewProxy) {
-        guard let last = terminalLines.indices.last else { return }
-        proxy.scrollTo(last, anchor: UnitPoint(x: 0, y: 1))
-    }
-
-    @ViewBuilder
-    private func terminalLine(_ line: String, viewportWidth: CGFloat) -> some View {
-        let trimmed = line.trimmingCharacters(in: .whitespaces)
-        let color: Color = {
-            if trimmed.hasPrefix("$") || trimmed.hasPrefix("❯") { return Theme.amber }
-            if trimmed.contains("✓") || trimmed.contains("PASS") || trimmed.contains("passed") { return Theme.mint }
-            if trimmed.contains("✗") || trimmed.contains("FAIL") || trimmed.contains("failed") { return Theme.red }
-            if trimmed.hasPrefix("//") || trimmed.hasPrefix("#") { return Theme.textTertiary }
-            return Theme.textSecondary
-        }()
-        let text = Text(line.isEmpty ? " " : line)
-            .font(Theme.code(Theme.TypeSize.terminal))
-            .foregroundStyle(color)
-            .textSelection(.enabled)
-        if TerminalText.isStructured(line) {
-            text.fixedSize(horizontal: true, vertical: false)
-        } else {
-            text.frame(width: max(viewportWidth, 1), alignment: .leading)
-        }
+        TerminalPreview(preview: presentation.preview)
+            .equatable()
+            .frame(maxHeight: .infinity)
+            .frame(minHeight: 170)
     }
 
     private func actionsRow(_ row: AgentRow) -> some View {
@@ -593,5 +523,174 @@ struct DetailView: View {
         .padding(.horizontal, 12)
         .frame(height: 30)
         .background(RoundedRectangle(cornerRadius: 8).fill((banner.isError ? Theme.red : Theme.mint).opacity(0.09)))
+    }
+}
+
+/// Kept as its own equatable view so the per-second presentation ticks (which
+/// only change elapsed-time labels) cannot rebuild the scroll view under the
+/// reader. New output follows the tail only while the reader is at the tail;
+/// otherwise the visible text stays frozen until they scroll back down.
+private struct TerminalPreview: View, Equatable {
+    let preview: PreviewPresentation?
+
+    static func == (lhs: TerminalPreview, rhs: TerminalPreview) -> Bool {
+        lhs.preview == rhs.preview
+    }
+
+    @State private var followsTail = true
+    @State private var displayedText: String?
+    @State private var lastOffset: CGFloat?
+    @State private var lastViewport: CGFloat?
+
+    private var visibleText: String? { displayedText ?? preview?.text }
+
+    private var lines: [String] {
+        let lines = TerminalText.lines(from: visibleText ?? "")
+        return lines.isEmpty ? ["（终端暂时没有输出）"] : lines
+    }
+
+    var body: some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(red: 0.035, green: 0.039, blue: 0.051))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Theme.hairline, lineWidth: 0.6)
+                )
+            if preview?.isLoading == true {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.mini)
+                    Text("正在读取终端…")
+                        .font(Theme.code(Theme.TypeSize.terminal))
+                        .foregroundStyle(Theme.textTertiary)
+                }
+            } else if let failure = preview?.failure {
+                Text(failure)
+                    .font(Theme.code(Theme.TypeSize.terminal))
+                    .foregroundStyle(Theme.red)
+                    .padding(12)
+            } else {
+                GeometryReader { geometry in
+                    ScrollViewReader { proxy in
+                        ScrollView([.horizontal, .vertical], showsIndicators: true) {
+                            VStack(alignment: .leading, spacing: 1) {
+                                ForEach(Array(lines.enumerated()), id: \.offset) { index, line in
+                                    terminalLine(line, viewportWidth: geometry.size.width - 24)
+                                        .id(index)
+                                }
+                            }
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 10)
+                            .background(
+                                GeometryReader { content in
+                                    Color.clear.preference(
+                                        key: TerminalScrollMetricsKey.self,
+                                        value: TerminalScrollMetrics(
+                                            offset: content.frame(in: .named("terminal")).minY,
+                                            contentHeight: content.size.height
+                                        )
+                                    )
+                                }
+                            )
+                        }
+                        .coordinateSpace(name: "terminal")
+                        .defaultScrollAnchor(UnitPoint(x: 0, y: 1))
+                        .onAppear {
+                            displayedText = preview?.text
+                            scrollToBottom(proxy)
+                        }
+                        .onChange(of: preview?.pane) { _, _ in
+                            followsTail = true
+                            lastOffset = nil
+                            displayedText = preview?.text
+                            scrollToBottom(proxy)
+                        }
+                        .onChange(of: preview?.text) { _, text in
+                            guard followsTail else { return }
+                            displayedText = text
+                        }
+                        // Runs after the new rows are in the view tree, so the
+                        // scroll target exists when we move to it.
+                        .onChange(of: displayedText) { _, _ in
+                            guard followsTail else { return }
+                            scrollToBottom(proxy)
+                        }
+                        .onPreferenceChange(TerminalScrollMetricsKey.self) { metrics in
+                            updateFollowState(
+                                metrics,
+                                viewport: geometry.size.height
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func updateFollowState(
+        _ metrics: TerminalScrollMetrics,
+        viewport: CGFloat
+    ) {
+        let atBottom = TerminalScrollFollow.isAtBottom(
+            offset: metrics.offset,
+            contentHeight: metrics.contentHeight,
+            viewportHeight: viewport
+        )
+        if atBottom {
+            if !followsTail {
+                followsTail = true
+                displayedText = preview?.text
+            }
+        } else if followsTail,
+                  lastViewport.map({ abs($0 - viewport) <= 0.5 }) ?? false,
+                  TerminalScrollFollow.scrolledUp(
+                      offset: metrics.offset,
+                      previousOffset: lastOffset
+                  ) {
+            // A resize clamps the offset too; only a scroll at a stable
+            // viewport height means the reader left the tail.
+            followsTail = false
+        }
+        lastOffset = metrics.offset
+        lastViewport = viewport
+    }
+
+    private func scrollToBottom(_ proxy: ScrollViewProxy) {
+        guard let last = lines.indices.last else { return }
+        proxy.scrollTo(last, anchor: UnitPoint(x: 0, y: 1))
+    }
+
+    @ViewBuilder
+    private func terminalLine(_ line: String, viewportWidth: CGFloat) -> some View {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        let color: Color = {
+            if trimmed.hasPrefix("$") || trimmed.hasPrefix("❯") { return Theme.amber }
+            if trimmed.contains("✓") || trimmed.contains("PASS") || trimmed.contains("passed") { return Theme.mint }
+            if trimmed.contains("✗") || trimmed.contains("FAIL") || trimmed.contains("failed") { return Theme.red }
+            if trimmed.hasPrefix("//") || trimmed.hasPrefix("#") { return Theme.textTertiary }
+            return Theme.textSecondary
+        }()
+        let text = Text(line.isEmpty ? " " : line)
+            .font(Theme.code(Theme.TypeSize.terminal))
+            .foregroundStyle(color)
+            .textSelection(.enabled)
+        if TerminalText.isStructured(line) {
+            text.fixedSize(horizontal: true, vertical: false)
+        } else {
+            text.frame(width: max(viewportWidth, 1), alignment: .leading)
+        }
+    }
+}
+
+private struct TerminalScrollMetrics: Equatable {
+    var offset: CGFloat
+    var contentHeight: CGFloat
+}
+
+private struct TerminalScrollMetricsKey: PreferenceKey {
+    static let defaultValue = TerminalScrollMetrics(offset: 0, contentHeight: 0)
+
+    static func reduce(value: inout TerminalScrollMetrics, nextValue: () -> TerminalScrollMetrics) {
+        value = nextValue()
     }
 }
