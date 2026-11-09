@@ -91,6 +91,8 @@ struct WindowTaskView: View {
                     .background(RoundedRectangle(cornerRadius: 8).fill(Color.white.opacity(0.04)))
             }
             .buttonStyle(.plain)
+            .disabled(windowTask.isBusy)
+            .opacity(windowTask.isBusy ? 0.4 : 1)
             .help("解除锁定")
             .accessibilityLabel("解除窗口锁定")
         }

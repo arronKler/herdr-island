@@ -63,7 +63,7 @@ final class PolicyTests: XCTestCase {
         XCTAssertEqual(KeyboardRouter.route(KeyStroke(key: .escape), composerFocused: true), .dismiss)
         XCTAssertEqual(KeyboardRouter.route(KeyStroke(key: .return, modifiers: .command), composerFocused: true), .send)
 
-        XCTAssertEqual(KeyboardRouter.route(KeyStroke(key: .return), composerFocused: false), .jump)
+        XCTAssertEqual(KeyboardRouter.route(KeyStroke(key: .return), composerFocused: false), .openDetail)
         XCTAssertEqual(KeyboardRouter.route(KeyStroke(key: .upArrow), composerFocused: false), .moveSelection(-1))
         XCTAssertEqual(KeyboardRouter.route(KeyStroke(key: .downArrow), composerFocused: false), .moveSelection(1))
         XCTAssertEqual(KeyboardRouter.route(KeyStroke(key: .tab), composerFocused: false), .focusComposer)

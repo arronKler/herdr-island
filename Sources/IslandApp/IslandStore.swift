@@ -89,19 +89,34 @@ final class IslandStore: ObservableObject {
 
     func toggle() { handle(.hotKey) }
     func escape() { handle(.escape) }
+    func closePanel() { handle(.closePanel) }
+
+    func toggleQuickTask() {
+        guard state.quickTask?.phase != .creating else { return }
+        if state.quickTask != nil {
+            closeQuickTask()
+        } else {
+            openQuickTask()
+        }
+    }
 
     func warmFocusedCwd() {
         refreshFocusedCwd(updateOpenTask: false)
     }
 
     func openQuickTask() {
-        guard state.quickTask == nil else { return }
+        guard state.quickTask == nil,
+              state.drop == nil,
+              !state.dropActive,
+              state.windowTask == nil else { return }
         let kind = AgentKindOption(
             rawValue: UserDefaults.standard.string(forKey: Self.quickTaskKindKey) ?? ""
         ) ?? .claude
         let directory = cachedFocusedCwd
             ?? FileManager.default.homeDirectoryForCurrentUser.path
-        quickTaskCwdChosen = false
+        // A restored draft owns its cwd; the focused-cwd refresh must not
+        // overwrite it.
+        quickTaskCwdChosen = state.quickTaskDraftRecovery != nil
         handle(.openQuickTask(cwd: directory, kind: kind))
         refreshFocusedCwd(updateOpenTask: true)
     }

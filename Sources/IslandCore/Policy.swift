@@ -60,7 +60,7 @@ public struct KeyStroke: Sendable, Equatable {
 public enum KeyCommand: Sendable, Equatable {
     case toggle
     case dismiss
-    case jump
+    case openDetail
     case send
     case moveSelection(Int)
     case focusComposer
@@ -116,7 +116,7 @@ public enum KeyboardRouter {
         }
         switch stroke.key {
         case .return:
-            return .jump
+            return .openDetail
         case .upArrow:
             return .moveSelection(-1)
         case .downArrow:

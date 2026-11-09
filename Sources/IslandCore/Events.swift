@@ -25,6 +25,7 @@ public enum IslandEvent: Sendable, Equatable {
     case setQuery(String)
     case setSearching(Bool)
     case openDeck
+    case closePanel
     case openDetail(PaneID)
     case backToDeck
     case snooze(PaneID)

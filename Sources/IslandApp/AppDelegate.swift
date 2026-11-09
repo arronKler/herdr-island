@@ -137,12 +137,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let quickTaskRegistered = quickTaskHotKey.register { [weak self] in
             MainActor.assumeIsolated {
                 appLog("hotkey Control+Option+N pressed")
-                guard let self, let store = self.store else { return }
-                if store.presentation.quickTask != nil {
-                    self.panelController?.makeKey()
-                } else {
-                    store.openQuickTask()
-                }
+                self?.store?.toggleQuickTask()
             }
         }
         appLog(
@@ -212,7 +207,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actions.composerFocus = { [weak store] focused in store?.setComposerFocus(focused) }
         actions.draft = { [weak store] text in store?.setDraft(text) }
         actions.send = { [weak store] in store?.sendMessage() }
-        actions.close = { [weak store] in store?.escape() }
+        actions.close = { [weak store] in store?.closePanel() }
         actions.toggle = { [weak store] in store?.toggle() }
         actions.openSettings = { [weak self] in self?.showSettings() }
         actions.bannerAction = { [weak self] in self?.handleBannerAction() }
@@ -343,10 +338,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.directoryURL = URL(
             fileURLWithPath: store.presentation.windowTask?.cwd ?? NSHomeDirectory()
         )
+        panelController?.beginPicker()
         panel.begin { [weak self] response in
+            defer { self?.panelController?.endPicker() }
             guard response == .OK, let url = panel.url else { return }
             store.setWindowTaskCwd(url.path)
-            self?.panelController?.makeKey()
         }
     }
 
@@ -359,10 +355,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.directoryURL = URL(
             fileURLWithPath: store.presentation.quickTask?.cwd ?? NSHomeDirectory()
         )
+        panelController?.beginPicker()
         panel.begin { [weak self] response in
+            defer { self?.panelController?.endPicker() }
             guard response == .OK, let url = panel.url else { return }
             store.setQuickTaskCwd(url.path)
-            self?.panelController?.makeKey()
         }
     }
 
@@ -375,10 +372,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.directoryURL = URL(
             fileURLWithPath: store.presentation.drop?.cwd ?? NSHomeDirectory()
         )
+        panelController?.beginPicker()
         panel.begin { [weak self] response in
+            defer { self?.panelController?.endPicker() }
             guard response == .OK, let url = panel.url else { return }
             store.setDropCwd(url.path)
-            self?.panelController?.makeKey()
         }
     }
 

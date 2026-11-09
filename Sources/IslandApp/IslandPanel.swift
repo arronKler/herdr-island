@@ -120,6 +120,12 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     private var lockedDeckHeight: CGFloat?
     private var animator: FrameAnimator?
     private var isOnScreen = false
+    /// True while the folder picker owns the screen. The panel is hidden and
+    /// must not re-show or report lost focus until the picker ends.
+    private var isPickerActive = false
+    /// The display a quick task centers on. Captured when the card opens so a
+    /// later mouse move cannot slide an open card to another screen.
+    private var quickTaskScreenFrame: CGRect?
     /// True while we hide the panel ourselves. Without this, `resignKey()`
     /// synchronously posts `windowDidResignKey`, which re-enters the store and
     /// applies the collapse again, recursing until the stack overflows.
@@ -147,12 +153,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             dropActive: presentation.isDropActive,
             deckHeight: lockedDeckHeight ?? presentation.deckHeight
         )
-        let notch: CGRect?
-        if case .notch(let rect, _) = placement {
-            notch = rect
-        } else {
-            notch = nil
-        }
+        let notch = Self.notchChrome(for: presentation, placement: placement)
         let anchor = IslandGeometry.dropAnchor(for: placement, panelFrame: frame)
         let anchorScreen = IslandGeometry.dropScreenAnchor(for: placement)
 
@@ -212,19 +213,23 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         let previous = presentation
 
         presentation = next
+        if previous.quickTask == nil, next.quickTask != nil {
+            quickTaskScreenFrame = ScreenMetrics.activeScreenFrame()
+        } else if previous.quickTask != nil, next.quickTask == nil {
+            quickTaskScreenFrame = nil
+        }
         syncDeckHeightLock(previous: previous, next: next)
         refreshPlacement()
 
-        let target = Self.frame(
-            placement: placement,
-            expanded: next.isExpanded,
-            quickTask: next.quickTask != nil,
-            quickTaskHeight: next.quickTask?.height ?? IslandGeometry.quickTaskSize.height,
-            surface: next.surface,
-            dropActive: next.isDropActive,
-            deckHeight: effectiveDeckHeight
-        )
+        let target = targetFrame
         render(panelFrame: target)
+
+        // A folder picker owns key focus. Re-showing the panel here would put
+        // it over the picker; endPicker() restores the frame and key.
+        if isPickerActive {
+            refreshMousePolicy()
+            return
+        }
 
         let shouldShow = placement.isNotch
             ? (next.isVisible || next.dropletVisible || next.isWindowDragActive)
@@ -232,26 +237,32 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
 
         let enteredDrop = next.surface == .drop && previous.surface != .drop
         let leftDrop = previous.surface == .drop && next.surface != .drop
+        // The quick task is a modal that belongs in the center. Moving the
+        // panel there from the status item would read as a fly-in animation,
+        // so show it at its final frame instead.
+        let quickTaskOpened = previous.quickTask == nil && next.quickTask != nil
+        let quickTaskClosed = previous.quickTask != nil && next.quickTask == nil
         if shouldShow {
             if !isOnScreen {
-                let start = IslandGeometry.frame(for: placement, expanded: false)
+                let start = quickTaskOpened
+                    ? target
+                    : IslandGeometry.frame(for: placement, expanded: false)
                 panel.setFrame(start, display: true)
                 panel.orderFrontRegardless()
                 isOnScreen = true
-                if enteredDrop || leftDrop {
+                if enteredDrop || leftDrop || quickTaskOpened {
                     animator?.cancel()
                     panel.setFrame(target, display: true)
                 } else {
                     animator?.retarget(from: start, to: target)
                 }
                 logProof(tag: "show")
-            } else if enteredDrop || leftDrop {
+            } else if enteredDrop || leftDrop || quickTaskOpened || quickTaskClosed {
                 animator?.cancel()
                 panel.setFrame(target, display: true)
             } else {
                 animator?.retarget(from: panel.frame, to: target)
             }
-            let quickTaskOpened = previous.quickTask == nil && next.quickTask != nil
             let windowTaskOpened = previous.windowTask == nil && next.windowTask != nil
             let dropOpened = previous.drop == nil && next.drop != nil
             if needsKey || next.isComposerFocused || quickTaskOpened || windowTaskOpened || dropOpened {
@@ -295,6 +306,20 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         lockedDeckHeight ?? presentation.deckHeight
     }
 
+    /// The frame the panel should have for the current presentation.
+    private var targetFrame: CGRect {
+        Self.frame(
+            placement: placement,
+            expanded: presentation.isExpanded,
+            quickTask: presentation.quickTask != nil,
+            quickTaskHeight: presentation.quickTask?.height ?? IslandGeometry.quickTaskSize.height,
+            surface: presentation.surface,
+            dropActive: presentation.isDropActive,
+            deckHeight: effectiveDeckHeight,
+            quickTaskScreen: quickTaskScreenFrame
+        )
+    }
+
     /// Captures the deck height when the deck opens, and releases the lock as
     /// soon as a window task owns the panel or the surface changes.
     private func syncDeckHeightLock(previous: IslandPresentation, next: IslandPresentation) {
@@ -319,7 +344,8 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         quickTaskHeight: CGFloat,
         surface: IslandSurface,
         dropActive: Bool,
-        deckHeight: CGFloat
+        deckHeight: CGFloat,
+        quickTaskScreen: CGRect? = nil
     ) -> CGRect {
         IslandGeometry.frame(
             for: placement,
@@ -329,7 +355,8 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             surface: surface,
             dropActive: dropActive,
             deckHeight: deckHeight,
-            dropScreenFrame: desktopFrame()
+            dropScreenFrame: desktopFrame(),
+            quickTaskScreen: quickTaskScreen
         )
     }
 
@@ -354,7 +381,46 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     }
 
     func makeKey() {
+        guard !isPickerActive else { return }
         panel.makeKeyAndOrderFront(nil)
+        isOnScreen = panel.isVisible
+    }
+
+    /// A folder picker is about to take key focus. Hide the card so the picker
+    /// does not overlap it, and suppress the resign callback so the store does
+    /// not read the handoff as click-away.
+    func beginPicker() {
+        guard !isPickerActive else { return }
+        isPickerActive = true
+        animator?.cancel()
+        isOnScreen = false
+        isHidingPanel = true
+        panel.resignKey()
+        panel.orderOut(nil)
+        isHidingPanel = false
+    }
+
+    /// Both picker outcomes come back here. Restore the frame and key so the
+    /// card survives a cancelled folder choice. If a hotkey closed the card
+    /// while the picker was up, keep the panel hidden instead of resurrecting
+    /// a stray ambient bar.
+    func endPicker() {
+        isPickerActive = false
+        let target = targetFrame
+        animator?.cancel()
+        let shouldShow = placement.isNotch
+            ? (presentation.isVisible || presentation.dropletVisible || presentation.isWindowDragActive)
+            : (presentation.isExpanded || presentation.isWindowDragActive)
+        if shouldShow {
+            panel.setFrame(target, display: true)
+            panel.orderFrontRegardless()
+            isOnScreen = true
+            panel.makeKeyAndOrderFront(nil)
+        } else {
+            panel.orderOut(nil)
+            isOnScreen = false
+        }
+        refreshMousePolicy()
     }
 
     /// During a drop the panel is the whole screen. This is the part that is
@@ -372,13 +438,19 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         }
     }
 
+    /// The notch chrome belongs to the island surfaces. A centered quick task
+    /// is a standalone modal, so it must not inherit the notch ears.
+    private static func notchChrome(
+        for presentation: IslandPresentation,
+        placement: IslandPlacement
+    ) -> CGRect? {
+        guard presentation.quickTask == nil,
+              case .notch(let rect, _) = placement else { return nil }
+        return rect
+    }
+
     private func render(panelFrame: CGRect) {
-        let notch: CGRect?
-        if case .notch(let rect, _) = placement {
-            notch = rect
-        } else {
-            notch = nil
-        }
+        let notch = Self.notchChrome(for: presentation, placement: placement)
         let anchor = IslandGeometry.dropAnchor(for: placement, panelFrame: panelFrame)
         let anchorScreen = IslandGeometry.dropScreenAnchor(for: placement)
         hosting.rootView = IslandRootView(
@@ -408,15 +480,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             )
         }
         if isOnScreen, !(animator?.isRunning ?? false) {
-            let target = Self.frame(
-                placement: placement,
-                expanded: presentation.isExpanded,
-                quickTask: presentation.quickTask != nil,
-                quickTaskHeight: presentation.quickTask?.height ?? IslandGeometry.quickTaskSize.height,
-                surface: presentation.surface,
-                dropActive: presentation.isDropActive,
-                deckHeight: effectiveDeckHeight
-            )
+            let target = targetFrame
             if moved {
                 render(panelFrame: target)
             }
@@ -429,15 +493,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     func screenParametersChanged() {
         animator?.cancel()
         refreshPlacement()
-        let target = Self.frame(
-            placement: placement,
-            expanded: presentation.isExpanded,
-            quickTask: presentation.quickTask != nil,
-            quickTaskHeight: presentation.quickTask?.height ?? IslandGeometry.quickTaskSize.height,
-            surface: presentation.surface,
-            dropActive: presentation.isDropActive,
-            deckHeight: effectiveDeckHeight
-        )
+        let target = targetFrame
         render(panelFrame: target)
         if isOnScreen {
             panel.setFrame(target, display: true)
@@ -447,7 +503,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     }
 
     func windowDidResignKey(_ notification: Notification) {
-        guard panel.isVisible, !isHidingPanel else { return }
+        guard panel.isVisible, !isHidingPanel, !isPickerActive else { return }
         onLostFocus?()
     }
 
@@ -483,8 +539,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         }
         guard presentation.surface == .ambient,
               !presentation.isExpanded,
-              !presentation.isWindowDragActive,
-              !panel.isKeyWindow else {
+              !presentation.isWindowDragActive else {
             if panel.ignoresMouseEvents { panel.ignoresMouseEvents = false }
             return
         }
@@ -500,7 +555,8 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         let band = notchBandHeight
         let insideBar = local.y >= 0 && local.y <= band && local.x >= 0 && local.x <= frame.width
         let droplet = CGPoint(x: frame.width / 2, y: band + 10)
-        let insideDroplet = hypot(local.x - droplet.x, local.y - droplet.y) <= 22
+        let insideDroplet = presentation.dropletVisible
+            && hypot(local.x - droplet.x, local.y - droplet.y) <= 22
         let shouldIgnore = !(insideBar || insideDroplet)
         if panel.ignoresMouseEvents != shouldIgnore {
             panel.ignoresMouseEvents = shouldIgnore
@@ -513,6 +569,13 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     }
 
     private func handleKey(_ event: NSEvent) -> NSEvent? {
+        // Marked text means an IME composition is in progress. Escape and
+        // Return belong to the composition, not to the island.
+        if let editor = panel.fieldEditor(false, for: nil) as? NSTextView,
+           editor.hasMarkedText() {
+            return event
+        }
+
         guard let stroke = KeyStroke(event: event) else { return event }
 
         if presentation.drop != nil {
@@ -554,11 +617,24 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         }
 
         if presentation.isSearching {
-            if stroke.key == .escape {
+            switch stroke.key {
+            case .upArrow:
+                onEvent?(.moveSelection(-1))
+                return nil
+            case .downArrow:
+                onEvent?(.moveSelection(1))
+                return nil
+            case .return:
+                if let selected = presentation.selected {
+                    actions.openDetail(selected.id)
+                }
+                return nil
+            case .escape:
                 actions.setSearching(false)
                 return nil
+            default:
+                return event
             }
-            return event
         }
 
         if !presentation.isComposerFocused,
@@ -596,8 +672,10 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         case .dismiss:
             onEvent?(.escape)
             return nil
-        case .jump:
-            onEvent?(.confirmJump)
+        case .openDetail:
+            if let selected = presentation.selected {
+                actions.openDetail(selected.id)
+            }
             return nil
         case .send:
             onEvent?(.sendMessage)
@@ -702,6 +780,17 @@ extension ScreenMetrics {
             auxTopLeft: screen.auxiliaryTopLeftArea,
             auxTopRight: screen.auxiliaryTopRightArea
         )
+    }
+
+    /// The display under the pointer, where a transient modal should open.
+    /// Falls back to the main display, then the first one.
+    @MainActor
+    static func activeScreenFrame() -> CGRect {
+        let mouse = NSEvent.mouseLocation
+        let screen = NSScreen.screens.first { $0.frame.contains(mouse) }
+            ?? NSScreen.main
+            ?? NSScreen.screens.first
+        return screen?.frame ?? .zero
     }
 
     @MainActor

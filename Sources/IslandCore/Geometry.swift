@@ -102,7 +102,8 @@ public enum IslandGeometry {
         surface: IslandSurface = .deck,
         dropActive: Bool = false,
         deckHeight: CGFloat = deckSize.height,
-        dropScreenFrame: CGRect? = nil
+        dropScreenFrame: CGRect? = nil,
+        quickTaskScreen: CGRect? = nil
     ) -> CGRect {
         // A drag must be able to place the composer anywhere on the desktop.
         // The caller passes the union of every display while a drop is live;
@@ -127,6 +128,19 @@ public enum IslandGeometry {
             case .deck: content = CGSize(width: deckSize.width, height: deckHeight)
             case .drop: content = dropCanvasSize
             }
+        }
+
+        // Center the modal input on the screen the pointer is on, like a
+        // command palette. Anchor on the base height so a taller error card
+        // grows away from the anchored edge instead of re-centering.
+        if quickTask, !dropActive, surface != .drop {
+            let screen = quickTaskScreen ?? placement.screenFrame
+            return CGRect(
+                x: screen.midX - content.width / 2,
+                y: screen.midY - quickTaskSize.height / 2,
+                width: content.width,
+                height: quickTaskHeight
+            )
         }
 
         switch placement {

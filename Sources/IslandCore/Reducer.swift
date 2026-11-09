@@ -28,13 +28,17 @@ public enum IslandReducer {
         case .hotKey:
             if state.quickTask != nil {
                 if state.quickTask?.phase != .creating {
+                    saveQuickTaskDraftRecovery(&state)
                     state.quickTask = nil
                 }
             } else if state.drop != nil {
                 if state.drop?.phase == .composing {
+                    saveDropDraftRecovery(&state)
                     state.drop = nil
                     state.dropActive = false
                 }
+            } else if let task = state.windowTask, task.phase == .editing {
+                toggleWindowTaskVisibility(&state)
             } else if state.isExpanded {
                 dismissAttention(&state)
             } else {
@@ -46,14 +50,15 @@ public enum IslandReducer {
             }
             return []
         case .escape:
+            guard !state.isCreatingTask else { return [] }
             if state.quickTask != nil {
-                if state.quickTask?.phase != .creating {
-                    state.quickTask = nil
-                }
+                saveQuickTaskDraftRecovery(&state)
+                state.quickTask = nil
                 return []
             }
             if state.drop != nil {
                 if state.drop?.phase == .composing {
+                    saveDropDraftRecovery(&state)
                     state.drop = nil
                     state.dropActive = false
                     state.banner = nil
@@ -67,6 +72,10 @@ public enum IslandReducer {
             }
             if state.detailOpen {
                 state.detailOpen = false
+                return []
+            }
+            if state.windowTask != nil, !state.windowTaskHidden {
+                hideWindowTask(&state)
                 return []
             }
             dismissAttention(&state)
@@ -125,6 +134,25 @@ public enum IslandReducer {
             ensureSelection(&state)
             loadSelectedPreviewIfNeeded(&state)
             return pendingPreviewEffect(&state)
+        case .closePanel:
+            guard !state.isCreatingTask else { return [] }
+            if state.quickTask != nil {
+                saveQuickTaskDraftRecovery(&state)
+                state.quickTask = nil
+            } else if state.windowTask != nil, !state.windowTaskHidden {
+                hideWindowTask(&state)
+            } else if state.drop != nil {
+                let created = state.drop?.didCreate == true
+                saveDropDraftRecovery(&state)
+                state.drop = nil
+                state.dropActive = false
+                if !created {
+                    state.banner = nil
+                }
+            } else {
+                dismissAttention(&state)
+            }
+            return []
         case .openDetail(let pane):
             state.launchFeedbackUntil = nil
             guard state.agents[pane] != nil else { return [] }
@@ -177,6 +205,10 @@ public enum IslandReducer {
             return []
         case .lostFocus:
             state.composerFocused = false
+            if state.quickTask?.phase == .editing {
+                saveQuickTaskDraftRecovery(&state)
+                state.quickTask = nil
+            }
             if let deadline = state.launchFeedbackUntil, now < deadline { return [] }
             if state.blockedAttention.isEmpty,
                state.completionExpiry.isEmpty,
@@ -206,14 +238,26 @@ public enum IslandReducer {
             state.banner = nil
             return []
         case .openQuickTask(let cwd, let kind):
-            guard !state.isCreatingTask else { return [] }
-            state.quickTask = QuickTaskState(kind: kind, cwd: cwd)
+            guard !state.isCreatingTask,
+                  state.drop == nil,
+                  !state.dropActive,
+                  state.windowTask == nil else { return [] }
+            if let recovery = state.quickTaskDraftRecovery {
+                state.quickTask = QuickTaskState(
+                    draft: recovery.draft,
+                    kind: recovery.kind,
+                    cwd: recovery.cwd
+                )
+                state.quickTaskDraftRecovery = nil
+            } else {
+                state.quickTask = QuickTaskState(kind: kind, cwd: cwd)
+            }
             state.banner = nil
             return []
         case .closeQuickTask:
-            if state.quickTask?.phase != .creating {
-                state.quickTask = nil
-            }
+            guard state.quickTask?.phase != .creating else { return [] }
+            saveQuickTaskDraftRecovery(&state)
+            state.quickTask = nil
             return []
         case .setQuickTaskDraft(let text):
             guard state.quickTask?.phase != .creating else { return [] }
@@ -313,14 +357,7 @@ public enum IslandReducer {
         case .closeDropComposer:
             guard state.drop?.isBusy != true else { return [] }
             let created = state.drop?.didCreate == true
-            if !created, let drop = state.drop, !drop.trimmedDraft.isEmpty {
-                state.dropDraftRecovery = DropDraftRecovery(
-                    draft: drop.draft,
-                    kind: drop.kind,
-                    cwd: drop.cwd,
-                    useWorktree: drop.useWorktree
-                )
-            }
+            saveDropDraftRecovery(&state)
             state.drop = nil
             state.dropActive = false
             // A sent drop hands off to the deck's success banner.
@@ -369,6 +406,7 @@ public enum IslandReducer {
             }
             return applyLock(&state, target: target, kind: kind, cwd: cwd)
         case .unlockWindow:
+            guard !state.isCreatingTask else { return [] }
             clearWindowLock(&state)
             state.manualOpen = false
             state.hoverOpen = false
@@ -379,7 +417,7 @@ public enum IslandReducer {
             guard state.windowLock != nil else { return [] }
             clearWindowLock(&state)
             state.banner = Banner(
-                text: "The locked window closed. Unlocked.",
+                text: "锁定的窗口已关闭，已解除锁定。",
                 isError: false,
                 source: .info
             )
@@ -418,7 +456,7 @@ public enum IslandReducer {
                 }
             } else {
                 state.banner = Banner(
-                    text: "Screen Recording is off. Turn it on to attach a screenshot.",
+                    text: "屏幕录制未开启。开启后才能附截图。",
                     isError: true,
                     source: .send,
                     action: .openScreenRecordingSettings
@@ -441,14 +479,7 @@ public enum IslandReducer {
         // Option-dragging takes over from an open drop composer. Keep its draft
         // for the next drop instead of letting the hidden drop shadow the
         // window task we are about to create.
-        if let drop = state.drop, !drop.isBusy, !drop.didCreate, !drop.trimmedDraft.isEmpty {
-            state.dropDraftRecovery = DropDraftRecovery(
-                draft: drop.draft,
-                kind: drop.kind,
-                cwd: drop.cwd,
-                useWorktree: drop.useWorktree
-            )
-        }
+        saveDropDraftRecovery(&state)
         state.drop = nil
         state.dropActive = false
         state.windowLock = target
@@ -457,6 +488,7 @@ public enum IslandReducer {
             kind: kind,
             cwd: cwd
         )
+        state.windowTaskHidden = false
         state.quickTask = nil
         state.manualOpen = true
         state.hoverOpen = false
@@ -468,7 +500,45 @@ public enum IslandReducer {
     private static func clearWindowLock(_ state: inout IslandState) {
         state.windowLock = nil
         state.windowTask = nil
+        state.windowTaskHidden = false
         state.windowDragActive = false
+    }
+
+    private static func saveQuickTaskDraftRecovery(_ state: inout IslandState) {
+        guard let task = state.quickTask, task.phase == .editing,
+              !task.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        state.quickTaskDraftRecovery = QuickTaskDraftRecovery(
+            draft: task.draft,
+            kind: task.kind,
+            cwd: task.cwd
+        )
+    }
+
+    private static func saveDropDraftRecovery(_ state: inout IslandState) {
+        guard let drop = state.drop, !drop.isBusy, !drop.didCreate,
+              !drop.trimmedDraft.isEmpty else { return }
+        state.dropDraftRecovery = DropDraftRecovery(
+            draft: drop.draft,
+            kind: drop.kind,
+            cwd: drop.cwd,
+            useWorktree: drop.useWorktree
+        )
+    }
+
+    private static func toggleWindowTaskVisibility(_ state: inout IslandState) {
+        if state.windowTaskHidden {
+            state.windowTaskHidden = false
+            state.manualOpen = true
+            state.banner = nil
+        } else {
+            hideWindowTask(&state)
+        }
+    }
+
+    private static func hideWindowTask(_ state: inout IslandState) {
+        state.windowTaskHidden = true
+        state.manualOpen = false
+        state.hoverOpen = false
     }
 
     private static func defaultWindowTaskAgent(_ state: IslandState) -> PaneID? {
@@ -490,10 +560,10 @@ public enum IslandReducer {
         guard !text.isEmpty else { return [] }
 
         if state.screenCaptureAuthorized == false {
-            task.error = "Screen Recording permission is required to capture the window."
+            task.error = "需要开启屏幕录制才能截取窗口。"
             state.windowTask = task
             state.banner = Banner(
-                text: task.error ?? "Screen Recording permission is required.",
+                text: task.error ?? "需要开启屏幕录制。",
                 isError: true,
                 source: .send,
                 action: .openScreenRecordingSettings
@@ -504,7 +574,7 @@ public enum IslandReducer {
         let destination: WindowTaskDestination
         if let pane = task.destinationAgent {
             guard let agent = state.agents[pane] else {
-                task.error = "That agent is no longer available."
+                task.error = "那个 agent 不在了。"
                 state.windowTask = task
                 return []
             }
@@ -517,7 +587,7 @@ public enum IslandReducer {
         } else {
             let cwd = task.cwd.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !cwd.isEmpty else {
-                task.error = "Choose a folder for the new agent."
+                task.error = "给新 agent 选一个目录。"
                 state.windowTask = task
                 return []
             }
@@ -599,7 +669,7 @@ public enum IslandReducer {
             task.lastDelivery = description
             state.windowTask = task
             state.banner = Banner(
-                text: "Sent to \(description) with a screenshot.",
+                text: "已发送给 \(description)，已附截图。",
                 isError: false,
                 source: .send
             )
@@ -818,7 +888,7 @@ public enum IslandReducer {
         if state.consecutiveFailures >= 3,
            state.banner == nil || state.banner?.source == .health {
             state.banner = Banner(
-                text: "Herdr is not responding. \(failure.message)",
+                text: "Herdr 没有响应。\(failure.message)",
                 isError: true,
                 source: .health
             )
@@ -1175,6 +1245,10 @@ public enum IslandReducer {
             state.isSearching = false
             state.query = ""
             state.banner = nil
+            // The editor gets out of the way once the terminal has focus.
+            if state.windowTask != nil {
+                state.windowTaskHidden = true
+            }
             if state.isExpanded {
                 state.selection = state.orderedAgents.first { state.blockedAttention.contains($0.id) || state.completionExpiry[$0.id] != nil }?.id
             }

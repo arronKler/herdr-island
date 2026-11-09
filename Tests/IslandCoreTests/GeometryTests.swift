@@ -45,10 +45,10 @@ final class GeometryTests: XCTestCase {
             expanded: true,
             quickTask: true
         )
-        XCTAssertEqual(quickTask.size, CGSize(width: 420, height: 228))
-        XCTAssertEqual(quickTask.midX, notch.midX)
-        XCTAssertEqual(quickTask.maxY, notch.maxY)
-        XCTAssertEqual(quickTask, CGRect(x: 653.5, y: 889, width: 420, height: 228))
+        XCTAssertEqual(quickTask.size, CGSize(width: 420, height: 196))
+        XCTAssertEqual(quickTask.midX, notchScreen.screenFrame.midX)
+        XCTAssertEqual(quickTask.midY, notchScreen.screenFrame.midY)
+        XCTAssertEqual(quickTask, CGRect(x: 654, y: 460.5, width: 420, height: 196))
 
         XCTAssertTrue(IslandGeometry.isInsideNotch(CGPoint(x: notch.midX, y: notch.midY), placement: placement))
         XCTAssertFalse(IslandGeometry.isInsideNotch(CGPoint(x: notch.minX - 1, y: notch.midY), placement: placement))
@@ -139,7 +139,9 @@ final class GeometryTests: XCTestCase {
             expanded: true,
             quickTask: true
         )
-        XCTAssertEqual(quickTask, CGRect(x: 372, y: 8, width: 420, height: 196))
+        XCTAssertEqual(quickTask, CGRect(x: 190, y: 202, width: 420, height: 196))
+        XCTAssertEqual(quickTask.midX, screen.screenFrame.midX)
+        XCTAssertEqual(quickTask.midY, screen.screenFrame.midY)
         XCTAssertTrue(bounds.contains(quickTask))
 
         let drop = IslandGeometry.frame(
@@ -177,6 +179,61 @@ final class GeometryTests: XCTestCase {
         XCTAssertFalse(fallback.isNotch)
         XCTAssertTrue(bounds.contains(IslandGeometry.frame(for: fallback, expanded: false)))
         XCTAssertTrue(bounds.contains(IslandGeometry.frame(for: fallback, expanded: true)))
+    }
+
+    func testQuickTaskErrorHeightGrowsFromTheAnchoredEdge() {
+        let placement = IslandGeometry.placement(for: notchScreen, statusItemFrame: nil)
+        let base = IslandGeometry.frame(
+            for: placement,
+            expanded: true,
+            quickTask: true
+        )
+        let errorHeight = IslandGeometry.quickTaskSize.height + 48
+        let withError = IslandGeometry.frame(
+            for: placement,
+            expanded: true,
+            quickTask: true,
+            quickTaskHeight: errorHeight
+        )
+
+        let anchoredY = notchScreen.screenFrame.midY - IslandGeometry.quickTaskSize.height / 2
+        XCTAssertEqual(base.minY, anchoredY)
+        XCTAssertEqual(withError.minY, anchoredY)
+        XCTAssertEqual(base.height, IslandGeometry.quickTaskSize.height)
+        XCTAssertEqual(withError.height, errorHeight)
+        XCTAssertGreaterThan(withError.maxY, base.maxY)
+        XCTAssertEqual(withError.midX, base.midX)
+    }
+
+    func testQuickTaskScreenOverrideCentersOnlyTheQuickTask() {
+        let placement = IslandGeometry.placement(for: notchScreen, statusItemFrame: nil)
+        guard case .notch(let notch, _) = placement else {
+            return XCTFail("expected notch placement")
+        }
+        let external = CGRect(x: 1728, y: 0, width: 1920, height: 1080)
+
+        let quickTask = IslandGeometry.frame(
+            for: placement,
+            expanded: true,
+            quickTask: true,
+            quickTaskScreen: external
+        )
+        XCTAssertEqual(quickTask.midX, external.midX)
+        XCTAssertEqual(
+            quickTask.minY,
+            external.midY - IslandGeometry.quickTaskSize.height / 2
+        )
+        XCTAssertEqual(quickTask.size, IslandGeometry.quickTaskSize)
+
+        let deck = IslandGeometry.frame(for: placement, expanded: true)
+        let deckWithOverride = IslandGeometry.frame(
+            for: placement,
+            expanded: true,
+            quickTaskScreen: external
+        )
+        XCTAssertEqual(deckWithOverride, deck)
+        XCTAssertEqual(deck.midX, notch.midX)
+        XCTAssertEqual(deck.maxY, notchScreen.screenFrame.maxY)
     }
 
     func testComposerStaysOnTheDisplayUnderTheDrop() {

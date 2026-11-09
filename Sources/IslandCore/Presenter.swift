@@ -146,7 +146,7 @@ public enum IslandPresenter {
         rows: [AgentRow],
         groups: [DeckGroup]
     ) -> CGFloat {
-        guard state.windowTask == nil else {
+        guard state.windowTask == nil || state.windowTaskHidden else {
             return windowTaskHeight(state)
         }
 
@@ -251,7 +251,9 @@ public enum IslandPresenter {
     }
 
     private static func makeWindowTask(_ state: IslandState) -> WindowTaskPresentation? {
-        guard let lock = state.windowLock, let task = state.windowTask else { return nil }
+        guard let lock = state.windowLock,
+              let task = state.windowTask,
+              !state.windowTaskHidden else { return nil }
 
         let refusal = windowTaskRefusal(state)
 

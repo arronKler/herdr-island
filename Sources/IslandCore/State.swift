@@ -28,6 +28,20 @@ public struct QuickTaskState: Sendable, Equatable {
     }
 }
 
+/// The text and choices from a quick task closed without sending. The next
+/// quick task starts from them so a lost card does not destroy typed work.
+public struct QuickTaskDraftRecovery: Sendable, Equatable {
+    public var draft: String
+    public var kind: AgentKindOption
+    public var cwd: String
+
+    public init(draft: String, kind: AgentKindOption, cwd: String) {
+        self.draft = draft
+        self.kind = kind
+        self.cwd = cwd
+    }
+}
+
 public struct IslandState: Sendable, Equatable {
     var isCreatingTask: Bool {
         quickTask?.phase == .creating || (drop?.isBusy ?? false)
@@ -88,8 +102,11 @@ public struct IslandState: Sendable, Equatable {
     public internal(set) var lastSampleAt: Date?
     public internal(set) var socketStatus: SocketStatus
     public internal(set) var quickTask: QuickTaskState?
+    public internal(set) var quickTaskDraftRecovery: QuickTaskDraftRecovery?
     public internal(set) var windowLock: WindowTarget?
     public internal(set) var windowTask: WindowTaskState?
+    /// UI visibility only. The lock and tether stay until unlock or window close.
+    public internal(set) var windowTaskHidden: Bool
     public internal(set) var windowDragActive: Bool
     public internal(set) var screenCaptureAuthorized: Bool?
     public internal(set) var filter: TaskFilter
@@ -127,8 +144,10 @@ public struct IslandState: Sendable, Equatable {
         self.lastSampleAt = nil
         self.socketStatus = .disconnected
         self.quickTask = nil
+        self.quickTaskDraftRecovery = nil
         self.windowLock = nil
         self.windowTask = nil
+        self.windowTaskHidden = false
         self.windowDragActive = false
         self.screenCaptureAuthorized = nil
         self.filter = .needs
@@ -148,7 +167,7 @@ public struct IslandState: Sendable, Equatable {
         if dropActive || drop != nil {
             return .drop
         }
-        if quickTask != nil || windowTask != nil {
+        if quickTask != nil || (windowTask != nil && !windowTaskHidden) {
             return .deck
         }
         if detailOpen {
@@ -165,6 +184,7 @@ public struct IslandState: Sendable, Equatable {
 
     public var isExpanded: Bool {
         quickTask != nil
+            || (windowTask != nil && !windowTaskHidden)
             || manualOpen
             || hoverOpen
             || !blockedAttention.isEmpty

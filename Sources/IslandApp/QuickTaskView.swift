@@ -21,7 +21,8 @@ struct QuickTaskView: View {
                 Text(error)
                     .font(Theme.sans(Theme.TypeSize.caption))
                     .foregroundStyle(Theme.red)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 0)
             if quickTask.creation == nil { footer }

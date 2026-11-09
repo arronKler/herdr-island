@@ -24,7 +24,7 @@ final class StatusItemController: NSObject {
 
         let menu = NSMenu()
         let showHide = NSMenuItem(
-            title: "Show Island",
+            title: "显示岛",
             action: #selector(toggleIsland),
             keyEquivalent: ""
         )
@@ -61,7 +61,7 @@ final class StatusItemController: NSObject {
         self.presentation = presentation
         let text = StatusItemController.headline(presentation)
         statusItem.button?.toolTip = "Herdr Island · \(text)"
-        showHideItem?.title = presentation.isExpanded ? "隐藏岛" : "显示岛"
+        showHideItem?.title = presentation.isExpanded || presentation.drop != nil ? "隐藏岛" : "显示岛"
         statusItem.button?.appearsDisabled = presentation.health == .failed
         statusItem.button?.image = StatusItemController.image(for: presentation.headline)
     }
@@ -99,17 +99,17 @@ final class StatusItemController: NSObject {
     static func headline(_ presentation: IslandPresentation) -> String {
         switch presentation.headline {
         case .blocked(let count):
-            return count == 1 ? "1 needs you" : "\(count) need you"
+            return count == 1 ? "1 个需要你" : "\(count) 个需要你"
         case .completed(let count):
-            return "\(count) done"
+            return "\(count) 个已完成"
         case .working(let count):
-            return "\(count) running"
+            return "\(count) 个运行中"
         case .stale:
-            return "Herdr offline"
+            return "Herdr 离线"
         case .starting:
-            return "Herdr starting"
+            return "Herdr 启动中"
         case .empty:
-            return "Herdr idle"
+            return "Herdr 空闲"
         }
     }
 

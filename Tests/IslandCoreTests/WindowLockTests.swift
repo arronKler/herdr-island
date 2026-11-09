@@ -153,7 +153,7 @@ final class WindowLockTests: XCTestCase {
         XCTAssertEqual(p.windowTask?.phase, .editing)
         XCTAssertEqual(p.windowTask?.draft, "")
         XCTAssertEqual(p.windowTask?.lastDelivery, "Alpha")
-        XCTAssertEqual(p.banner?.text, "Sent to Alpha with a screenshot.")
+        XCTAssertEqual(p.banner?.text, "已发送给 Alpha，已附截图。")
         XCTAssertEqual(p.banner?.isError, false)
         XCTAssertNotNil(p.windowLock)
     }
@@ -262,7 +262,7 @@ final class WindowLockTests: XCTestCase {
         p = presentation(of: state, at: t0)
         XCTAssertNil(p.windowLock)
         XCTAssertNil(p.windowTask)
-        XCTAssertEqual(p.banner?.text, "The locked window closed. Unlocked.")
+        XCTAssertEqual(p.banner?.text, "锁定的窗口已关闭，已解除锁定。")
     }
 
     func testWindowDragPreventsAutoCollapse() {

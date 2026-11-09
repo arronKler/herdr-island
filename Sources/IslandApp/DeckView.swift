@@ -219,7 +219,9 @@ struct DeckView: View {
                 .font(Theme.sans(Theme.TypeSize.body))
                 .foregroundStyle(Theme.textPrimary)
                 .focused($searchFocused)
-                .onSubmit { actions.setSearching(true) }
+                .onSubmit {
+                    // Return is owned by the panel key monitor; IME commit also fires this.
+                }
                 .fieldPlaceholder(placeholder, text: presentation.query)
                 .accessibilityLabel(placeholder)
             Text("esc")
@@ -251,36 +253,55 @@ struct DeckView: View {
             emptyState
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if presentation.isSearching || presentation.filter != .all {
-            ScrollView(.vertical, showsIndicators: true) {
-                LazyVStack(spacing: 8) {
-                    if presentation.isSearching {
-                        searchMeta
-                    }
-                    ForEach(presentation.deckRows) { row in
-                        deckRow(row)
-                    }
-                }
-                .padding(.top, 10)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
-            ScrollView(.vertical, showsIndicators: true) {
-                LazyVStack(alignment: .leading, spacing: 8) {
-                    ForEach(presentation.deckGroups) { group in
-                        Text(group.title)
-                            .font(Theme.code(Theme.TypeSize.micro, weight: .medium))
-                            .tracking(1.0)
-                            .foregroundStyle(Theme.textTertiary)
-                            .padding(.top, group.id == "needs" ? 12 : 8)
-                            .padding(.leading, 2)
-                        ForEach(group.rows) { row in
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: true) {
+                    LazyVStack(spacing: 8) {
+                        if presentation.isSearching {
+                            searchMeta
+                        }
+                        ForEach(presentation.deckRows) { row in
                             deckRow(row)
+                                .id(row.id)
                         }
                     }
+                    .padding(.top, 10)
                 }
-                .padding(.bottom, 2)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: presentation.selected?.id) { _, id in
+                    scrollToSelection(id, proxy: proxy)
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            ScrollViewReader { proxy in
+                ScrollView(.vertical, showsIndicators: true) {
+                    LazyVStack(alignment: .leading, spacing: 8) {
+                        ForEach(presentation.deckGroups) { group in
+                            Text(group.title)
+                                .font(Theme.code(Theme.TypeSize.micro, weight: .medium))
+                                .tracking(1.0)
+                                .foregroundStyle(Theme.textTertiary)
+                                .padding(.top, group.id == "needs" ? 12 : 8)
+                                .padding(.leading, 2)
+                            ForEach(group.rows) { row in
+                                deckRow(row)
+                                    .id(row.id)
+                            }
+                        }
+                    }
+                    .padding(.bottom, 2)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .onChange(of: presentation.selected?.id) { _, id in
+                    scrollToSelection(id, proxy: proxy)
+                }
+            }
+        }
+    }
+
+    private func scrollToSelection(_ id: PaneID?, proxy: ScrollViewProxy) {
+        guard let id else { return }
+        withAnimation(.easeOut(duration: 0.18)) {
+            proxy.scrollTo(id, anchor: .center)
         }
     }
 
@@ -721,10 +742,16 @@ struct DeckView: View {
 
     private var hintBar: some View {
         HStack(spacing: 12) {
-            hint("↵", "打开")
-            hint("/", "搜索")
-            hint("R", "回复")
-            hint("S", "稍后")
+            if presentation.isSearching {
+                hint("↑↓", "选择")
+                hint("↵", "打开")
+                hint("esc", "退出")
+            } else {
+                hint("↵", "打开")
+                hint("/", "搜索")
+                hint("R", "回复")
+                hint("S", "稍后")
+            }
             Spacer(minLength: 4)
             Text(presentation.isSearching ? "输入以筛选" : AmbientBarView.summaryLine(presentation))
                 .font(Theme.code(9.5))
