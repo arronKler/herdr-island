@@ -502,6 +502,9 @@ final class IslandStore: ObservableObject {
                 }
                 self?.handle(.windowTaskResult(token: request.token, result: result))
             }
+
+        case .playCue(let cue):
+            AlertSoundPlayer.play(cue)
         }
     }
 }

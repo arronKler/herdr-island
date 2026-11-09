@@ -97,6 +97,7 @@ public struct IslandState: Sendable, Equatable {
     // Keep the last successful text visible while changed terminal content loads.
     var previewsNeedingRefresh: Set<PaneID> = []
     var previewLoadsInFlight: Set<PaneID> = []
+    var pendingAlertCues = PendingAlertCues()
     public internal(set) var banner: Banner?
     public internal(set) var consecutiveFailures: Int
     public internal(set) var lastSampleAt: Date?

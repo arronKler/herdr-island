@@ -6,6 +6,8 @@ enum IslandSettings {
         static let autoExpandOnBlocked = "autoExpandOnBlocked"
         static let autoExpandOnCompletion = "autoExpandOnCompletion"
         static let completionHold = "completionHold"
+        static let blockedSound = "blockedSound"
+        static let completionSound = "completionSound"
     }
 
     static func load(defaults: UserDefaults = .standard) -> IslandRules {
@@ -44,5 +46,15 @@ enum IslandSettings {
         rules.autoExpandOnBlocked = toggles.blocked
         rules.autoExpandOnCompletion = toggles.completion
         return rules
+    }
+
+    static func sound(for cue: AlertCue, defaults: UserDefaults = .standard) -> CueSound {
+        let key = cue == .blocked ? Key.blockedSound : Key.completionSound
+        guard let raw = defaults.string(forKey: key) else { return .off }
+        return CueSound(rawValue: raw) ?? .off
+    }
+
+    static func setSound(_ sound: CueSound, for cue: AlertCue, defaults: UserDefaults = .standard) {
+        defaults.set(sound.rawValue, forKey: cue == .blocked ? Key.blockedSound : Key.completionSound)
     }
 }

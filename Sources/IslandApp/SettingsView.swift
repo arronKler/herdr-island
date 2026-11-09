@@ -14,6 +14,12 @@ final class SettingsModel: ObservableObject {
     @Published var completionHold: Double {
         didSet { persist() }
     }
+    @Published var blockedSound: CueSound {
+        didSet { IslandSettings.setSound(blockedSound, for: .blocked) }
+    }
+    @Published var completionSound: CueSound {
+        didSet { IslandSettings.setSound(completionSound, for: .completion) }
+    }
 
     var onChange: ((IslandRules) -> Void)?
 
@@ -21,6 +27,8 @@ final class SettingsModel: ObservableObject {
         autoExpandOnBlocked = rules.autoExpandOnBlocked
         autoExpandOnCompletion = rules.autoExpandOnCompletion
         completionHold = rules.completionHold
+        blockedSound = IslandSettings.sound(for: .blocked)
+        completionSound = IslandSettings.sound(for: .completion)
     }
 
     private func persist() {
@@ -39,6 +47,7 @@ final class SettingsModel: ObservableObject {
 
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general
+    case sound
     case permissions
     case environment
 
@@ -47,6 +56,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .general: "常规"
+        case .sound: "声音"
         case .permissions: "权限"
         case .environment: "运行环境"
         }
@@ -55,6 +65,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .general: "决定岛什么时候展开，以及常用快捷键。"
+        case .sound: "任务完成或需要你处理时，用声音提醒。默认关闭。"
         case .permissions: "岛只在执行对应动作时使用系统权限。"
         case .environment: "Herdr 的本地路径和岛的应用信息。"
         }
@@ -63,6 +74,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .general: "slider.horizontal.3"
+        case .sound: "speaker.wave.2"
         case .permissions: "lock.shield"
         case .environment: "terminal"
         }
@@ -217,6 +229,8 @@ struct SettingsView: View {
         switch section {
         case .general:
             generalPage
+        case .sound:
+            soundPage
         case .permissions:
             permissionsPage
         case .environment:
@@ -247,6 +261,29 @@ struct SettingsView: View {
                 SettingsRowDivider()
                 shortcutRow("新建 agent 任务", keys: ["⌃", "⌥", "N"])
             }
+        }
+    }
+
+    private var soundPage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            settingsGroup("事件提示音") {
+                soundRow(
+                    title: "需要你处理",
+                    subtitle: "agent 进入 blocked，或阻塞中出现新问题时播放。",
+                    selection: $model.blockedSound
+                )
+                SettingsRowDivider()
+                soundRow(
+                    title: "任务完成",
+                    subtitle: "agent 完成一轮后播放。",
+                    selection: $model.completionSound
+                )
+            }
+
+            Text("音色来自 macOS 内置提示音，选中后立即试听。选择“无”可以单独关闭某一类提醒。")
+                .font(Theme.sans(Theme.TypeSize.caption))
+                .foregroundStyle(Theme.textSecondary.opacity(0.72))
+                .padding(.leading, 2)
         }
     }
 
@@ -371,6 +408,49 @@ struct SettingsView: View {
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
         .frame(minHeight: 56)
+    }
+
+    private func soundRow(
+        title: String,
+        subtitle: String,
+        selection: Binding<CueSound>
+    ) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(Theme.sans(Theme.TypeSize.row, weight: .medium))
+                    .foregroundStyle(Theme.textPrimary)
+                Text(subtitle)
+                    .font(Theme.sans(Theme.TypeSize.caption))
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 12)
+
+            SettingsActionButton(title: "试听", enabled: selection.wrappedValue != .off) {
+                AlertSoundPlayer.play(selection.wrappedValue)
+            }
+
+            Picker("", selection: selection) {
+                ForEach(CueSound.allCases) { sound in
+                    Text(sound.displayName).tag(sound)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .controlSize(.small)
+            .frame(width: 132)
+            .accessibilityLabel("\(title)提示音")
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .frame(minHeight: 56)
+        .onChange(of: selection.wrappedValue) { _, sound in
+            if sound != .off {
+                AlertSoundPlayer.play(sound)
+            }
+        }
     }
 
     private var holdRow: some View {
@@ -721,6 +801,7 @@ private struct SettingsStatusPill: View {
 
 private struct SettingsActionButton: View {
     let title: String
+    var enabled: Bool = true
     let action: () -> Void
 
     @State private var hovered = false
@@ -730,22 +811,24 @@ private struct SettingsActionButton: View {
         Button(action: action) {
             Text(title)
                 .font(Theme.sans(10.5, weight: .medium))
-                .foregroundStyle(hovered ? Theme.textPrimary : Theme.textSecondary)
+                .foregroundStyle((hovered && enabled) ? Theme.textPrimary : Theme.textSecondary)
                 .padding(.horizontal, 10)
                 .frame(height: 24)
                 .background(
                     RoundedRectangle(cornerRadius: 7)
-                        .fill(hovered ? Color.white.opacity(0.07) : Color.white.opacity(0.035))
+                        .fill((hovered && enabled) ? Color.white.opacity(0.07) : Color.white.opacity(0.035))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 7)
                         .stroke(
-                            focused ? Theme.amberLine : (hovered ? Theme.hairlineHigh : Theme.hairline),
+                            focused ? Theme.amberLine : ((hovered && enabled) ? Theme.hairlineHigh : Theme.hairline),
                             lineWidth: focused ? 1 : 0.6
                         )
                 )
         }
         .buttonStyle(.plain)
+        .disabled(!enabled)
+        .opacity(enabled ? 1 : 0.35)
         .onHover { hovered = $0 }
         .focusable()
         .focusEffectDisabled()

@@ -82,4 +82,5 @@ public enum IslandEffect: Sendable, Equatable {
     case requestScreenCapturePermission
     case captureWindow(WindowCaptureRequest)
     case deliverWindowTask(WindowDeliveryRequest)
+    case playCue(AlertCue)
 }

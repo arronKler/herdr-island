@@ -302,7 +302,10 @@ public enum IslandReducer {
             guard state.windowTask?.pendingToken == token, state.windowTask?.phase == .sending else { return [] }
             if let agent = launch.agent { state.agents[agent.id] = agent }
             state.windowTask?.destinationAgent = launch.pane
-            return finishWindowTask(&state, token: token, result: .success(launch.name))
+            let effects = finishWindowTask(&state, token: token, result: .success(launch.name))
+            guard launch.agent?.status == .blocked else { return effects }
+            state.pendingAlertCues.blocked.insert(launch.pane)
+            return [.playCue(.blocked)] + effects
         case .windowTaskProgress(let token, let progress):
             guard state.windowTask?.pendingToken == token, state.windowTask?.phase == .sending else { return [] }
             state.windowTask?.creation = progress
@@ -314,8 +317,9 @@ public enum IslandReducer {
                     state.agentWorktrees[launch.pane] = branch
                 }
                 state.quickTask = nil
-                followLaunchedTask(&state, launch, now: now)
-                return [.sampleNow]
+                let cues = followLaunchedTask(&state, launch, now: now)
+                    .map { [IslandEffect.playCue($0)] } ?? []
+                return cues + [.sampleNow]
             case .failure(let failure):
                 if var task = state.quickTask {
                     task.phase = .editing
@@ -722,11 +726,14 @@ public enum IslandReducer {
 
         var newBlocked: [PaneID] = []
         var newCompletions: [PaneID] = []
+        var shouldCueBlocked = false
+        var shouldCueCompletion = false
 
         for agent in snapshot.agents {
             let prior = previous[agent.id]
             let wasBlocked = prior?.status == .blocked
             let isBlocked = agent.status == .blocked
+            let hadPendingBlocked = state.pendingAlertCues.blocked.remove(agent.id) != nil
 
             if let prior, previewContentChanged(from: prior, to: agent) {
                 state.previewsNeedingRefresh.insert(agent.id)
@@ -742,6 +749,9 @@ public enum IslandReducer {
                     state.blockedAttention.insert(agent.id)
                     newBlocked.append(agent.id)
                 }
+                if hadBaseline, enteredBlocked || escalated, !hadPendingBlocked {
+                    shouldCueBlocked = true
+                }
             } else {
                 state.blockedAttention.remove(agent.id)
                 state.dismissedBlockedSeq[agent.id] = nil
@@ -751,12 +761,23 @@ public enum IslandReducer {
                 let priorSeq = state.seenCompletionSeq[agent.id] ?? 0
                 let seqAdvanced = agent.completionSeq.map { $0 > priorSeq } ?? false
                 let enteredDone = prior?.status != .done && agent.status == .done
-                if seqAdvanced || enteredDone {
+                let isCompletion = seqAdvanced || enteredDone
+                if isCompletion {
                     if state.rules.autoExpandOnCompletion {
                         state.completionExpiry[agent.id] = now.addingTimeInterval(state.rules.completionHold)
                         newCompletions.append(agent.id)
                     }
                 }
+                let absorbed = seqAdvanced
+                    && state.pendingAlertCues.completionSequence.remove(agent.id) != nil
+                if isCompletion, !isBlocked, !absorbed {
+                    shouldCueCompletion = true
+                    if agent.completionSeq == nil {
+                        state.pendingAlertCues.completionSequence.insert(agent.id)
+                    }
+                }
+            } else {
+                state.pendingAlertCues.completionSequence.remove(agent.id)
             }
 
             if let seq = agent.completionSeq {
@@ -770,6 +791,8 @@ public enum IslandReducer {
 
         let present = Set(newAgents.keys)
         state.blockedAttention.formIntersection(present)
+        state.pendingAlertCues.blocked.formIntersection(present)
+        state.pendingAlertCues.completionSequence.formIntersection(present)
         state.completionExpiry = state.completionExpiry.filter { present.contains($0.key) }
         state.dismissedBlockedSeq = state.dismissedBlockedSeq.filter { present.contains($0.key) }
         state.seenCompletionSeq = state.seenCompletionSeq.filter { present.contains($0.key) }
@@ -806,7 +829,10 @@ public enum IslandReducer {
         }
         reconcileWindowTask(&state)
         loadSelectedPreviewIfNeeded(&state)
-        return pendingPreviewEffect(&state) + dispatchQueued(&state)
+        let cue: [IslandEffect] = shouldCueBlocked
+            ? [.playCue(.blocked)]
+            : (shouldCueCompletion ? [.playCue(.completion)] : [])
+        return cue + pendingPreviewEffect(&state) + dispatchQueued(&state)
     }
 
     private static func applyFacts(
@@ -816,6 +842,7 @@ public enum IslandReducer {
     ) -> [IslandEffect] {
         guard var agent = state.agents[facts.pane] else { return [] }
         let previousStatus = agent.status
+        var cue: AlertCue?
 
         if let branch = state.agentWorktrees[facts.pane], agent.worktree == nil {
             agent = agent.with(worktree: branch)
@@ -845,10 +872,25 @@ public enum IslandReducer {
             if status == .done, state.baselineEstablished, state.rules.autoExpandOnCompletion {
                 state.completionExpiry[facts.pane] = now.addingTimeInterval(state.rules.completionHold)
             }
+            if state.baselineEstablished {
+                switch status {
+                case .blocked:
+                    state.pendingAlertCues.blocked.insert(facts.pane)
+                    cue = .blocked
+                case .done:
+                    state.pendingAlertCues.completionSequence.insert(facts.pane)
+                    cue = .completion
+                case .working, .idle, .unknown:
+                    state.pendingAlertCues.blocked.remove(facts.pane)
+                }
+            } else {
+                state.pendingAlertCues.blocked.remove(facts.pane)
+            }
         }
 
         loadSelectedPreviewIfNeeded(&state)
-        return pendingPreviewEffect(&state) + dispatchQueued(&state)
+        let cueEffects = cue.map { [IslandEffect.playCue($0)] } ?? []
+        return cueEffects + pendingPreviewEffect(&state) + dispatchQueued(&state)
     }
 
     private static func dispatchQueued(_ state: inout IslandState) -> [IslandEffect] {
@@ -1137,10 +1179,17 @@ public enum IslandReducer {
         ))]
     }
 
-    private static func followLaunchedTask(_ state: inout IslandState, _ launch: TaskLaunchResult, now: Date) {
+    private static func followLaunchedTask(
+        _ state: inout IslandState,
+        _ launch: TaskLaunchResult,
+        now: Date
+    ) -> AlertCue? {
         if let agent = launch.agent { state.agents[agent.id] = agent }
-        if launch.agent?.status == .blocked, state.rules.autoExpandOnBlocked {
-            state.blockedAttention.insert(launch.pane)
+        if launch.agent?.status == .blocked {
+            state.pendingAlertCues.blocked.insert(launch.pane)
+            if state.rules.autoExpandOnBlocked {
+                state.blockedAttention.insert(launch.pane)
+            }
         }
         state.selection = launch.pane
         state.launchFeedbackUntil = now.addingTimeInterval(4)
@@ -1154,6 +1203,7 @@ public enum IslandReducer {
             isError: false,
             source: .send
         )
+        return launch.agent?.status == .blocked ? .blocked : nil
     }
 
     private static func finishDropTask(
@@ -1182,8 +1232,9 @@ public enum IslandReducer {
                 state.drop = nil
                 state.dropActive = false
             }
-            followLaunchedTask(&state, launch, now: now)
-            return [.sampleNow]
+            let cues = followLaunchedTask(&state, launch, now: now)
+                .map { [IslandEffect.playCue($0)] } ?? []
+            return cues + [.sampleNow]
         case .failure(let failure):
             if var task = state.drop {
                 task.phase = .composing

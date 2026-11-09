@@ -311,7 +311,7 @@ final class ReducerInteractionTests: XCTestCase {
             makeAgent("w1:p1", .idle, title: "Alpha"),
             makeAgent("w1:p2", .blocked, title: "Beta", stateChangeSeq: 8),
         ])), at: t0.addingTimeInterval(1))
-        XCTAssertEqual(draftEffects, [.loadPreview(PaneID("w1:p1"))])
+        XCTAssertEqual(draftEffects, [.playCue(.blocked), .loadPreview(PaneID("w1:p1"))])
 
         var p = presentation(of: drafting, at: t0.addingTimeInterval(1))
         XCTAssertTrue(p.isExpanded)

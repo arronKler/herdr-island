@@ -115,7 +115,7 @@ final class ReducerTransitionTests: XCTestCase {
         let effects = state.apply(.snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
             makeAgent("w1:p1", .idle, completionSeq: 11),
         ])), at: t0.addingTimeInterval(1))
-        XCTAssertEqual(effects, [])
+        XCTAssertEqual(effects, [.playCue(.completion)])
 
         var p = presentation(of: state, at: t0.addingTimeInterval(1))
         XCTAssertTrue(p.isExpanded)
@@ -204,7 +204,7 @@ final class ReducerTransitionTests: XCTestCase {
         let effects = state.apply(.snapshot(makeSnapshot(2, [
             makeAgent("w1:p1", .idle, completionSeq: 8),
         ])))
-        XCTAssertEqual(effects, [])
+        XCTAssertEqual(effects, [.playCue(.completion)])
 
         let p = presentation(of: state)
         XCTAssertTrue(p.isExpanded)
