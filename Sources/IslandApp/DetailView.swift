@@ -23,18 +23,11 @@ struct DetailView: View {
                 .frame(height: notchHeight)
             }
 
-            HStack(alignment: .top, spacing: 16) {
-                rail
-                    .frame(width: 210)
-                Rectangle()
-                    .fill(Theme.hairline)
-                    .frame(width: 1)
-                main
-            }
-            .padding(.horizontal, Theme.Layout.pad)
-            .padding(.top, 30)
-            .padding(.bottom, 16)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            main
+                .padding(.horizontal, Theme.Layout.pad)
+                .padding(.top, 30)
+                .padding(.bottom, 16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(background)
@@ -77,66 +70,6 @@ struct DetailView: View {
         }
     }
 
-    private var rail: some View {
-        ScrollView(.vertical, showsIndicators: true) {
-            LazyVStack(alignment: .leading, spacing: 3) {
-                ForEach(groupedRail, id: \.title) { group in
-                    Text(group.title)
-                        .font(Theme.code(Theme.TypeSize.micro, weight: .medium))
-                        .tracking(1.0)
-                        .foregroundStyle(Theme.textTertiary)
-                        .padding(.top, 10)
-                        .padding(.leading, 6)
-                    ForEach(group.rows) { row in
-                        railRow(row)
-                    }
-                }
-            }
-            .padding(.top, 12)
-        }
-        .frame(maxHeight: .infinity)
-    }
-
-    private var groupedRail: [(title: String, rows: [AgentRow])] {
-        var groups: [(String, [AgentRow])] = []
-        let blocked = presentation.rows.filter { $0.status == .blocked }
-        let working = presentation.rows.filter { $0.status == .working }
-        let rest = presentation.rows.filter { $0.status == .done || $0.status == .idle || $0.status == .unknown }
-        if !blocked.isEmpty { groups.append(("待处理", blocked)) }
-        if !working.isEmpty { groups.append(("运行中", working)) }
-        if !rest.isEmpty { groups.append(("其他", rest)) }
-        return groups
-    }
-
-    private func railRow(_ row: AgentRow) -> some View {
-        HStack(spacing: 8) {
-            AgentMarkView(kind: row.kind, size: 22, status: row.status)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(row.title)
-                    .font(Theme.sans(Theme.TypeSize.caption, weight: .medium))
-                    .foregroundStyle(row.isSelected ? Theme.textPrimary : Theme.textSecondary)
-                    .lineLimit(1)
-                Text("\(row.project) · \(IslandFormat.age(row.waited))")
-                    .font(Theme.code(9.5))
-                    .foregroundStyle(Theme.textTertiary)
-                    .lineLimit(1)
-            }
-            Spacer(minLength: 2)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 8)
-        .background(
-            RoundedRectangle(cornerRadius: 9)
-                .fill(row.isSelected ? Color.white.opacity(0.06) : .clear)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 9)
-                        .stroke(row.isSelected ? Theme.hairline : .clear, lineWidth: 0.6)
-                )
-        )
-        .contentShape(Rectangle())
-        .onTapGesture { actions.openDetail(row.id) }
-    }
-
     @ViewBuilder
     private var main: some View {
         if let selected {
@@ -145,7 +78,9 @@ struct DetailView: View {
                 if let banner = presentation.banner {
                     bannerView(banner)
                 }
-                questionCard(selected)
+                if selected.status == .blocked {
+                    blockedQuestion(selected)
+                }
                 if let worktree = selected.worktree {
                     worktreeBanner(worktree)
                 }
@@ -227,70 +162,20 @@ struct DetailView: View {
         .frame(height: 36)
     }
 
-    private func questionCard(_ row: AgentRow) -> some View {
-        let color = Theme.color(for: row.status)
-        let label: String
-        switch row.status {
-        case .blocked:
-            label = "\(IslandFormat.reason(row.reason)) · \(IslandFormat.age(row.waited))"
-        case .working:
-            label = "进行中 · 已运行 \(IslandFormat.age(row.waited))"
-        case .done:
-            label = "已完成 · \(IslandFormat.ago(row.waited))"
-        case .idle:
-            label = "空闲 · 等你下一条消息"
-        case .unknown:
-            label = "状态未知"
-        }
-
-        return VStack(alignment: .leading, spacing: 5) {
-            Text(label)
+    private func blockedQuestion(_ row: AgentRow) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("\(IslandFormat.reason(row.reason)) · \(IslandFormat.age(row.waited))")
                 .font(Theme.code(9.5, weight: .medium))
                 .tracking(1.0)
                 .textCase(.uppercase)
-                .foregroundStyle(color)
+                .foregroundStyle(Theme.amber)
             Text(questionText(row))
                 .font(Theme.sans(Theme.TypeSize.lead, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
-                .lineLimit(2)
+                .lineLimit(3)
                 .fixedSize(horizontal: false, vertical: true)
-            if let command = presentation.preview?.command {
-                HStack(spacing: 0) {
-                    Text("$ ")
-                        .foregroundStyle(Theme.amber)
-                    Text(command)
-                        .foregroundStyle(Theme.textPrimary)
-                }
-                .font(Theme.code(Theme.TypeSize.terminal))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(Color.black.opacity(0.28))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(Color.white.opacity(0.08), lineWidth: 0.6)
-                        )
-                )
-                .padding(.top, 2)
-            } else if let last = row.lastLine, row.status != .blocked {
-                Text(last)
-                    .font(Theme.sans(Theme.TypeSize.caption))
-                    .foregroundStyle(Theme.textSecondary)
-                    .lineLimit(1)
-            }
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Theme.wash(for: row.status))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(Theme.line(for: row.status), lineWidth: 0.6)
-                )
-        )
+        .padding(.leading, 2)
     }
 
     private func questionText(_ row: AgentRow) -> String {
