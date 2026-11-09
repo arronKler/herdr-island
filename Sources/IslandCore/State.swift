@@ -188,6 +188,7 @@ public struct IslandState: Sendable, Equatable {
             || (windowTask != nil && !windowTaskHidden)
             || manualOpen
             || hoverOpen
+            || detailOpen
             || !blockedAttention.isEmpty
             || !completionExpiry.isEmpty
     }
