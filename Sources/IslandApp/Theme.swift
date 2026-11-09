@@ -140,11 +140,14 @@ struct NotchBarShape: Shape {
 }
 
 /// The expanded island. The notch-width collar sits inside the menu-bar band,
-/// the body widens below it. Both share one path so there is no seam.
+/// the body widens below it. Both share one path so there is no seam. The two
+/// reflex corners where the collar meets the shoulders flare instead of
+/// meeting at a right angle, so the bar melts into the body.
 struct NotchIslandShape: Shape {
     var neckWidth: CGFloat
     var neckHeight: CGFloat
     var cornerRadius: CGFloat = 20
+    var neckFillet: CGFloat = 12
 
     func path(in rect: CGRect) -> Path {
         let neck = min(neckWidth, rect.width)
@@ -152,11 +155,18 @@ struct NotchIslandShape: Shape {
         let neckRight = rect.midX + neck / 2
         let radius = min(cornerRadius, min(rect.width, rect.height) / 2)
         let bodyTop = rect.minY + neckHeight
+        // Keep the flare inside both the shoulder and the collar height.
+        let shoulder = max(0, (rect.width - neck) / 2 - radius)
+        let fillet = min(neckFillet, min(shoulder, neckHeight))
 
         var path = Path()
         path.move(to: CGPoint(x: neckLeft, y: rect.minY))
         path.addLine(to: CGPoint(x: neckRight, y: rect.minY))
-        path.addLine(to: CGPoint(x: neckRight, y: bodyTop))
+        path.addLine(to: CGPoint(x: neckRight, y: bodyTop - fillet))
+        path.addQuadCurve(
+            to: CGPoint(x: neckRight + fillet, y: bodyTop),
+            control: CGPoint(x: neckRight, y: bodyTop)
+        )
         path.addLine(to: CGPoint(x: rect.maxX - radius, y: bodyTop))
         path.addQuadCurve(
             to: CGPoint(x: rect.maxX, y: bodyTop + radius),
@@ -177,9 +187,29 @@ struct NotchIslandShape: Shape {
             to: CGPoint(x: rect.minX + radius, y: bodyTop),
             control: CGPoint(x: rect.minX, y: bodyTop)
         )
-        path.addLine(to: CGPoint(x: neckLeft, y: bodyTop))
+        path.addLine(to: CGPoint(x: neckLeft - fillet, y: bodyTop))
+        path.addQuadCurve(
+            to: CGPoint(x: neckLeft, y: bodyTop - fillet),
+            control: CGPoint(x: neckLeft, y: bodyTop)
+        )
+        path.addLine(to: CGPoint(x: neckLeft, y: rect.minY))
         path.closeSubpath()
         return path
+    }
+}
+
+/// The collar band of every expanded surface stays the same pure black as the
+/// ambient ears bar. The body gradient otherwise lightens it, which made the
+/// bar look like it changed color the instant the island expanded.
+struct NotchCollarFill: View {
+    var neckWidth: CGFloat
+    var neckHeight: CGFloat
+
+    var body: some View {
+        Rectangle()
+            .fill(Color.black)
+            .frame(width: neckWidth, height: neckHeight)
+            .allowsHitTesting(false)
     }
 }
 

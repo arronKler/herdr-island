@@ -1,0 +1,93 @@
+{
+  "application": "Herdr Island",
+  "date": "2026-11-09",
+  "mode": "built-in image_gen",
+  "purpose": "Ten alternative application icon concepts for review",
+  "sources": [
+    "README.md",
+    "Sources/IslandApp/Theme.swift",
+    "Resources/Info.plist"
+  ],
+  "concepts": [
+    {
+      "id": "01",
+      "name": "刘海水滴",
+      "slug": "notch-drop",
+      "idea": "把刘海与可拖动水滴合成一个标记，最直接对应应用独有交互。",
+      "file": "01-notch-drop.png",
+      "prompt": "Use case: logo-brand\nAsset type: original macOS application icon concept for Herdr Island.\nProduct context: a quiet native macOS utility that gathers multiple coding agents beside the screen notch; a liquid droplet can be dragged away to create a task or tether a window. Brand traits: precise, calm, fluid, useful, beautifully native.\nOutput: exactly ONE standalone icon, square canvas, front-on orthographic view, centered macOS rounded-square tile occupying about 88% of the canvas, with a genuinely transparent exterior outside the tile. The tile itself is opaque. A bold, memorable central symbol must read at 32px. Generous internal breathing room. Professional finished icon artwork, clean controlled edges.\nConstraints: no presentation board, no labels, no words, no numbers, no watermark, no computer or phone mockup, no extra objects, no third-party logos, no generic AI sparkles or brain motifs. Keep surface treatment restrained and symbol geometry strong.\nPrimary request: the signature notch-and-droplet emblem. Inside a deep graphite rounded-square tile, show a wide short satin-silver bar with a flat upper edge and generous rounded lower corners, floating in the upper middle. From the exact center of its lower edge hangs one luminous ice-blue droplet, joined by a very short thin liquid neck. The droplet is the visual protagonist, broad and substantial, rounded lower body, subtle dimensional glasslike shading and one restrained highlight. The notch bar and droplet together form a compact unmistakable silhouette. No status dots, no other symbols. Palette: graphite #141820, frost silver, ice blue #5B9DFF. Quiet soft top-left light, exquisitely clean macOS app icon."
+    },
+    {
+      "id": "02",
+      "name": "液态 H",
+      "slug": "liquid-h",
+      "idea": "以 Herdr 首字母为品牌标志，用液态连接呼应水滴拖拽。",
+      "file": "02-liquid-h.png",
+      "prompt": "Use case: logo-brand\nAsset type: original macOS application icon concept for Herdr Island.\nProduct context: a quiet native macOS utility that gathers multiple coding agents beside the screen notch; a liquid droplet can be dragged away to create a task or tether a window. Brand traits: precise, calm, fluid, useful, beautifully native.\nOutput: exactly ONE standalone icon, square canvas, front-on orthographic view, centered macOS rounded-square tile occupying about 88% of the canvas, with a genuinely transparent exterior outside the tile. The tile itself is opaque. A bold, memorable central symbol must read at 32px. Generous internal breathing room. Professional finished icon artwork, clean controlled edges.\nConstraints: no presentation board, no labels, no words, no numbers, no watermark, no computer or phone mockup, no extra objects, no third-party logos, no generic AI sparkles or brain motifs. Keep surface treatment restrained and symbol geometry strong.\nPrimary request: a bespoke liquid H monogram. A single thick sculpted capital H, made of two short vertical rounded silver-blue pillars connected across their middle by a fluid pinched bridge. The lower end of the right pillar curves into a subtle droplet bulb; the overall letter must be clear and geometrically confident, not a cursive word. Brushed liquid-metal surface in pale blue and silver, subtle depth, deep charcoal tile. Extremely simple strong silhouette, no secondary objects, no text except this abstract H symbol. Elegant native developer-tool identity, not a shiny chrome toy."
+    },
+    {
+      "id": "03",
+      "name": "协同轨道",
+      "slug": "agent-orbit",
+      "idea": "中央核心与三个节点表现多个 agent 围绕同一任务协作。",
+      "file": "03-agent-orbit.png",
+      "prompt": "Use case: logo-brand\nAsset type: original macOS application icon concept for Herdr Island.\nProduct context: a quiet native macOS utility that gathers multiple coding agents beside the screen notch; a liquid droplet can be dragged away to create a task or tether a window. Brand traits: precise, calm, fluid, useful, beautifully native.\nOutput: exactly ONE standalone icon, square canvas, front-on orthographic view, centered macOS rounded-square tile occupying about 88% of the canvas, with a genuinely transparent exterior outside the tile. The tile itself is opaque. A bold, memorable central symbol must read at 32px. Generous internal breathing room. Professional finished icon artwork, clean controlled edges.\nConstraints: no presentation board, no labels, no words, no numbers, no watermark, no computer or phone mockup, no extra objects, no third-party logos, no generic AI sparkles or brain motifs. Keep surface treatment restrained and symbol geometry strong.\nPrimary request: an agent coordination orbit emblem. A single substantial cobalt-blue circular hub at center, surrounded by one broad elliptical orbital arc with three rounded satellite nodes, clearly separated and balanced at three positions around the orbit. Satellites are muted ice blue, mint, and warm amber to echo running, completed, attention states. No fine network lines: use a bold simple orbit band and clear masses. Deep navy graphite tile, refined softly extruded material, low relief rather than an elaborate 3D scene. Three satellites only, one core only. Calm precise composition, no starfield, no outer-space illustration."
+    },
+    {
+      "id": "04",
+      "name": "浮岛群",
+      "slug": "archipelago",
+      "idea": "用相邻的小岛表达独立 agent 工作区，强化 Island 的名称记忆。",
+      "file": "04-archipelago.png",
+      "prompt": "Use case: logo-brand\nAsset type: original macOS application icon concept for Herdr Island.\nProduct context: a quiet native macOS utility that gathers multiple coding agents beside the screen notch; a liquid droplet can be dragged away to create a task or tether a window. Brand traits: precise, calm, fluid, useful, beautifully native.\nOutput: exactly ONE standalone icon, square canvas, front-on orthographic view, centered macOS rounded-square tile occupying about 88% of the canvas, with a genuinely transparent exterior outside the tile. The tile itself is opaque. A bold, memorable central symbol must read at 32px. Generous internal breathing room. Professional finished icon artwork, clean controlled edges.\nConstraints: no presentation board, no labels, no words, no numbers, no watermark, no computer or phone mockup, no extra objects, no third-party logos, no generic AI sparkles or brain motifs. Keep surface treatment restrained and symbol geometry strong.\nPrimary request: an abstract archipelago emblem. Three smooth rounded pebble-islands grouped into a compact asymmetric triangle; one larger foreground island and two smaller upper islands. Each island is a very simple softly extruded flattened rounded shape seen from a shallow overhead angle, with clean edges. Muted sea-glass teal and sage islands on a pale porcelain rounded-square tile, subtle blue-grey shadows. A narrow blue negative-space water channel separates the three islands. No literal scenery, no trees, no ocean texture, no horizon. Scandinavian restraint, tactile matte ceramic, distinctive silhouette and beautiful spacing."
+    },
+    {
+      "id": "05",
+      "name": "终端之滴",
+      "slug": "terminal-drop",
+      "idea": "把终端提示符嵌入水滴，明确传达 coding agent 工具属性。",
+      "file": "05-terminal-drop.png",
+      "prompt": "Use case: logo-brand\nAsset type: original macOS application icon concept for Herdr Island.\nProduct context: a quiet native macOS utility that gathers multiple coding agents beside the screen notch; a liquid droplet can be dragged away to create a task or tether a window. Brand traits: precise, calm, fluid, useful, beautifully native.\nOutput: exactly ONE standalone icon, square canvas, front-on orthographic view, centered macOS rounded-square tile occupying about 88% of the canvas, with a genuinely transparent exterior outside the tile. The tile itself is opaque. A bold, memorable central symbol must read at 32px. Generous internal breathing room. Professional finished icon artwork, clean controlled edges.\nConstraints: no presentation board, no labels, no words, no numbers, no watermark, no computer or phone mockup, no extra objects, no third-party logos, no generic AI sparkles or brain motifs. Keep surface treatment restrained and symbol geometry strong.\nPrimary request: a developer terminal droplet emblem. One large flat-bottomed, softly rounded ice-mint teardrop stands upright at the center of an almost-black graphite tile. Inside the droplet, a thick dark terminal chevron and short underscore form the simple >_ prompt, beautifully optically aligned, with ample spacing and only these two marks. Use thick geometric shapes, high contrast, no microscopic detail. The droplet is matte frosted glass with subtle edge light, not a complicated glossy bubble. Green-mint #3DDD97 with pale cyan edge, calm premium native macOS styling. Only the terminal >_ symbol, no other text."
+    },
+    {
+      "id": "06",
+      "name": "窗口牵引",
+      "slug": "window-tether",
+      "idea": "窗口与水滴之间的连接，表现拖拽锁定窗口后向 agent 下达任务。",
+      "file": "06-window-tether.png",
+      "prompt": "Use case: logo-brand\nAsset type: original macOS application icon concept for Herdr Island.\nProduct context: a quiet native macOS utility that gathers multiple coding agents beside the screen notch; a liquid droplet can be dragged away to create a task or tether a window. Brand traits: precise, calm, fluid, useful, beautifully native.\nOutput: exactly ONE standalone icon, square canvas, front-on orthographic view, centered macOS rounded-square tile occupying about 88% of the canvas, with a genuinely transparent exterior outside the tile. The tile itself is opaque. A bold, memorable central symbol must read at 32px. Generous internal breathing room. Professional finished icon artwork, clean controlled edges.\nConstraints: no presentation board, no labels, no words, no numbers, no watermark, no computer or phone mockup, no extra objects, no third-party logos, no generic AI sparkles or brain motifs. Keep surface treatment restrained and symbol geometry strong.\nPrimary request: a window tether emblem. A single thick rounded-rectangle window frame in satin blue sits slightly above center on a very pale cool-grey tile. The window interior is empty. A short curved blue stem flows smoothly from the frame's bottom-right corner toward a single substantial detached-looking blue droplet below the window; the stem ends just before the droplet with a small clear gap. Exactly one window and one droplet. Strong compact diagonal balance, broad strokes, generous space, no toolbar buttons, no screenshot content, no tiny details. Soft shallow extrusion and crisp silhouette. Premium airy macOS icon."
+    },
+    {
+      "id": "07",
+      "name": "涟漪启动",
+      "slug": "ripple-launch",
+      "idea": "水滴落下形成涟漪，呼应把输入框放到桌面的动作。",
+      "file": "07-ripple-launch.png",
+      "prompt": "Use case: logo-brand\nAsset type: original macOS application icon concept for Herdr Island.\nProduct context: a quiet native macOS utility that gathers multiple coding agents beside the screen notch; a liquid droplet can be dragged away to create a task or tether a window. Brand traits: precise, calm, fluid, useful, beautifully native.\nOutput: exactly ONE standalone icon, square canvas, front-on orthographic view, centered macOS rounded-square tile occupying about 88% of the canvas, with a genuinely transparent exterior outside the tile. The tile itself is opaque. A bold, memorable central symbol must read at 32px. Generous internal breathing room. Professional finished icon artwork, clean controlled edges.\nConstraints: no presentation board, no labels, no words, no numbers, no watermark, no computer or phone mockup, no extra objects, no third-party logos, no generic AI sparkles or brain motifs. Keep surface treatment restrained and symbol geometry strong.\nPrimary request: a drop-and-ripple launch emblem. A large bold sapphire-blue water droplet floats immediately above a single broad elliptical silver-blue ripple ring. The drop tip points upward, its rounded bottom nearly touching the center of the ripple. The ellipse is clean, thick and strongly foreshortened, with a dark empty center. Composition is compact and centered on a dark navy tile. Restrained luminous material with clear form, soft top-left highlight. Exactly one droplet and one ripple ring; no extra concentric rings, no splashes, no realistic water scene. Polished dimensional native app icon, simple enough at small scale."
+    },
+    {
+      "id": "08",
+      "name": "群航",
+      "slug": "agent-flock",
+      "idea": "三个同向单元代表多 agent 并行推进，偏轻快、易识别的品牌方向。",
+      "file": "08-agent-flock.png",
+      "prompt": "Use case: logo-brand\nAsset type: original macOS application icon concept for Herdr Island.\nProduct context: a quiet native macOS utility that gathers multiple coding agents beside the screen notch; a liquid droplet can be dragged away to create a task or tether a window. Brand traits: precise, calm, fluid, useful, beautifully native.\nOutput: exactly ONE standalone icon, square canvas, front-on orthographic view, centered macOS rounded-square tile occupying about 88% of the canvas, with a genuinely transparent exterior outside the tile. The tile itself is opaque. A bold, memorable central symbol must read at 32px. Generous internal breathing room. Professional finished icon artwork, clean controlled edges.\nConstraints: no presentation board, no labels, no words, no numbers, no watermark, no computer or phone mockup, no extra objects, no third-party logos, no generic AI sparkles or brain motifs. Keep surface treatment restrained and symbol geometry strong.\nPrimary request: a coordinated flock emblem. Three identical thick rounded arrowhead shapes, like soft folded paper wedges rather than literal birds, point diagonally upward-right in a compact coordinated formation. The largest cobalt blue wedge leads, two smaller mint and pale-blue wedges follow with even clear gaps. Strong simple silhouette, no tails, no eyes, no ornamental lines. Warm off-white porcelain tile. Flat color faces with very slight paperlike depth and delicate ambient shadows, a friendly but precise professional developer-tool logo. Do not resemble a play-button stack; make the wedges elongated directional forms with softly rounded ends."
+    },
+    {
+      "id": "09",
+      "name": "任务叠层",
+      "slug": "task-deck",
+      "idea": "三层任务卡片归拢成一个入口，呼应应用中的任务台。",
+      "file": "09-task-deck.png",
+      "prompt": "Use case: logo-brand\nAsset type: original macOS application icon concept for Herdr Island.\nProduct context: a quiet native macOS utility that gathers multiple coding agents beside the screen notch; a liquid droplet can be dragged away to create a task or tether a window. Brand traits: precise, calm, fluid, useful, beautifully native.\nOutput: exactly ONE standalone icon, square canvas, front-on orthographic view, centered macOS rounded-square tile occupying about 88% of the canvas, with a genuinely transparent exterior outside the tile. The tile itself is opaque. A bold, memorable central symbol must read at 32px. Generous internal breathing room. Professional finished icon artwork, clean controlled edges.\nConstraints: no presentation board, no labels, no words, no numbers, no watermark, no computer or phone mockup, no extra objects, no third-party logos, no generic AI sparkles or brain motifs. Keep surface treatment restrained and symbol geometry strong.\nPrimary request: a compact task-deck emblem. Three rounded rectangular cards overlap in an upright gently staggered fan, with the front card dominant and the rear two visible as clean edges offset upward and sideways. Front card saturated cobalt blue; rear cards pale frost and muted mint. On the front card only, one thick near-white horizontal rounded capsule near its upper third and one short vertical droplet-shaped notch descending from its center, forming an original tiny island motif. No text lines, no checkmarks, no tiny UI. Deep graphite tile, soft dimensional ceramic surfaces, crisp broad silhouette, extremely restrained high-end macOS icon."
+    },
+    {
+      "id": "10",
+      "name": "负形之岛",
+      "slug": "negative-island",
+      "idea": "用刘海切口与水滴负形构成单色标记，适合继续发展菜单栏版本。",
+      "file": "10-negative-island.png",
+      "prompt": "Use case: logo-brand\nAsset type: original macOS application icon concept for Herdr Island.\nProduct context: a quiet native macOS utility that gathers multiple coding agents beside the screen notch; a liquid droplet can be dragged away to create a task or tether a window. Brand traits: precise, calm, fluid, useful, beautifully native.\nOutput: exactly ONE standalone icon, square canvas, front-on orthographic view, centered macOS rounded-square tile occupying about 88% of the canvas, with a genuinely transparent exterior outside the tile. The tile itself is opaque. A bold, memorable central symbol must read at 32px. Generous internal breathing room. Professional finished icon artwork, clean controlled edges.\nConstraints: no presentation board, no labels, no words, no numbers, no watermark, no computer or phone mockup, no extra objects, no third-party logos, no generic AI sparkles or brain motifs. Keep surface treatment restrained and symbol geometry strong.\nPrimary request: a radically minimal negative-space island mark. On a solid very pale ice-blue rounded-square tile, place one bold near-black softly rounded horizontal island capsule occupying roughly 60% of the tile width and 35% of its height. A large clean droplet-shaped negative-space cutout opens from the exact middle of the capsule's bottom edge and rises into its body, like a teardrop inlet: the cutout is the same pale blue as the tile and must remain open to the outside below. The capsule and its negative-space droplet should feel like one memorable custom emblem. Perfectly flat 2D, no gradients, no highlights, no shadows, no decorative elements. Strict two-color silhouette, exquisite optical balance, strong enough for a monochrome menu-bar identity."
+    }
+  ]
+}

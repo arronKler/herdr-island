@@ -139,7 +139,7 @@ struct SettingsView: View {
 
     private var header: some View {
         HStack(spacing: 9) {
-            DeckGlyph()
+            BrandMarkView()
 
             Text("Herdr Island")
                 .font(Theme.sans(Theme.TypeSize.title, weight: .semibold))

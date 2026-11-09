@@ -10,6 +10,8 @@
 	<string>HerdrIsland</string>
 	<key>CFBundleDisplayName</key>
 	<string>Herdr Island</string>
+	<key>CFBundleIconFile</key>
+	<string>HerdrIsland</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>

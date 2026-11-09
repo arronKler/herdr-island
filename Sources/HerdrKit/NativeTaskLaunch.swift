@@ -63,6 +63,7 @@ enum NativeTaskLaunch {
                             latest = latest?.applying(facts)
                         }
                         guard let agent = latest else { continue }
+                        try await checkStartupRefusal(cli, pane, request.kind)
                         if !reportedSubmission {
                             reportedSubmission = true
                             await onProgress(TaskCreationProgress(stage: .submission, startedAt: startedAt, pane: pane))
@@ -78,6 +79,7 @@ enum NativeTaskLaunch {
                 while ContinuousClock.now < deadline {
                     try Task.checkCancellation()
                     if let agent = try await observedAgent(cli, pane, request.kind) {
+                        try await checkStartupRefusal(cli, pane, request.kind)
                         if !reportedSubmission {
                             reportedSubmission = true
                             await onProgress(TaskCreationProgress(stage: .submission, startedAt: startedAt, pane: pane))
@@ -102,6 +104,11 @@ enum NativeTaskLaunch {
 
     private static func observedAgent(_ cli: HerdrCLI, _ pane: PaneID, _ kind: AgentKindOption) async throws -> Agent? {
         try await cli.listAgents(timeout: 2).first { $0.pane == pane && $0.kind == kind.rawValue }
+    }
+
+    private static func checkStartupRefusal(_ cli: HerdrCLI, _ pane: PaneID, _ kind: AgentKindOption) async throws {
+        guard kind == .cursor, let screen = try? await cli.startupVisibleANSI(pane: pane) else { return }
+        if let refusal = AgentComposerReadiness.startupRefusal(screen, kind: kind) { throw refusal }
     }
 
     private static func hasStarted(_ agent: Agent) -> Bool {

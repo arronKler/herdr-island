@@ -34,6 +34,8 @@ public struct QuickTaskDraftRecovery: Sendable, Equatable {
     public var draft: String
     public var kind: AgentKindOption
     public var cwd: String
+    public var creation: TaskCreationProgress? = nil
+    public var error: String? = nil
 
     public init(draft: String, kind: AgentKindOption, cwd: String) {
         self.draft = draft
@@ -91,7 +93,11 @@ public struct IslandState: Sendable, Equatable {
     public internal(set) var hoverOpen: Bool
     public internal(set) var drafts: [PaneID: String]
     public internal(set) var composerFocused: Bool
+    public internal(set) var terminalPane: PaneID? = nil
+    public let supportsInteractiveTerminal: Bool
     public internal(set) var sendsInFlight: Set<PaneID>
+    var promptDraftsInFlight: [PaneID: String] = [:]
+    var queuedPromptsInFlight: [PaneID: QueuedPrompt] = [:]
     public internal(set) var previews: [PaneID: PreviewOutcome]
     public internal(set) var previewRequests: Set<PaneID>
     // Keep the last successful text visible while changed terminal content loads.
@@ -122,7 +128,8 @@ public struct IslandState: Sendable, Equatable {
     public internal(set) var dropDefaultCwd: String? = nil
     public internal(set) var agentWorktrees: [PaneID: String]
 
-    public init(rules: IslandRules = .default) {
+    public init(rules: IslandRules = .default, supportsInteractiveTerminal: Bool = false) {
+        self.supportsInteractiveTerminal = supportsInteractiveTerminal
         self.rules = rules
         self.agents = [:]
         self.baselineEstablished = false
@@ -200,7 +207,7 @@ public struct IslandState: Sendable, Equatable {
     }
 
     public var canAutoCollapse: Bool {
-        !pointerInside && !composerFocused && !hasDraft && !windowDragActive
+        !pointerInside && !composerFocused && terminalPane == nil && !hasDraft && !windowDragActive
             && drop == nil && !dropActive
     }
 

@@ -186,6 +186,74 @@ final class HerdrMutationRPCTests: XCTestCase {
         XCTAssertFalse(probe.wasCalled)
     }
 
+    func testServiceMarksUnacknowledgedWorkspaceForInspection() async throws {
+        for reply: MutationServer.Reply in [.close, .result(["root_pane": [:]])] {
+            let probe = try CLIProbe()
+            defer { probe.cleanUp() }
+            let server = try MutationServer { _ in reply }
+            defer { server.stop() }
+            let recorder = CreationProgressRecorder()
+            let service = HerdrService(cli: probe.cli(socket: server.url), socketURL: server.url)
+            let result = await service.createTask(QuickTaskRequest(
+                name: "island-qa", text: "hello", kind: .claude, cwd: "/tmp", label: "QA"
+            )) { await recorder.record($0) }
+            if case .success = result { XCTFail("Missing creation acknowledgement must not report success") }
+            let progress = await recorder.last
+            XCTAssertEqual(progress?.requiresInspection, true)
+            XCTAssertEqual(progress?.canRetry, false)
+            XCTAssertEqual(server.methods, ["workspace.create"])
+            XCTAssertFalse(probe.wasCalled)
+        }
+    }
+
+    func testCursorTrustDialogRefusesStartupWithoutPromptOrKeyWrites() async throws {
+        let probe = try CLIProbe(body: "sleep 30")
+        defer { probe.cleanUp() }
+        let server = try MutationServer { request in
+            switch request["method"] as? String {
+            case "agent.list":
+                return .result(["agents": [["pane_id": "w2:p1", "agent": "cursor", "agent_status": "idle"]]])
+            case "agent.read":
+                return .result(["read": ["pane_id": "w2:p1", "text": "Workspace Trust Required"]])
+            default:
+                XCTFail("Trust detection must only read the screen")
+                return .error("unexpected", "unexpected write")
+            }
+        }
+        defer { server.stop() }
+        do {
+            _ = try await NativeTaskLaunch.confirm(cli: probe.cli(socket: server.url),
+                request: QuickTaskRequest(name: "island-qa", text: "hello", kind: .cursor, cwd: "/tmp", label: "QA"),
+                pane: PaneID("w2:p1"), startedAt: Date(), onProgress: { _ in })
+            XCTFail("Trust must require the user")
+        } catch let failure as BackendFailure { XCTAssertEqual(failure.kind, .agentBlocked) }
+        XCTAssertFalse(server.methods.contains("agent.prompt"))
+        XCTAssertFalse(server.methods.contains("pane.send_keys"))
+    }
+
+    func testQueuedOrManualPromptsCannotAnswerUnrecognizedClientDialogs() async throws {
+        for (kind, screen) in [("cursor", "Workspace Trust Required"), ("codex", "Approaching rate limits\nKeep current model")] {
+            let probe = try CLIProbe()
+            defer { probe.cleanUp() }
+            let server = try MutationServer { request in
+                switch request["method"] as? String {
+                case "agent.list": return .result(["agents": [["pane_id": "w2:p1", "agent": kind, "agent_status": "idle"]]])
+                case "agent.read": return .result(["read": ["pane_id": "w2:p1", "text": screen]])
+                default:
+                    XCTFail("No prompt may be written into a client decision dialog")
+                    return .error("unexpected", "unexpected write")
+                }
+            }
+            defer { server.stop() }
+            let service = HerdrService(cli: probe.cli(socket: server.url), socketURL: server.url)
+            let result = await service.sendPrompt(PaneID("w2:p1"), "do not approve anything")
+            guard case .failure(let failure) = result else { return XCTFail("The decision requires the user") }
+            XCTAssertEqual(failure.kind, .agentBlocked)
+            XCTAssertEqual(server.methods, ["agent.list", "agent.read"])
+            XCTAssertFalse(probe.wasCalled)
+        }
+    }
+
     func testConfiguredUnavailableSocketDoesNotFallBackForMutation() async throws {
         let probe = try CLIProbe()
         defer { probe.cleanUp() }
@@ -376,4 +444,9 @@ private final class MutationServer: @unchecked Sendable {
         response.append(0x0A)
         _ = response.withUnsafeBytes { Darwin.write(client, $0.baseAddress, $0.count) }
     }
+}
+
+private actor CreationProgressRecorder {
+    var last: TaskCreationProgress?
+    func record(_ progress: TaskCreationProgress) { last = progress }
 }

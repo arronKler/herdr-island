@@ -56,6 +56,12 @@ struct DetailView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 ))
+                .overlay(alignment: .top) {
+                    NotchCollarFill(
+                        neckWidth: notchWidth + IslandGeometry.notchEarWidth * 2,
+                        neckHeight: notchHeight
+                    )
+                }
                 .overlay {
                     NotchIslandShape(
                         neckWidth: notchWidth + IslandGeometry.notchEarWidth * 2,
@@ -89,10 +95,10 @@ struct DetailView: View {
                 }
                 terminal
                 actionsRow(selected)
-                if selected.status != .blocked {
+                if actions.terminalEnvironment == nil, selected.status != .blocked {
                     trustRow
                 }
-                composer(selected)
+                if actions.terminalEnvironment == nil { composer(selected) }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } else {
@@ -156,7 +162,7 @@ struct DetailView: View {
                     )
             }
             .buttonStyle(.plain)
-            .help("返回队列 (esc)")
+            .help("返回任务台 (⌘W；终端输入时 Esc 交给终端)")
             .accessibilityLabel("返回任务台")
         }
         .frame(height: 36)
@@ -217,7 +223,7 @@ struct DetailView: View {
             Image(systemName: "clock.arrow.circlepath")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Theme.blue)
-            Text("已排队 · 本轮结束自动发送")
+            Text(presentation.composer?.queuedFailure != nil ? "发送未确认 · 检查终端后回任务台重试" : actions.terminalEnvironment == nil ? "已排队 · 本轮结束自动发送" : "已排队 · 离开终端后恢复发送")
                 .font(Theme.code(9.5))
                 .foregroundStyle(Theme.blue)
             Text(text)
@@ -246,19 +252,27 @@ struct DetailView: View {
         )
     }
 
+    @ViewBuilder
     private var terminal: some View {
-        TerminalPreview(preview: presentation.preview)
-            .equatable()
-            .frame(maxHeight: .infinity)
-            .frame(minHeight: 170)
+        if let environment = actions.terminalEnvironment, let selected {
+            InteractiveTerminalView(environment: environment, pane: selected.id, active: actions.terminalActive)
+                .id(selected.id)
+                .frame(maxHeight: .infinity)
+                .frame(minHeight: 230)
+        } else {
+            TerminalPreview(preview: presentation.preview)
+                .equatable()
+                .frame(maxHeight: .infinity)
+                .frame(minHeight: 170)
+        }
     }
 
     private func actionsRow(_ row: AgentRow) -> some View {
         HStack(spacing: 8) {
             IslandButton(
-                title: row.status == .blocked ? "去终端处理" : "去终端",
+                title: actions.terminalEnvironment == nil ? "去终端" : "在 Herdr 打开",
                 trailingIcon: "arrow.up.right",
-                tier: row.status == .blocked ? .primary : .secondary,
+                tier: .secondary,
                 size: .medium
             ) {
                 actions.jump(row.id)
@@ -270,7 +284,7 @@ struct DetailView: View {
                 }
             }
 
-            if presentation.preview?.command != nil {
+            if actions.terminalEnvironment == nil, presentation.preview?.command != nil {
                 IslandButton(title: "复制命令", tier: .secondary, size: .medium) {
                     if let command = presentation.preview?.command {
                         NSPasteboard.general.clearContents()
@@ -281,7 +295,7 @@ struct DetailView: View {
 
             Spacer(minLength: 4)
 
-            Text(IslandFormat.age(row.waited))
+            Text(actions.terminalEnvironment == nil ? IslandFormat.age(row.waited) : "点击输入 · 拖动选择 · ⌘C / ⌘V")
                 .font(Theme.code(Theme.TypeSize.micro))
                 .foregroundStyle(Theme.textTertiary)
         }

@@ -1,0 +1,102 @@
+[
+  {
+    "id": "01",
+    "file": "01-notch-drop.png",
+    "width": 1254,
+    "height": 1254,
+    "bit_depth": 8,
+    "alpha": true,
+    "bytes": 1528839,
+    "sha256": "abd5b7cfc40888d7e69fb5679bef9047e7b59dad0d784c4490967620537305e5"
+  },
+  {
+    "id": "02",
+    "file": "02-liquid-h.png",
+    "width": 1254,
+    "height": 1254,
+    "bit_depth": 8,
+    "alpha": true,
+    "bytes": 1629414,
+    "sha256": "015d23d6a1c28c9c6f4494f72b6def2c44a3ad9075ab2752bc90acf65d1065da"
+  },
+  {
+    "id": "03",
+    "file": "03-agent-orbit.png",
+    "width": 1254,
+    "height": 1254,
+    "bit_depth": 8,
+    "alpha": true,
+    "bytes": 1636477,
+    "sha256": "33b9e93890b8f0fae4287422c25e06fdc828654da7eefee840a02a77f5ed8ee0"
+  },
+  {
+    "id": "04",
+    "file": "04-archipelago.png",
+    "width": 1254,
+    "height": 1254,
+    "bit_depth": 8,
+    "alpha": true,
+    "bytes": 1738716,
+    "sha256": "046722792df84ad52fe07ddc75a59210765d50ed27e90b76bec3d37db81ca3ee"
+  },
+  {
+    "id": "05",
+    "file": "05-terminal-drop.png",
+    "width": 1254,
+    "height": 1254,
+    "bit_depth": 8,
+    "alpha": true,
+    "bytes": 1581845,
+    "sha256": "bd5e6015f550b6006f96c1a8bcfa8d3503e3bc73f82179d8a85fca0626243c53"
+  },
+  {
+    "id": "06",
+    "file": "06-window-tether.png",
+    "width": 1254,
+    "height": 1254,
+    "bit_depth": 8,
+    "alpha": true,
+    "bytes": 1562048,
+    "sha256": "82d1c95fe3b04a5a8897f483967cae17045cdcce59f5a6b777c8dd58d12c530e"
+  },
+  {
+    "id": "07",
+    "file": "07-ripple-launch.png",
+    "width": 1254,
+    "height": 1254,
+    "bit_depth": 8,
+    "alpha": true,
+    "bytes": 1456579,
+    "sha256": "4b2c52aaf9920ecea27fe7f66e2977a921324e9e1b3704ff92d832b6f33faa64"
+  },
+  {
+    "id": "08",
+    "file": "08-agent-flock.png",
+    "width": 1254,
+    "height": 1254,
+    "bit_depth": 8,
+    "alpha": true,
+    "bytes": 1480976,
+    "sha256": "d0e1b3e20a6630602d76e29c4bb25ab82a4d51bb52f14aff077665a6c2775a35"
+  },
+  {
+    "id": "09",
+    "file": "09-task-deck.png",
+    "width": 1254,
+    "height": 1254,
+    "bit_depth": 8,
+    "alpha": true,
+    "bytes": 1584254,
+    "sha256": "559e005b8920a56b5fb43f7bc616ef433eafb2602c8742d07a742235be5c9b30"
+  },
+  {
+    "id": "10",
+    "file": "10-negative-island.png",
+    "width": 1254,
+    "height": 1254,
+    "bit_depth": 8,
+    "alpha": true,
+    "bytes": 1068434,
+    "sha256": "08d31250b3d471497db195102bf1279dd7eb25a40df6274b33e290ea6815eb68"
+  }
+]

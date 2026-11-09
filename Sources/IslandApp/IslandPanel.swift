@@ -45,7 +45,7 @@ final class FrameAnimator {
     private var startFrame: CGRect = .zero
     private var targetFrame: CGRect = .zero
     private var startTime: TimeInterval = 0
-    private let duration: TimeInterval = 0.18
+    private let duration: TimeInterval = 0.24
     private let onFrame: (CGRect) -> Void
 
     init(onFrame: @escaping (CGRect) -> Void) {
@@ -86,7 +86,7 @@ final class FrameAnimator {
     private func tick() {
         let elapsed = CACurrentMediaTime() - startTime
         let progress = min(max(elapsed / duration, 0), 1)
-        let eased = 1 - pow(1 - progress, 3)
+        let eased = 1 - pow(1 - progress, 4)
         let frame = CGRect(
             x: startFrame.minX + (targetFrame.minX - startFrame.minX) * eased,
             y: startFrame.minY + (targetFrame.minY - startFrame.minY) * eased,
@@ -126,6 +126,14 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     /// The display a quick task centers on. Captured when the card opens so a
     /// later mouse move cannot slide an open card to another screen.
     private var quickTaskScreenFrame: CGRect?
+    /// The display the drop canvas lives on. A window only composites on the
+    /// Space of the display it belongs to, so a canvas spanning every display
+    /// would leave the droplet and the composer invisible on all the others.
+    /// The canvas therefore follows the pointer's display for the whole drag.
+    private var dropScreenFrame: CGRect?
+    /// True between a left mouse down and up. Only an active drag may move the
+    /// drop canvas; an open composer must stay where it was placed.
+    private var isPointerDown = false
     /// True while we hide the panel ourselves. Without this, `resignKey()`
     /// synchronously posts `windowDidResignKey`, which re-enters the store and
     /// applies the collapse again, recursing until the stack overflows.
@@ -151,7 +159,8 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             quickTaskHeight: presentation.quickTask?.height ?? IslandGeometry.quickTaskSize.height,
             surface: presentation.surface,
             dropActive: presentation.isDropActive,
-            deckHeight: lockedDeckHeight ?? presentation.deckHeight
+            deckHeight: lockedDeckHeight ?? presentation.deckHeight,
+            dropScreenFrame: nil
         )
         let notch = Self.notchChrome(for: presentation, placement: placement)
         let anchor = IslandGeometry.dropAnchor(for: placement, panelFrame: frame)
@@ -213,6 +222,17 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         let previous = presentation
 
         presentation = next
+        let enteredDrop = next.surface == .drop && previous.surface != .drop
+        let leftDrop = previous.surface == .drop && next.surface != .drop
+        if enteredDrop {
+            // Start on the display the droplet was pulled from. The drag then
+            // moves the canvas to whichever display the pointer enters.
+            dropScreenFrame = Self.screenFrame(containing: NSEvent.mouseLocation)
+                ?? placement.screenFrame
+        } else if leftDrop {
+            dropScreenFrame = nil
+            isPointerDown = false
+        }
         if previous.quickTask == nil, next.quickTask != nil {
             quickTaskScreenFrame = ScreenMetrics.activeScreenFrame()
         } else if previous.quickTask != nil, next.quickTask == nil {
@@ -221,8 +241,18 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         syncDeckHeightLock(previous: previous, next: next)
         refreshPlacement()
 
+        // The quick task is a modal that belongs in the center. Moving the
+        // panel there from the status item would read as a fly-in animation,
+        // so show it at its final frame instead.
+        let quickTaskOpened = previous.quickTask == nil && next.quickTask != nil
+        let quickTaskClosed = previous.quickTask != nil && next.quickTask == nil
+        // The drop canvas and the quick-task close jump the window to a very
+        // different frame in one step. Cross-fading there would squeeze the
+        // outgoing card into the wrong size, so those swaps stay instant.
+        let instantSurface = enteredDrop || leftDrop || quickTaskClosed
+
         let target = targetFrame
-        render(panelFrame: target)
+        render(panelFrame: target, surfaceMotion: !instantSurface)
 
         // A folder picker owns key focus. Re-showing the panel here would put
         // it over the picker; endPicker() restores the frame and key.
@@ -234,14 +264,6 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         let shouldShow = placement.isNotch
             ? (next.isVisible || next.dropletVisible || next.isWindowDragActive)
             : (next.isExpanded || next.isWindowDragActive)
-
-        let enteredDrop = next.surface == .drop && previous.surface != .drop
-        let leftDrop = previous.surface == .drop && next.surface != .drop
-        // The quick task is a modal that belongs in the center. Moving the
-        // panel there from the status item would read as a fly-in animation,
-        // so show it at its final frame instead.
-        let quickTaskOpened = previous.quickTask == nil && next.quickTask != nil
-        let quickTaskClosed = previous.quickTask != nil && next.quickTask == nil
         if shouldShow {
             if !isOnScreen {
                 let start = quickTaskOpened
@@ -316,7 +338,8 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             surface: presentation.surface,
             dropActive: presentation.isDropActive,
             deckHeight: effectiveDeckHeight,
-            quickTaskScreen: quickTaskScreenFrame
+            quickTaskScreen: quickTaskScreenFrame,
+            dropScreenFrame: dropScreenFrame
         )
     }
 
@@ -345,7 +368,8 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         surface: IslandSurface,
         dropActive: Bool,
         deckHeight: CGFloat,
-        quickTaskScreen: CGRect? = nil
+        quickTaskScreen: CGRect? = nil,
+        dropScreenFrame: CGRect? = nil
     ) -> CGRect {
         IslandGeometry.frame(
             for: placement,
@@ -355,17 +379,29 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             surface: surface,
             dropActive: dropActive,
             deckHeight: deckHeight,
-            dropScreenFrame: desktopFrame(),
+            dropScreenFrame: dropScreenFrame,
             quickTaskScreen: quickTaskScreen
         )
     }
 
-    /// Every display, not just the one with the notch. The drop lives over the
-    /// real desktop so a window on any screen is reachable.
-    private static func desktopFrame() -> CGRect {
+    /// The display under the pointer. The drop canvas is a single window, and
+    /// a window composites only on the Space of the display it belongs to, so
+    /// the canvas has to cover exactly one display at a time.
+    private static func screenFrame(containing point: CGPoint) -> CGRect? {
         let frames = NSScreen.screens.map(\.frame)
-        guard let first = frames.first else { return .zero }
-        return frames.dropFirst().reduce(first) { $0.union($1) }
+        if let hit = frames.first(where: { $0.contains(point) }) {
+            return hit
+        }
+        // The pointer can sit in a gap between displays. Pick the closest.
+        return frames.min { lhs, rhs in
+            distanceSquared(from: point, to: lhs) < distanceSquared(from: point, to: rhs)
+        }
+    }
+
+    private static func distanceSquared(from point: CGPoint, to rect: CGRect) -> CGFloat {
+        let dx = max(max(rect.minX - point.x, point.x - rect.maxX), 0)
+        let dy = max(max(rect.minY - point.y, point.y - rect.maxY), 0)
+        return dx * dx + dy * dy
     }
 
     /// Screen frames in the panel's flipped local space, for composer clamping.
@@ -449,10 +485,13 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         return rect
     }
 
-    private func render(panelFrame: CGRect) {
+    private func render(panelFrame: CGRect, surfaceMotion: Bool = true) {
         let notch = Self.notchChrome(for: presentation, placement: placement)
         let anchor = IslandGeometry.dropAnchor(for: placement, panelFrame: panelFrame)
         let anchorScreen = IslandGeometry.dropScreenAnchor(for: placement)
+        let revealsFromTop = presentation.surface == .peek
+            || presentation.surface == .deck
+            || presentation.surface == .detail
         hosting.rootView = IslandRootView(
             presentation: presentation,
             actions: actions,
@@ -461,7 +500,9 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             anchorX: anchor.x,
             anchorY: anchor.y,
             anchorScreen: anchorScreen,
-            screens: Self.localScreenFrames(panelFrame: panelFrame)
+            screens: Self.localScreenFrames(panelFrame: panelFrame),
+            surfaceMotion: surfaceMotion,
+            revealSize: revealsFromTop ? panelFrame.size : nil
         )
     }
 
@@ -479,20 +520,27 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
                 + "screen=\(NSStringFromRect(metrics.screenFrame)) safeTop=\(metrics.safeAreaTop)"
             )
         }
-        if isOnScreen, !(animator?.isRunning ?? false) {
+        // A placement move (display change, menu-bar anchor change) is a
+        // discrete jump, so it snaps. Ordinary presentation changes must leave
+        // the frame alone: apply() animates it, and snapping here would turn
+        // that retarget into a no-op — the hover expand used to pop because of
+        // this.
+        if moved, isOnScreen, !(animator?.isRunning ?? false) {
             let target = targetFrame
-            if moved {
-                render(panelFrame: target)
-            }
-            if panel.frame != target {
-                panel.setFrame(target, display: true)
-            }
+            render(panelFrame: target, surfaceMotion: false)
+            panel.setFrame(target, display: true)
         }
     }
 
     func screenParametersChanged() {
         animator?.cancel()
         refreshPlacement()
+        if presentation.surface == .drop {
+            // The display that hosted the canvas may be gone now. Re-anchor on
+            // a display that still exists before the frame is computed.
+            dropScreenFrame = Self.screenFrame(containing: NSEvent.mouseLocation)
+                ?? placement.screenFrame
+        }
         let target = targetFrame
         render(panelFrame: target)
         if isOnScreen {
@@ -522,10 +570,43 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             Task { @MainActor in self?.refreshMousePolicy() }
         }
         localMouseMonitor = NSEvent.addLocalMonitorForEvents(
-            matching: [.mouseMoved, .leftMouseDragged]
+            matching: [.mouseMoved, .leftMouseDragged, .leftMouseDown, .leftMouseUp]
         ) { [weak self] event in
-            self?.refreshMousePolicy()
+            guard let self else { return event }
+            switch event.type {
+            case .leftMouseDown:
+                self.isPointerDown = true
+            case .leftMouseUp:
+                self.isPointerDown = false
+            default:
+                self.followDropPointer()
+            }
+            self.refreshMousePolicy()
             return event
+        }
+    }
+
+    /// A drop canvas can only render on the Space of one display, so while the
+    /// drag is live the panel follows the pointer's display. Without this the
+    /// droplet and the composer are drawn on a display the window is not on,
+    /// and the user sees nothing. The move is deferred one runloop turn because
+    /// relocating the window changes the coordinates of the event in flight.
+    private func followDropPointer() {
+        guard presentation.surface == .drop, isPointerDown else { return }
+        guard let screen = Self.screenFrame(containing: NSEvent.mouseLocation),
+              screen != dropScreenFrame else { return }
+        DispatchQueue.main.async { [weak self] in
+            guard let self,
+                  self.presentation.surface == .drop,
+                  self.isPointerDown,
+                  let current = Self.screenFrame(containing: NSEvent.mouseLocation),
+                  current != self.dropScreenFrame else { return }
+            self.dropScreenFrame = current
+            self.animator?.cancel()
+            let target = self.targetFrame
+            self.render(panelFrame: target, surfaceMotion: false)
+            self.panel.setFrame(target, display: true)
+            self.refreshMousePolicy()
         }
     }
 
@@ -569,6 +650,14 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
     }
 
     private func handleKey(_ event: NSEvent) -> NSEvent? {
+        if IslandTerminalNSView.containsResponder(panel.firstResponder) {
+            if event.modifierFlags.contains(.command),
+               event.charactersIgnoringModifiers?.lowercased() == "w" {
+                actions.backToDeck()
+                return nil
+            }
+            return event
+        }
         // Marked text means an IME composition is in progress. Escape and
         // Return belong to the composition, not to the island.
         if let editor = panel.fieldEditor(false, for: nil) as? NSTextView,

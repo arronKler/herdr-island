@@ -140,6 +140,9 @@ public actor HerdrSocket {
         }
         defer { Darwin.close(fd) }
 
+        var noSignal: Int32 = 1
+        setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &noSignal, socklen_t(MemoryLayout<Int32>.size))
+
         var timeout = Self.receiveTimeout
         setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, socklen_t(MemoryLayout<timeval>.size))
 

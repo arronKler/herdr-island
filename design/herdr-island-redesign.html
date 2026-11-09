@@ -4,6 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Herdr Island 重设计</title>
+<link rel="icon" type="image/svg+xml" href="../Sources/IslandApp/Resources/Brand/HerdrIsland.svg">
+<link rel="stylesheet" href="../Sources/IslandApp/Resources/Brand/HerdrIslandMark.css">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -142,8 +144,7 @@ button{cursor:pointer}
 .agent-avatar--lg svg{width:19px;height:19px}
 .masthead{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-block:22px;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
-.brand-mark{width:22px;height:14px;background:#08090c;border-radius:0 0 7px 7px;position:relative;flex:none}
-.brand-mark::after{content:"";position:absolute;right:4px;top:6px;width:3px;height:3px;border-radius:50%;background:var(--amber-2)}
+.brand-mark{width:22px;height:12px;color:#08090c;flex:none}
 .brand-word{font-size:12px;font-weight:600;letter-spacing:.02em;white-space:nowrap}
 .mast-meta{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:right}
 .hero{position:relative;padding-block:clamp(52px,8vw,100px) clamp(48px,6vw,84px)}
@@ -418,8 +419,7 @@ button{cursor:pointer}
 .deck-measure .layer{position:static;inset:auto;height:auto;min-height:0;opacity:1;visibility:visible;transform:none;transition:none}
 .deck-measure .deck-body{flex:none;height:auto;overflow:visible}
 .deck-head{display:flex;align-items:center;gap:10px;height:32px;min-width:0}
-.deck-glyph{width:20px;height:12px;background:#050608;border:1px solid rgba(255,255,255,.14);border-radius:0 0 6px 6px;position:relative;flex:none}
-.deck-glyph::after{content:"";position:absolute;right:4px;top:5px;width:2px;height:2px;border-radius:50%;background:var(--m-amber)}
+.deck-glyph{width:20px;height:12px;color:#d7effc;flex:none}
 .deck-title{font-size:var(--ui-title);font-weight:600;letter-spacing:.01em;white-space:nowrap}
 .deck-counts{display:flex;align-items:center;gap:10px;font-size:var(--ui-caption);color:var(--m-text-2);min-width:0;overflow:hidden;white-space:nowrap}
 .deck-counts span{display:inline-flex;align-items:center;gap:5px}
@@ -918,10 +918,7 @@ button{cursor:pointer}
 .nn-item:hover{background:rgba(255,255,255,.08)}
 .nn-item:focus-visible{outline:1px solid var(--m-blue);outline-offset:1px}
 .nn-demo[data-state="deck"] .nn-item,.nn-demo[data-state="menu"] .nn-item,.nn-demo[data-state="drop"] .nn-item,.nn-demo[data-state="peek"] .nn-item,.nn-demo[data-state="blocked"] .nn-item{background:rgba(255,255,255,.09)}
-.nn-item-icon{position:relative;width:18px;height:11px;border-radius:0 0 5px 5px;background:rgba(242,244,247,.86);box-shadow:inset 0 0 0 1px rgba(0,0,0,.22)}
-.nn-item-icon::after{content:"";position:absolute;right:3px;top:4px;width:2.5px;height:2.5px;border-radius:50%;background:var(--m-blue);transition:background var(--dur-fast)}
-.nn-demo[data-state="blocked"] .nn-item-icon::after,.nn-demo[data-state="deck"] .nn-item-icon::after{background:var(--m-amber)}
-.nn-demo[data-state="peek"] .nn-item-icon::after{background:var(--m-mint)}
+.nn-item-icon{width:20px;height:12px;color:#fff}
 .nn-badge{position:absolute;top:-2px;right:-4px;display:grid;place-items:center;min-width:12px;height:12px;padding:0 3px;border-radius:99px;background:var(--m-amber);color:#17120a;font-family:var(--mono);font-size:8px;font-weight:600;line-height:1;opacity:0;transform:scale(.6);transition:opacity var(--dur-fast),transform var(--dur-fast)}
 .nn-demo[data-state="blocked"] .nn-badge,.nn-demo[data-state="deck"] .nn-badge{opacity:1;transform:none}
 .nn-demo[data-state="blocked"] .nn-badge{animation:nn-badge 2.6s var(--ease-out) infinite}
@@ -1149,7 +1146,7 @@ button{cursor:pointer}
   </svg>
   <header class="masthead">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-mark herdr-brand-mark" aria-hidden="true"></span>
       <span class="brand-word">Herdr Island</span>
     </div>
     <div class="mast-meta">Redesign proposal · 2026.11 · herdr 0.9.5 · core 0.1.14</div>
@@ -1382,7 +1379,7 @@ button{cursor:pointer}
 
                 <div class="layer layer-deck" id="layerDeck">
                   <div class="deck-head">
-                    <span class="deck-glyph" aria-hidden="true"></span>
+                    <span class="deck-glyph herdr-brand-mark" aria-hidden="true"></span>
                     <span class="deck-title">Herdr Island</span>
                     <span class="deck-counts">
                       <span class="needs" id="countNeeds">2 待处理</span>
@@ -1585,7 +1582,7 @@ button{cursor:pointer}
             <div class="nn-menus" aria-hidden="true"><b>Finder</b><span>File</span><span>Edit</span><span>View</span><span>Window</span><span>Help</span></div>
             <div class="nn-right">
               <button class="nn-item" id="nnItem" type="button" aria-label="Herdr Island 状态项，1 项待处理。左键打开面板，按住拖动新建任务，右键打开菜单。" title="Herdr Island · 1 项待处理 · 按住拖动新建任务">
-                <span class="nn-item-icon" aria-hidden="true"></span>
+                <span class="nn-item-icon herdr-brand-mark" aria-hidden="true"></span>
                 <span class="nn-badge" aria-hidden="true">1</span>
               </button>
               <span class="nn-sys" aria-hidden="true">
@@ -1634,7 +1631,7 @@ button{cursor:pointer}
 
           <div class="nn-panel nn-deck" id="nnDeck" role="dialog" aria-label="Herdr Island 面板">
             <div class="deck-head">
-              <span class="deck-glyph" aria-hidden="true"></span>
+              <span class="deck-glyph herdr-brand-mark" aria-hidden="true"></span>
               <span class="deck-title">Herdr Island</span>
               <span class="deck-counts"><span class="needs">1 待处理</span><span class="run">2 运行中</span><span class="done">0 已完成</span></span>
               <span class="deck-head-right">
@@ -1728,7 +1725,7 @@ button{cursor:pointer}
         <div class="nn-map-row" role="row">
           <span class="nn-map-k" role="rowheader">常驻信号</span>
           <div class="nn-map-cell" role="cell"><span class="nn-map-v">左右两翼计数<small>待处理在左，运行在右，和水滴一起常驻</small></span></div>
-          <div class="nn-map-cell nn-map-cell--new" role="cell"><span class="nn-map-v">菜单栏图标的状态色 + blocked 角标<small>图标就是两翼的压缩形态，不新增悬浮条</small></span></div>
+          <div class="nn-map-cell nn-map-cell--new" role="cell"><span class="nn-map-v">单色镂空图标 + blocked 角标<small>图标就是两翼的压缩形态，不新增悬浮条</small></span></div>
         </div>
         <div class="nn-map-row" role="row">
           <span class="nn-map-k" role="rowheader">水滴</span>
@@ -1763,7 +1760,7 @@ button{cursor:pointer}
 
       <div class="nn-notes">
         <article class="nn-note"><span class="k">Click</span><h4>左键给结果，右键给菜单。</h4><p>菜单栏应用最容易犯的错，是先弹一层菜单再让用户找「显示岛」。这里左键直接开 deck，右键才出菜单；悬停只给 peek；按住图标拖动，水滴才从图标里长出来，不抢焦点。</p></article>
-        <article class="nn-note"><span class="k">Attention</span><h4>blocked 才值得打断。</h4><p>图标变 amber 并出现数字角标，auto-peek 一次 4 秒。之后只留角标，不常驻黑条，也不再次自动展开。安静时菜单栏只多一个小图标。</p></article>
+        <article class="nn-note"><span class="k">Attention</span><h4>blocked 才值得打断。</h4><p>图标保持单色镂空，出现数字角标，auto-peek 一次 4 秒。之后只留角标，不常驻黑条，也不再次自动展开。安静时菜单栏只多一个小图标。</p></article>
         <article class="nn-note"><span class="k">Displays</span><h4>多屏只认当前屏。</h4><p>岛跟随当前活动屏幕。内建刘海屏用两翼，外接屏用菜单栏形态；合盖或拔线时回到主屏，不留下孤立窗口，也不把面板留在已经拔掉的屏幕上。</p></article>
         <article class="nn-note"><span class="k">Optional</span><h4>模拟岛是选项，不是默认。</h4><p>设置里可以打开「模拟岛」，在无刘海屏顶部居中画一块虚拟岛，面板回到 crown 形态。代价是盖住菜单栏中段，也像在假装硬件开孔。默认关闭。</p></article>
       </div>
@@ -3968,7 +3965,7 @@ button{cursor:pointer}
   var drag = { active: false, moved: false, startX: 0, startY: 0, x: 0, y: 0 };
   var suppressClick = false;
   var copy = {
-    idle: "安静时只留菜单栏图标。状态色和 blocked 角标都在图标上，不占额外空间。",
+    idle: "安静时只留单色镂空图标；需要处理时出现 blocked 角标，不占额外空间。",
     peek: "悬停图标 150ms，peek 从图标下方展开；移开收起，不抢焦点。",
     blocked: "blocked 到达时角标变成 1，自动 peek 一次；4 秒后只留角标，不常驻黑条。",
     deck: "左键点图标直接开 deck；右键才出菜单。面板锚在图标下方，20pt 圆角，顶部留白 16pt，不再有 crown。",

@@ -112,6 +112,15 @@ public actor HerdrService: AgentSource, AgentActions {
 
     public func sendPrompt(_ pane: PaneID, _ text: String) async -> ActionResult {
         do {
+            // Clients can report idle while a trust or model-choice dialog is
+            // visible. A queued prompt's Enter must never select that dialog.
+            if let target = try await cli.listAgents().first(where: { $0.pane == pane }),
+               let kind = AgentKindOption(rawValue: target.kind), [.cursor, .codex].contains(kind) {
+                let screen = try await cli.startupVisibleANSI(pane: pane)
+                if let refusal = AgentComposerReadiness.startupRefusal(screen, kind: kind) {
+                    return .failure(refusal)
+                }
+            }
             try await cli.prompt(pane: pane, text: text)
             return .success
         } catch {
@@ -169,7 +178,7 @@ public actor HerdrService: AgentSource, AgentActions {
             await stageTracker.update(.agent)
             await onProgress(TaskCreationProgress(stage: .agent, startedAt: startedAt, pane: pane))
             let agent: Agent
-            if request.kind == .claude, NativeTaskLaunch.supportsNativePrompt(request.text) {
+            if [.claude, .cursor].contains(request.kind), NativeTaskLaunch.supportsNativePrompt(request.text) {
                 let observations = await observeTask(pane)
                 defer { taskObservers.removeValue(forKey: pane)?.finish() }
                 let trackedProgress: TaskCreationObserver = { progress in
@@ -183,9 +192,9 @@ public actor HerdrService: AgentSource, AgentActions {
                 )
             } else {
                 try await cli.startAgent(name: request.name, kind: request.kind.rawValue, pane: pane, timeout: 50)
-                if request.kind == .claude {
-                    try await ClaudeComposerReadiness.wait(
-                        pane: pane, name: request.name,
+                if [.claude, .codex, .cursor].contains(request.kind) {
+                    try await AgentComposerReadiness.wait(
+                        pane: pane, name: request.name, kind: request.kind,
                         readIdentity: { [cli] in try await cli.startupIdentity(pane: pane) },
                         readScreen: { [cli] in try await cli.startupVisibleANSI(pane: pane) }
                     )
@@ -213,6 +222,10 @@ public actor HerdrService: AgentSource, AgentActions {
                     : "请去终端检查启动、登录或授权提示。"
                 let title = request.kind == .claude ? "启动与提交" : stage.title
                 message = "\(title)未完成，终端 \(pane.rawValue) 已保留。\(recovery)"
+            } else if failure.kind == .timeout || failure.kind == .decode
+                        || failure.message.contains("closed before replying") {
+                await onProgress(TaskCreationProgress(startedAt: startedAt, requiresInspection: true))
+                message = "未收到创建结果，工作区可能已创建。请先在 Herdr 检查，避免重复创建。"
             } else {
                 message = request.worktreeBranch == nil ? "创建工作区失败，可重试。" : "创建 worktree 失败，可重试。"
             }

@@ -85,6 +85,27 @@ final class HerdrCLITests: XCTestCase {
         XCTAssertEqual(text, "line one\nline two")
     }
 
+    func testStartupScreenFallsBackToRawANSIWhenSocketUnavailable() async throws {
+        let binary = try script("printf 'empty composer\\n'")
+        let cli = HerdrCLI(binary: binary, socketURL: binary.deletingLastPathComponent().appendingPathComponent("missing.sock"))
+        let text = try await cli.startupVisibleANSI(pane: PaneID("w1:p1"))
+        XCTAssertEqual(text, "empty composer\n")
+    }
+
+    func testNewAgentRetriesOnlyExplicitShellAdmissionRefusal() async throws {
+        let binary = try script(#"""
+        count_file="$(dirname "$0")/count"
+        if [ ! -f "$count_file" ]; then
+            touch "$count_file"
+            echo '{"error":{"code":"agent_pane_busy","message":"shell initializing"}}' >&2
+            exit 1
+        fi
+        printf 'accepted\n' > "$(dirname "$0")/accepted"
+        """#)
+        try await HerdrCLI(binary: binary).startAgent(name: "qa", kind: "codex", pane: PaneID("w1:p1"))
+        XCTAssertTrue(FileManager.default.fileExists(atPath: binary.deletingLastPathComponent().appendingPathComponent("accepted").path))
+    }
+
     func testBusyPreviewWithoutSocketReadsVisibleContent() async throws {
         let binary = try script(#"""
         if [ "$5" = "recent-unwrapped" ]; then
@@ -368,7 +389,7 @@ final class HerdrCLITests: XCTestCase {
         """#)
         let recorder = CreationRecorder()
         let service = HerdrService(cli: HerdrCLI(binary: binary), socketURL: URL(fileURLWithPath: "/tmp/island-test.sock"))
-        let result = await service.createTask(QuickTaskRequest(name: "island-test", text: "hello", kind: .codex, cwd: "/tmp", label: "hello")) {
+        let result = await service.createTask(QuickTaskRequest(name: "island-test", text: "hello", kind: .pi, cwd: "/tmp", label: "hello")) {
             await recorder.append($0)
         }
         guard case .failure(let error) = result else { return XCTFail("must not claim success") }
@@ -390,7 +411,7 @@ final class HerdrCLITests: XCTestCase {
         esac
         """#)
         let service = HerdrService(cli: HerdrCLI(binary: binary), socketURL: URL(fileURLWithPath: "/tmp/island-test.sock"))
-        let result = await service.createTask(QuickTaskRequest(name: "island-test", text: "hello", kind: .codex, cwd: "/tmp", label: "hello"))
+        let result = await service.createTask(QuickTaskRequest(name: "island-test", text: "hello", kind: .pi, cwd: "/tmp", label: "hello"))
         guard case .success(let launch) = result else { return XCTFail("expected confirmed startup: \(result)") }
         XCTAssertEqual(launch.agent?.status, .working)
         let calls = try String(contentsOf: binary.deletingLastPathComponent().appendingPathComponent("calls.txt"), encoding: .utf8)
@@ -455,7 +476,7 @@ final class HerdrCLITests: XCTestCase {
         esac
         """#)
         let service = HerdrService(cli: HerdrCLI(binary: binary), socketURL: URL(fileURLWithPath: "/tmp/island-test.sock"))
-        let result = await service.createTask(QuickTaskRequest(name: "island-test", text: "hello", kind: .codex, cwd: "/tmp", label: "hello"))
+        let result = await service.createTask(QuickTaskRequest(name: "island-test", text: "hello", kind: .pi, cwd: "/tmp", label: "hello"))
         guard case .failure(let error) = result else { return XCTFail("expected failure") }
         XCTAssertTrue(error.message.contains("w9:p1"))
         let calls = try String(contentsOf: binary.deletingLastPathComponent().appendingPathComponent("calls.txt"), encoding: .utf8)
@@ -494,6 +515,29 @@ final class HerdrCLITests: XCTestCase {
         XCTAssertEqual(agent.status, .blocked, "approval still requires the user")
         let calls = try String(contentsOf: callsURL, encoding: .utf8)
         XCTAssertEqual(calls.split(separator: "\n"), ["agent start"])
+    }
+
+    func testCodexWaitsForARealEmptyComposerBeforeSubmittingOnce() async throws {
+        let binary = try script(#"""
+        printf '%s\n' "$1 $2" >> "$(dirname "$0")/calls.txt"
+        case "$1 $2" in
+          "workspace create") echo '{"result":{"root_pane":{"pane_id":"w9:p1"}}}' ;;
+          "agent start") printf '%s\n' "$@" > "$(dirname "$0")/args.txt" ;;
+          "agent get") echo '{"result":{"agent":{"pane_id":"w9:p1","terminal_id":"term_qa","name":"island-qa","agent":"codex","agent_status":"idle","interactive_ready":true,"state_change_seq":1}}}' ;;
+          "agent read") printf 'OpenAI Codex\n› \033[2mAsk Codex to do anything\033[0m\n' ;;
+          "agent prompt") echo '{"result":{"agent":{"pane_id":"w9:p1","agent":"codex","agent_status":"working"}}}' ;;
+          *) exit 9 ;;
+        esac
+        """#)
+        let service = HerdrService(cli: HerdrCLI(binary: binary), socketURL: binary.appendingPathExtension("missing"))
+        let result = await service.createTask(QuickTaskRequest(name: "island-qa", text: "hello", kind: .codex, cwd: "/tmp", label: "QA"))
+        guard case .success(let launch) = result else { return XCTFail("Expected confirmed Codex launch: \(result)") }
+        XCTAssertEqual(launch.agent?.status, .working)
+        let args = try recordedArguments(binary: binary).split(separator: "\n").map(String.init)
+        XCTAssertFalse(args.contains("hello"), "Codex initial argv did not execute its task in the installed client")
+        let calls = try String(contentsOf: binary.deletingLastPathComponent().appendingPathComponent("calls.txt"), encoding: .utf8)
+        XCTAssertEqual(calls.split(separator: "\n").filter { $0 == "agent prompt" }.count, 1)
+        XCTAssertGreaterThanOrEqual(calls.split(separator: "\n").filter { $0 == "agent read" }.count, 2)
     }
 
     func testNativeLaunchUsesSharedSamplesWhenTheEventSocketIsOffline() async throws {

@@ -74,6 +74,12 @@ struct DeckView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 ))
+                .overlay(alignment: .top) {
+                    NotchCollarFill(
+                        neckWidth: notchWidth + IslandGeometry.notchEarWidth * 2,
+                        neckHeight: notchHeight
+                    )
+                }
                 .overlay {
                     NotchIslandShape(
                         neckWidth: notchWidth + IslandGeometry.notchEarWidth * 2,
@@ -95,7 +101,7 @@ struct DeckView: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            DeckGlyph()
+            BrandMarkView()
             Text("Herdr Island")
                 .font(Theme.sans(Theme.TypeSize.title, weight: .semibold))
                 .foregroundStyle(Theme.textPrimary)
@@ -544,12 +550,13 @@ struct DeckView: View {
                 actions.snooze(row.id)
             }
             IslandButton(
-                title: "去终端处理",
-                trailingIcon: "arrow.up.right",
+                title: actions.terminalEnvironment == nil ? "去终端处理" : "在岛内处理",
+                trailingIcon: actions.terminalEnvironment == nil ? "arrow.up.right" : "arrow.right",
                 tier: .primary,
                 size: .medium
             ) {
-                actions.jump(row.id)
+                if actions.terminalEnvironment != nil { actions.openDetail(row.id) }
+                else { actions.jump(row.id) }
             }
         }
         .padding(.top, 12)
@@ -651,7 +658,7 @@ struct DeckView: View {
             Image(systemName: "clock.arrow.circlepath")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Theme.blue)
-            Text("已排队")
+            Text(presentation.composer?.queuedFailure == nil ? "已排队" : "发送未确认")
                 .font(Theme.code(9.5, weight: .medium))
                 .foregroundStyle(Theme.blue)
             Text(text)
@@ -659,6 +666,13 @@ struct DeckView: View {
                 .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
             Spacer(minLength: 4)
+            if presentation.composer?.queuedFailure != nil {
+                Button("重试") { actions.retryQueued(row.id) }
+                    .buttonStyle(.plain)
+                    .font(Theme.code(9.5))
+                    .disabled(!row.acceptsPrompt)
+                    .help("先检查终端是否已收到这条消息，确认后再重试")
+            }
             Button { actions.cancelQueued(row.id) } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 9, weight: .bold))
@@ -824,38 +838,10 @@ struct DeckView: View {
     private var emptySubtitle: String {
         if presentation.isSearching { return "换一个关键词，或按 esc 回到列表" }
         switch presentation.filter {
-        case .needs: return "需要你决定的 agent 会出现在这里。去终端回答后会自动消失。"
+        case .needs: return "需要你决定的 agent 会出现在这里。打开详情回答后会自动消失。"
         case .running: return "在 Herdr 里启动 agent 后，会出现在这里。"
         case .done: return "完成一轮的 agent 会短暂出现在这里。"
         case .all: return "在 Herdr 里启动 agent，或从水滴创建一个新任务。"
         }
-    }
-}
-
-struct DeckGlyph: View {
-    var body: some View {
-        ZStack(alignment: .top) {
-            UnevenRoundedRectangle(
-                topLeadingRadius: 0,
-                bottomLeadingRadius: 6,
-                bottomTrailingRadius: 6,
-                topTrailingRadius: 0
-            )
-            .fill(Color.black)
-            .overlay(
-                UnevenRoundedRectangle(
-                    topLeadingRadius: 0,
-                    bottomLeadingRadius: 6,
-                    bottomTrailingRadius: 6,
-                    topTrailingRadius: 0
-                )
-                .stroke(Color.white.opacity(0.15), lineWidth: 0.6)
-            )
-            Circle()
-                .fill(Theme.amber)
-                .frame(width: 3, height: 3)
-                .offset(x: 5.5, y: 5.5)
-        }
-        .frame(width: 20, height: 12)
     }
 }

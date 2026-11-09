@@ -12,7 +12,7 @@ struct QuickTaskView: View {
             header
             input
             if let creation = quickTask.creation {
-                TaskCreationStatusView(progress: creation, error: quickTask.error, openPane: actions.jump)
+                TaskCreationStatusView(progress: creation, error: quickTask.error, openPane: actions.jump, reset: actions.resetTaskCreation)
                     .padding(.top, 4)
             } else {
                 controls
@@ -105,7 +105,7 @@ struct QuickTaskView: View {
                         )
                 )
             IslandButton(
-                title: quickTask.isCreating ? "创建中" : (quickTask.creation?.pane == nil ? "开始" : "已创建"),
+                title: quickTask.isCreating ? "创建中" : (quickTask.creation?.canRetry != false ? "开始" : "需检查"),
                 trailingIcon: quickTask.isCreating ? nil : "return",
                 tier: .primary,
                 size: .large,

@@ -20,11 +20,14 @@ public struct TaskCreationProgress: Sendable, Equatable {
     public let stage: TaskCreationStage
     public let startedAt: Date
     public let pane: PaneID?
+    public let requiresInspection: Bool
+    public var canRetry: Bool { pane == nil && !requiresInspection }
 
-    public init(stage: TaskCreationStage = .workspace, startedAt: Date, pane: PaneID? = nil) {
+    public init(stage: TaskCreationStage = .workspace, startedAt: Date, pane: PaneID? = nil, requiresInspection: Bool = false) {
         self.stage = stage
         self.startedAt = startedAt
         self.pane = pane
+        self.requiresInspection = requiresInspection
     }
 }
 

@@ -1,4 +1,6 @@
 <title>Herdr Island 重设计</title>
+<link rel="icon" type="image/svg+xml" href="../Sources/IslandApp/Resources/Brand/HerdrIsland.svg">
+<link rel="stylesheet" href="../Sources/IslandApp/Resources/Brand/HerdrIslandMark.css">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
@@ -137,8 +139,7 @@ button{cursor:pointer}
 .agent-avatar--lg svg{width:17px;height:17px}
 .masthead{display:flex;align-items:center;justify-content:space-between;gap:20px;padding-block:22px;border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:10px;min-width:0}
-.brand-mark{width:22px;height:14px;background:#08090c;border-radius:0 0 7px 7px;position:relative;flex:none}
-.brand-mark::after{content:"";position:absolute;right:4px;top:6px;width:3px;height:3px;border-radius:50%;background:var(--amber-2)}
+.brand-mark{width:22px;height:12px;color:#08090c;flex:none}
 .brand-word{font-size:12px;font-weight:600;letter-spacing:.02em;white-space:nowrap}
 .mast-meta{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);text-align:right}
 .hero{position:relative;padding-block:clamp(52px,8vw,100px) clamp(48px,6vw,84px)}
@@ -413,8 +414,7 @@ button{cursor:pointer}
 .deck-measure .layer{position:static;inset:auto;height:auto;min-height:0;opacity:1;visibility:visible;transform:none;transition:none}
 .deck-measure .deck-body{flex:none;height:auto;overflow:visible}
 .deck-head{display:flex;align-items:center;gap:9px;height:28px;min-width:0}
-.deck-glyph{width:17px;height:10px;background:#050608;border:1px solid rgba(255,255,255,.14);border-radius:0 0 5px 5px;position:relative;flex:none}
-.deck-glyph::after{content:"";position:absolute;right:3px;top:4px;width:2px;height:2px;border-radius:50%;background:var(--m-amber)}
+.deck-glyph{width:20px;height:12px;color:#d7effc;flex:none}
 .deck-title{font-size:12px;font-weight:600;letter-spacing:.01em;white-space:nowrap}
 .deck-counts{display:flex;align-items:center;gap:8px;font-size:10px;color:var(--m-text-2);min-width:0;overflow:hidden;white-space:nowrap}
 .deck-counts span{display:inline-flex;align-items:center;gap:4px}
@@ -1026,7 +1026,7 @@ button{cursor:pointer}
   </svg>
   <header class="masthead">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="brand-mark herdr-brand-mark" aria-hidden="true"></span>
       <span class="brand-word">Herdr Island</span>
     </div>
     <div class="mast-meta">Redesign proposal · 2026.11 · herdr 0.9.5 · core 0.1.14</div>
@@ -1258,7 +1258,7 @@ button{cursor:pointer}
 
                 <div class="layer layer-deck" id="layerDeck">
                   <div class="deck-head">
-                    <span class="deck-glyph" aria-hidden="true"></span>
+                    <span class="deck-glyph herdr-brand-mark" aria-hidden="true"></span>
                     <span class="deck-title">Herdr Island</span>
                     <span class="deck-counts">
                       <span class="needs" id="countNeeds">2 待处理</span>

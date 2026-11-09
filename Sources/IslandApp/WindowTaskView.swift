@@ -24,7 +24,7 @@ struct WindowTaskView: View {
             destinationPicker
             controls
             if let creation = windowTask.creation {
-                TaskCreationStatusView(progress: creation, error: windowTask.error, openPane: actions.jump)
+                TaskCreationStatusView(progress: creation, error: windowTask.error, openPane: actions.jump, reset: actions.resetTaskCreation)
             } else {
                 suggestions
             }

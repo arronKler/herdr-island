@@ -23,10 +23,10 @@ final class IslandStore: ObservableObject {
 
     var onPresentationChange: ((IslandPresentation) -> Void)?
 
-    init(source: AgentSource, actions: AgentActions, rules: IslandRules = .default) {
+    init(source: AgentSource, actions: AgentActions, rules: IslandRules = .default, supportsInteractiveTerminal: Bool = false) {
         self.source = source
         self.actions = actions
-        self.state = IslandState(rules: rules)
+        self.state = IslandState(rules: rules, supportsInteractiveTerminal: supportsInteractiveTerminal)
         self.presentation = IslandPresenter.present(state, now: Date())
     }
 
@@ -232,7 +232,7 @@ final class IslandStore: ObservableObject {
     private func nextBranch() -> String {
         let words = ["quiet-otter", "still-fern", "slow-comet", "calm-ember", "soft-ridge", "plain-heron", "low-tide", "open-pine"]
         branchIndex = (branchIndex + 1) % words.count
-        return "island/\(words[branchIndex])"
+        return "island/\(words[branchIndex])-\(UUID().uuidString.prefix(8).lowercased())"
     }
 
     func setQuickTaskDraft(_ text: String) {

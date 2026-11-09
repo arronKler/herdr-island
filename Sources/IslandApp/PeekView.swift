@@ -86,6 +86,12 @@ struct PeekView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 ))
+                .overlay(alignment: .top) {
+                    NotchCollarFill(
+                        neckWidth: notchWidth + IslandGeometry.notchEarWidth * 2,
+                        neckHeight: notchHeight
+                    )
+                }
             } else {
                 RoundedRectangle(cornerRadius: 18).fill(Theme.surface)
             }

@@ -231,7 +231,7 @@ final class WindowLockTests: XCTestCase {
         XCTAssertEqual(request.destination, .newTask(kind: .codex, cwd: "/tmp/new-agent"))
     }
 
-    func testSnapshotReassignsBusyDestinationToAnIdleAgent() {
+    func testSnapshotPreservesBusyDestinationInsteadOfSendingToAnotherAgent() {
         var state = lockedState()
         XCTAssertEqual(
             presentation(of: state, at: t0).windowTask?.destinationAgent,
@@ -245,8 +245,9 @@ final class WindowLockTests: XCTestCase {
 
         XCTAssertEqual(
             presentation(of: state, at: t0.addingTimeInterval(1)).windowTask?.destinationAgent,
-            PaneID("w1:p2")
+            PaneID("w1:p1")
         )
+        XCTAssertNotNil(presentation(of: state, at: t0).windowTask?.destinationRefusal)
     }
 
     func testUnlockAndWindowClosedClearTheLock() {

@@ -14,6 +14,7 @@ public enum IslandEvent: Sendable, Equatable {
     case moveSelection(Int)
     case setHover(Bool)
     case setComposerFocus(Bool)
+    case setTerminalActive(PaneID, Bool)
     case lostFocus
     case setDraft(PaneID, String)
     case sendMessage
@@ -31,6 +32,7 @@ public enum IslandEvent: Sendable, Equatable {
     case snooze(PaneID)
     case queueMessage
     case cancelQueued(PaneID)
+    case retryQueued(PaneID)
     case openQuickTask(cwd: String, kind: AgentKindOption)
     case closeQuickTask
     case setQuickTaskDraft(String)
@@ -69,6 +71,7 @@ public enum IslandEvent: Sendable, Equatable {
     case windowCaptureResult(WindowCaptureRequest, Result<String, BackendFailure>)
     case windowTaskCreated(token: UUID, launch: TaskLaunchResult)
     case windowTaskResult(token: UUID, result: Result<String, BackendFailure>)
+    case resetTaskCreation
 }
 
 public enum IslandEffect: Sendable, Equatable {

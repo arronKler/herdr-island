@@ -7,6 +7,7 @@ struct TaskCreationStatusView: View {
     let progress: TaskCreationProgress
     let error: String?
     let openPane: (PaneID) -> Void
+    var reset: () -> Void = {}
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -61,14 +62,20 @@ struct TaskCreationStatusView: View {
                     .foregroundStyle(Theme.textSecondary)
                 }
             }
-            if let pane = progress.pane {
-                IslandButton(
-                    title: error == nil ? "查看终端" : "去终端处理",
-                    trailingIcon: "arrow.up.right",
-                    tier: .secondary,
-                    size: .small
-                ) {
-                    openPane(pane)
+            HStack(spacing: 8) {
+                if let pane = progress.pane {
+                    IslandButton(
+                        title: error == nil ? "查看终端" : "去终端处理",
+                        trailingIcon: "arrow.up.right",
+                        tier: .secondary,
+                        size: .small
+                    ) {
+                        openPane(pane)
+                    }
+                }
+                if error != nil {
+                    IslandButton(title: "另建任务", tier: .secondary, size: .small, action: reset)
+                        .help("清空当前草稿，开始一项新任务；原终端会保留")
                 }
             }
         }

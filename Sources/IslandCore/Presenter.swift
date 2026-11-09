@@ -137,7 +137,7 @@ public enum IslandPresenter {
                     return $0.waited > $1.waited
                 }
         case .all:
-            return rows.filter { !isDismissed(state, $0) }
+            return rows
         }
     }
 
@@ -258,7 +258,7 @@ public enum IslandPresenter {
         let refusal = windowTaskRefusal(state)
 
         let canSubmit = task.phase == .editing
-            && task.creation?.pane == nil
+            && task.creation?.canRetry != false
             && !task.trimmedDraft.isEmpty
             && refusal == nil
             && state.screenCaptureAuthorized != false
@@ -427,7 +427,7 @@ public enum IslandPresenter {
             && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && refusal == nil
 
-        return ComposerPresentation(
+        var presentation = ComposerPresentation(
             pane: selected.id,
             placeholder: isQueue
                 ? "写一条回复，本轮结束后自动发送…"
@@ -439,6 +439,8 @@ public enum IslandPresenter {
             isQueue: isQueue,
             queuedText: queued?.text
         )
+        presentation.queuedFailure = queued?.failure
+        return presentation
     }
 }
 

@@ -67,7 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
         }
 
-        let store = IslandStore(source: source, actions: actions, rules: rules)
+        let store = IslandStore(source: source, actions: actions, rules: rules, supportsInteractiveTerminal: environment != nil)
         self.store = store
 
         let viewActions = makeViewActions(store: store)
@@ -107,8 +107,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             statusItemController?.frame
         }
 
-        store.onPresentationChange = { [weak self] presentation in
+        var initialPane = options.openPane.map(PaneID.init)
+        store.onPresentationChange = { [weak self, weak store] presentation in
             guard let self else { return }
+            if let pane = initialPane, presentation.rows.contains(where: { $0.id == pane }) {
+                initialPane = nil
+                store?.openDetail(pane)
+                self.panelController?.makeKey()
+                return
+            }
             self.panelController?.apply(presentation)
             self.statusItemController?.update(presentation)
             self.syncTether(presentation)
@@ -200,6 +207,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeViewActions(store: IslandStore) -> IslandViewActions {
         var actions = IslandViewActions()
+        actions.terminalEnvironment = environment
+        actions.terminalActive = { [weak store] pane, active in
+            store?.handle(.setTerminalActive(pane, active))
+        }
         actions.jump = { [weak store] pane in store?.jump(pane) }
         actions.dismiss = { [weak store] in store?.escape() }
         actions.select = { [weak store] pane in store?.select(pane) }
@@ -225,6 +236,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actions.setSearching = { [weak store] active in store?.setSearching(active) }
         actions.snooze = { [weak store] pane in store?.snooze(pane) }
         actions.cancelQueued = { [weak store] pane in store?.cancelQueued(pane) }
+        actions.retryQueued = { [weak store] pane in store?.handle(.retryQueued(pane)) }
+        actions.resetTaskCreation = { [weak store] in store?.handle(.resetTaskCreation) }
         actions.openQuickTask = { [weak store] in store?.openQuickTask() }
         actions.beginDrop = { [weak store] in store?.beginDrop() }
         actions.endDrop = { [weak store] in store?.endDrop() }

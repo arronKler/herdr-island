@@ -211,6 +211,8 @@ public struct AgentFacts: Sendable, Equatable {
 public struct QueuedPrompt: Sendable, Equatable {
     public var text: String
     public let createdAt: Date
+    /// An uncertain or refused delivery requires an explicit retry.
+    public var failure: String? = nil
 
     public init(text: String, createdAt: Date) {
         self.text = text
@@ -274,7 +276,7 @@ public struct DropTaskState: Sendable, Equatable {
     public var canSubmit: Bool {
         phase == .composing
             && !didCreate
-            && creation?.pane == nil
+            && creation?.canRetry != false
             && !trimmedDraft.isEmpty
             && !cwd.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
@@ -288,6 +290,8 @@ public struct DropDraftRecovery: Sendable, Equatable {
     public var kind: AgentKindOption
     public var cwd: String
     public var useWorktree: Bool
+    public var creation: TaskCreationProgress? = nil
+    public var error: String? = nil
 
     public init(
         draft: String,
@@ -582,6 +586,7 @@ public struct ComposerPresentation: Sendable, Equatable {
     public let isSending: Bool
     public let isQueue: Bool
     public let queuedText: String?
+    public var queuedFailure: String? = nil
 
     public init(
         pane: PaneID,
@@ -706,7 +711,7 @@ public struct QuickTaskPresentation: Sendable, Equatable {
 
     public var canSubmit: Bool {
         !isCreating
-            && creation?.pane == nil
+            && creation?.canRetry != false
             && !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && !cwd.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }

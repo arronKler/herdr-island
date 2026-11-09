@@ -83,6 +83,12 @@ struct ExpandedView: View {
                     startPoint: .top,
                     endPoint: .bottom
                 ))
+                .overlay(alignment: .top) {
+                    NotchCollarFill(
+                        neckWidth: notchWidth + IslandGeometry.notchEarWidth * 2,
+                        neckHeight: notchHeight
+                    )
+                }
             } else {
                 RoundedRectangle(cornerRadius: 20).fill(Theme.surface)
             }

@@ -586,7 +586,7 @@ private struct DropComposerCard: View {
                 createdRow
                     .padding(.top, 12)
             } else if let creation = drop.creation {
-                TaskCreationStatusView(progress: creation, error: drop.error, openPane: actions.jump)
+                TaskCreationStatusView(progress: creation, error: drop.error, openPane: actions.jump, reset: actions.resetTaskCreation)
                     .padding(.top, 12)
             }
             if drop.creation == nil, let error = drop.error {

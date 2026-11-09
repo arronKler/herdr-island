@@ -6,6 +6,9 @@ public enum IslandReducer {
         _ event: IslandEvent,
         now: Date
     ) -> [IslandEffect] {
+        defer {
+            if !state.detailOpen { state.terminalPane = nil }
+        }
         switch event {
         case .snapshot(let snapshot):
             return applySnapshot(&state, snapshot, now: now)
@@ -158,6 +161,7 @@ public enum IslandReducer {
             guard state.agents[pane] != nil else { return [] }
             state.selection = pane
             state.detailOpen = true
+            if state.supportsInteractiveTerminal { state.terminalPane = pane }
             state.manualOpen = true
             state.hoverOpen = false
             state.banner = nil
@@ -174,6 +178,14 @@ public enum IslandReducer {
         case .cancelQueued(let pane):
             state.queued[pane] = nil
             return []
+        case .retryQueued(let pane):
+            guard state.queued[pane]?.failure != nil,
+                  state.agents[pane]?.acceptsPrompt == true,
+                  state.terminalPane != pane,
+                  !state.sendsInFlight.contains(pane) else { return [] }
+            state.queued[pane]?.failure = nil
+            state.banner = nil
+            return dispatchQueued(&state)
         case .setHover(let inside):
             let wasInside = state.pointerInside
             state.pointerInside = inside
@@ -194,6 +206,14 @@ public enum IslandReducer {
                     state.hoverOpen = false
                 }
                 pruneExpiredCompletions(&state, now: now)
+            }
+            return []
+        case .setTerminalActive(let pane, let active):
+            if active, state.detailOpen, state.selection == pane {
+                state.terminalPane = pane
+                state.composerFocused = false
+            } else if !active, state.terminalPane == pane {
+                state.terminalPane = nil
             }
             return []
         case .setComposerFocus(let focused):
@@ -248,6 +268,8 @@ public enum IslandReducer {
                     kind: recovery.kind,
                     cwd: recovery.cwd
                 )
+                state.quickTask?.creation = recovery.creation
+                state.quickTask?.error = recovery.error
                 state.quickTaskDraftRecovery = nil
             } else {
                 state.quickTask = QuickTaskState(kind: kind, cwd: cwd)
@@ -272,7 +294,7 @@ public enum IslandReducer {
             state.quickTask?.cwd = path
             return []
         case .submitQuickTask(let name):
-            guard var task = state.quickTask, task.phase == .editing, task.creation?.pane == nil else { return [] }
+            guard var task = state.quickTask, task.phase == .editing, task.creation?.canRetry != false else { return [] }
             let text = task.draft.trimmingCharacters(in: .whitespacesAndNewlines)
             let cwd = task.cwd.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty, !cwd.isEmpty else { return [] }
@@ -323,6 +345,7 @@ public enum IslandReducer {
             case .failure(let failure):
                 if var task = state.quickTask {
                     task.phase = .editing
+                    if task.creation?.canRetry != false { task.creation = nil }
                     task.error = failure.message
                     state.quickTask = task
                 } else {
@@ -332,6 +355,8 @@ public enum IslandReducer {
             }
         case .beginDrop(let cwd, let kind, let branch):
             guard !state.isCreatingTask else { return [] }
+            saveQuickTaskDraftRecovery(&state)
+            state.quickTask = nil
             if state.drop == nil {
                 var drop = DropTaskState(kind: kind, cwd: cwd, branch: branch)
                 if let recovery = state.dropDraftRecovery {
@@ -339,6 +364,8 @@ public enum IslandReducer {
                     drop.kind = recovery.kind
                     drop.cwd = recovery.cwd
                     drop.useWorktree = recovery.useWorktree
+                    drop.creation = recovery.creation
+                    drop.error = recovery.error
                     state.dropDraftRecovery = nil
                 }
                 state.drop = drop
@@ -471,6 +498,23 @@ public enum IslandReducer {
             return finishWindowCapture(&state, request: request, result: result)
         case .windowTaskResult(let token, let result):
             return finishWindowTask(&state, token: token, result: result)
+        case .resetTaskCreation:
+            guard !state.isCreatingTask else { return [] }
+            if state.drop?.error != nil {
+                state.drop?.draft = ""
+                state.drop?.creation = nil
+                state.drop?.error = nil
+            } else if state.quickTask?.error != nil {
+                state.quickTask?.draft = ""
+                state.quickTask?.creation = nil
+                state.quickTask?.error = nil
+            } else if state.windowTask?.error != nil {
+                state.windowTask?.draft = ""
+                state.windowTask?.creation = nil
+                state.windowTask?.error = nil
+            }
+            state.banner = nil
+            return []
         }
     }
 
@@ -484,6 +528,7 @@ public enum IslandReducer {
         // for the next drop instead of letting the hidden drop shadow the
         // window task we are about to create.
         saveDropDraftRecovery(&state)
+        saveQuickTaskDraftRecovery(&state)
         state.drop = nil
         state.dropActive = false
         state.windowLock = target
@@ -516,6 +561,8 @@ public enum IslandReducer {
             kind: task.kind,
             cwd: task.cwd
         )
+        state.quickTaskDraftRecovery?.creation = task.creation
+        state.quickTaskDraftRecovery?.error = task.error
     }
 
     private static func saveDropDraftRecovery(_ state: inout IslandState) {
@@ -527,6 +574,8 @@ public enum IslandReducer {
             cwd: drop.cwd,
             useWorktree: drop.useWorktree
         )
+        state.dropDraftRecovery?.creation = drop.creation
+        state.dropDraftRecovery?.error = drop.error
     }
 
     private static func toggleWindowTaskVisibility(_ state: inout IslandState) {
@@ -557,7 +606,7 @@ public enum IslandReducer {
         name: String
     ) -> [IslandEffect] {
         guard let lock = state.windowLock, var task = state.windowTask, task.phase == .editing,
-              task.creation?.pane == nil else {
+              task.creation?.canRetry != false else {
             return []
         }
         let text = task.trimmedDraft
@@ -679,6 +728,7 @@ public enum IslandReducer {
             )
             return [.sampleNow]
         case .failure(let failure):
+            if task.creation?.canRetry != false { task.creation = nil }
             task.error = failure.message
             state.windowTask = task
             state.banner = Banner(text: failure.message, isError: true, source: .send)
@@ -702,7 +752,7 @@ public enum IslandReducer {
 
         let previous = state.agents
         let hadBaseline = state.baselineEstablished
-        let userIsComposing = state.composerFocused
+        let userIsComposing = state.composerFocused || state.terminalPane != nil
             || (state.selection.map { !(state.drafts[$0] ?? "").isEmpty } ?? false)
         var newAgents: [PaneID: Agent] = [:]
         newAgents.reserveCapacity(snapshot.agents.count)
@@ -802,8 +852,15 @@ public enum IslandReducer {
         state.previewLoadsInFlight.formIntersection(present)
         state.drafts = state.drafts.filter { present.contains($0.key) }
         state.sendsInFlight.formIntersection(present)
+        state.promptDraftsInFlight = state.promptDraftsInFlight.filter { present.contains($0.key) }
+        state.queuedPromptsInFlight = state.queuedPromptsInFlight.filter { present.contains($0.key) }
         state.queued = state.queued.filter { present.contains($0.key) }
         state.agentWorktrees = state.agentWorktrees.filter { present.contains($0.key) }
+
+        if let pane = state.terminalPane, !present.contains(pane) {
+            state.terminalPane = nil
+            state.detailOpen = false
+        }
 
         if state.selection.map({ newAgents[$0] == nil }) ?? true {
             state.selection = state.orderedAgents.first?.id
@@ -858,7 +915,8 @@ public enum IslandReducer {
                 if state.rules.autoExpandOnBlocked,
                    state.dismissedBlockedSeq[facts.pane] != agent.stateChangeSeq {
                     state.blockedAttention.insert(facts.pane)
-                    if !(state.selection.map { !(state.drafts[$0] ?? "").isEmpty } ?? false) {
+                    if state.terminalPane == nil,
+                       !(state.selection.map { !(state.drafts[$0] ?? "").isEmpty } ?? false) {
                         state.selection = facts.pane
                     }
                 }
@@ -896,13 +954,16 @@ public enum IslandReducer {
     private static func dispatchQueued(_ state: inout IslandState) -> [IslandEffect] {
         var effects: [IslandEffect] = []
         for pane in state.queued.keys.sorted() {
+            guard state.terminalPane != pane else { continue }
             guard let queued = state.queued[pane], let agent = state.agents[pane] else {
                 state.queued[pane] = nil
                 continue
             }
+            guard queued.failure == nil else { continue }
             guard agent.status == .idle || agent.status == .done else { continue }
             guard !state.sendsInFlight.contains(pane) else { continue }
             state.queued[pane] = nil
+            state.queuedPromptsInFlight[pane] = queued
             state.sendsInFlight.insert(pane)
             effects.append(.sendPrompt(pane, queued.text))
         }
@@ -910,16 +971,13 @@ public enum IslandReducer {
     }
 
     private static func reconcileWindowTask(_ state: inout IslandState) {
-        guard var task = state.windowTask else { return }
+        guard state.windowTask != nil else { return }
         guard state.windowLock != nil else {
             state.windowTask = nil
             return
         }
-        guard task.phase == .editing, task.lastDelivery == nil else { return }
-        if let pane = task.destinationAgent, state.agents[pane]?.acceptsPrompt != true {
-            task.destinationAgent = defaultWindowTaskAgent(state)
-            state.windowTask = task
-        }
+        // A busy or missing destination is a refusal, never permission to send
+        // the user's task and screenshot to a different agent.
     }
 
     private static func applySampleFailure(
@@ -961,6 +1019,10 @@ public enum IslandReducer {
     }
 
     private static func ensureSelection(_ state: inout IslandState) {
+        if state.isSearching {
+            ensureVisibleSelection(&state)
+            return
+        }
         if let selection = state.selection, state.agents[selection] != nil {
             return
         }
@@ -969,7 +1031,10 @@ public enum IslandReducer {
 
     private static func ensureVisibleSelection(_ state: inout IslandState) {
         let visible = visibleAgents(state)
-        guard !visible.isEmpty else { return }
+        guard !visible.isEmpty else {
+            state.selection = nil
+            return
+        }
         if let selection = state.selection, visible.contains(where: { $0.id == selection }) {
             return
         }
@@ -1003,7 +1068,7 @@ public enum IslandReducer {
                     return (lhs.statusSince ?? .distantPast) < (rhs.statusSince ?? .distantPast)
                 }
         case .all:
-            return rows.filter { !($0.status == .blocked && isDismissed($0, state: state)) }
+            return rows
         }
     }
 
@@ -1036,8 +1101,9 @@ public enum IslandReducer {
 
     private static func loadSelectedPreviewIfNeeded(_ state: inout IslandState) {
         guard state.isExpanded,
-              state.surface == .deck || state.surface == .detail,
+              state.surface == .deck || (state.surface == .detail && !state.supportsInteractiveTerminal),
               let pane = state.selection,
+              state.terminalPane != pane,
               state.agents[pane] != nil,
               !state.previewLoadsInFlight.contains(pane) else { return }
         if state.previewsNeedingRefresh.remove(pane) != nil {
@@ -1108,6 +1174,7 @@ public enum IslandReducer {
             return []
         case .idle, .done:
             state.sendsInFlight.insert(pane)
+            state.promptDraftsInFlight[pane] = state.drafts[pane]
             state.banner = nil
             return [.sendPrompt(pane, draft)]
         }
@@ -1238,6 +1305,7 @@ public enum IslandReducer {
         case .failure(let failure):
             if var task = state.drop {
                 task.phase = .composing
+                if task.creation?.canRetry != false { task.creation = nil }
                 task.error = failure.message
                 state.drop = task
                 state.dropActive = true
@@ -1253,12 +1321,15 @@ public enum IslandReducer {
         result: ActionResult
     ) -> [IslandEffect] {
         state.sendsInFlight.remove(pane)
+        let sentDraft = state.promptDraftsInFlight.removeValue(forKey: pane)
+        let sentQueue = state.queuedPromptsInFlight.removeValue(forKey: pane)
         guard state.agents[pane] != nil else { return [] }
         switch result {
         case .success:
             let wasExpanded = state.isExpanded
-            state.drafts[pane] = nil
-            state.queued[pane] = nil
+            if let sentDraft, state.drafts[pane] == sentDraft {
+                state.drafts[pane] = nil
+            }
             state.completionExpiry[pane] = nil
             if wasExpanded {
                 state.manualOpen = true
@@ -1266,6 +1337,10 @@ public enum IslandReducer {
             state.banner = Banner(text: "已发送。", isError: false, source: .send)
             return [.sampleNow]
         case .failure(let failure):
+            if var queued = sentQueue {
+                queued.failure = failure.message
+                state.queued[pane] = queued
+            }
             state.banner = Banner(
                 text: failure.message,
                 isError: true,

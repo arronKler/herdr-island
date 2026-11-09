@@ -1,7 +1,10 @@
 import Foundation
+import HerdrKit
 import IslandCore
 
 struct IslandViewActions {
+    var terminalEnvironment: HerdrEnvironment?
+    var terminalActive: (PaneID, Bool) -> Void = { _, _ in }
     var jump: (PaneID) -> Void = { _ in }
     var dismiss: () -> Void = {}
     var select: (PaneID) -> Void = { _ in }
@@ -22,6 +25,8 @@ struct IslandViewActions {
     var setSearching: (Bool) -> Void = { _ in }
     var snooze: (PaneID) -> Void = { _ in }
     var cancelQueued: (PaneID) -> Void = { _ in }
+    var retryQueued: (PaneID) -> Void = { _ in }
+    var resetTaskCreation: () -> Void = {}
     var openQuickTask: () -> Void = {}
     var closeQuickTask: () -> Void = {}
     var quickTaskDraft: (String) -> Void = { _ in }

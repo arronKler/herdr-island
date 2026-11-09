@@ -29,7 +29,7 @@ final class GlobalHotKey {
         let status = InstallEventHandler(
             GetApplicationEventTarget(),
             { _, event, userData in
-                guard let userData, let event else { return noErr }
+                guard let userData, let event else { return OSStatus(eventNotHandledErr) }
                 let hotKey = Unmanaged<GlobalHotKey>.fromOpaque(userData).takeUnretainedValue()
                 var pressed = EventHotKeyID()
                 let parameterStatus = GetEventParameter(
@@ -45,8 +45,11 @@ final class GlobalHotKey {
                    pressed.signature == hotKey.hotKeyID.signature,
                    pressed.id == hotKey.hotKeyID.id {
                     hotKey.fire()
+                    return noErr
                 }
-                return noErr
+                // Multiple hotkeys install handlers on the same target. An
+                // unmatched ID must reach the next handler in that chain.
+                return OSStatus(eventNotHandledErr)
             },
             1,
             &eventType,

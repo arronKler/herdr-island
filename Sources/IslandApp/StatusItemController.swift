@@ -1,6 +1,5 @@
 import AppKit
 import IslandCore
-import SwiftUI
 
 @MainActor
 final class StatusItemController: NSObject {
@@ -18,7 +17,7 @@ final class StatusItemController: NSObject {
         super.init()
 
         if let button = statusItem.button {
-            button.image = StatusItemController.image(for: .starting)
+            button.image = AppBrand.statusImage
             button.toolTip = "Herdr Island"
         }
 
@@ -63,32 +62,6 @@ final class StatusItemController: NSObject {
         statusItem.button?.toolTip = "Herdr Island · \(text)"
         showHideItem?.title = presentation.isExpanded || presentation.drop != nil ? "隐藏岛" : "显示岛"
         statusItem.button?.appearsDisabled = presentation.health == .failed
-        statusItem.button?.image = StatusItemController.image(for: presentation.headline)
-    }
-
-    private static func image(for headline: IslandHeadline) -> NSImage? {
-        guard let base = NSImage(
-            systemSymbolName: "capsule.bottomhalf.filled",
-            accessibilityDescription: "Herdr Island"
-        ) else { return nil }
-
-        let color: NSColor?
-        switch headline {
-        case .working: color = NSColor(Theme.working)
-        case .blocked: color = NSColor(Theme.blocked)
-        case .completed: color = NSColor(Theme.done)
-        case .stale: color = NSColor(Theme.error)
-        case .starting, .empty: color = nil
-        }
-        guard let color else {
-            base.isTemplate = true
-            return base
-        }
-        let image = base.withSymbolConfiguration(
-            NSImage.SymbolConfiguration(paletteColors: [color])
-        ) ?? base
-        image.isTemplate = false
-        return image
     }
 
     var frame: CGRect? {

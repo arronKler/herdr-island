@@ -53,21 +53,21 @@ public actor HerdrCLI {
         }
     }
 
-    func startupIdentity(pane: PaneID) async throws -> ClaudeComposerReadiness.Identity {
+    func startupIdentity(pane: PaneID) async throws -> AgentComposerReadiness.Identity {
         let data = try await startupRead("agent.get", params: ["target": .string(pane.rawValue)],
             arguments: ["agent", "get", pane.rawValue])
         struct Response: Decodable {
-            struct Result: Decodable { let agent: ClaudeComposerReadiness.Identity }
+            struct Result: Decodable { let agent: AgentComposerReadiness.Identity }
             let result: Result
         }
-        return try JSONDecoder().decode(Response.self, from: data).result.agent
+        return try JSONDecoder().decode(Response.self, from: data.data).result.agent
     }
 
     func startupVisibleANSI(pane: PaneID) async throws -> String {
         let data = try await startupRead("agent.read", params: [
             "target": .string(pane.rawValue), "source": .string("visible"), "format": .string("ansi"),
         ], arguments: ["agent", "read", pane.rawValue, "--source", "visible", "--format", "ansi"])
-        if readRPC == nil { return String(decoding: data, as: UTF8.self) }
+        if !data.viaRPC { return String(decoding: data.data, as: UTF8.self) }
         struct Response: Decodable {
             struct Result: Decodable {
                 struct Read: Decodable { let pane_id: String; let text: String }
@@ -75,16 +75,16 @@ public actor HerdrCLI {
             }
             let result: Result
         }
-        let read = try JSONDecoder().decode(Response.self, from: data).result.read
+        let read = try JSONDecoder().decode(Response.self, from: data.data).result.read
         guard read.pane_id == pane.rawValue else { throw BackendFailure(.decode, "Herdr returned another pane's input screen.") }
         return read.text
     }
 
-    private func startupRead(_ method: String, params: [String: HerdrRPCValue], arguments: [String]) async throws -> Data {
+    private func startupRead(_ method: String, params: [String: HerdrRPCValue], arguments: [String]) async throws -> (data: Data, viaRPC: Bool) {
         try Task.checkCancellation()
         if let readRPC {
             do {
-                return try await readRPC.request(method: method, params: params, timeout: 0.75)
+                return (try await readRPC.request(method: method, params: params, timeout: 0.75), true)
             } catch {
                 // Startup reads are safe to retry through the CLI; mutations are
                 // not. One slow or stale socket read must not abort a launch.
@@ -93,7 +93,7 @@ public actor HerdrCLI {
         }
         let output = try await run(arguments, timeout: 0.75)
         guard output.status == 0 else { throw failure(from: output, arguments: arguments) }
-        return Data(output.stdout.utf8)
+        return (Data(output.stdout.utf8), false)
     }
 
     private func readPreview(pane: PaneID, lines: Int, source: String, timeout: TimeInterval?) async throws -> String {
@@ -267,8 +267,19 @@ public actor HerdrCLI {
         // and confirms interactive readiness. The RPC only queues the launch;
         // replacing this with that acknowledgement would race the first prompt.
         // NativeTaskLaunch observes actual work in parallel and can return early.
-        let output = try await run(arguments, timeout: timeout ?? 50)
-        guard output.status == 0 else { throw failure(from: output, arguments: arguments) }
+        let shellDeadline = ContinuousClock.now.advanced(by: .seconds(2))
+        while true {
+            let output = try await run(arguments, timeout: timeout ?? 50)
+            if output.status == 0 { return }
+            // A fresh workspace may still be in shell initialization. This
+            // explicit admission refusal sent no launch input and is safe to
+            // retry briefly. Never repeat an uncertain or accepted launch.
+            guard Self.herdrError(in: output.stderr)?.code == "agent_pane_busy",
+                  ContinuousClock.now < shellDeadline else {
+                throw failure(from: output, arguments: arguments)
+            }
+            try await Task.sleep(for: .milliseconds(150))
+        }
     }
 
     public func focusedPaneCwd(timeout: TimeInterval? = nil) async throws -> String? {
