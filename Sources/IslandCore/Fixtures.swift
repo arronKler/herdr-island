@@ -12,6 +12,7 @@ public enum FixtureName: String, CaseIterable, Sendable {
     case dropCreating
     case windowLocked
     case deckRunning
+    case deckReplying
     case deckDone
     case deckCrowded
     case detail
@@ -122,6 +123,18 @@ public enum Fixtures {
                 ),
                 now: now
             )
+        case .deckReplying:
+            _ = IslandReducer.reduce(&state, .openDeck, now: now)
+            _ = IslandReducer.reduce(&state, .setFilter(.running), now: now)
+            if let working = state.orderedAgents.first(where: { $0.status == .working }) {
+                _ = IslandReducer.reduce(&state, .select(working.id), now: now)
+                _ = IslandReducer.reduce(
+                    &state,
+                    .setDraft(working.id, "Add a retry cap before the next run."),
+                    now: now
+                )
+                _ = IslandReducer.reduce(&state, .beginReply, now: now)
+            }
         case .deckDone:
             let second = completedSnapshot()
             _ = IslandReducer.reduce(&state, .snapshot(second), now: now)
@@ -241,6 +254,8 @@ public enum Fixtures {
             return snapshot(for: .collapsed)
         case .deckRunning:
             return snapshot(for: .blocked)
+        case .deckReplying:
+            return snapshot(for: .collapsed)
         case .deckDone:
             return snapshot(for: .completed)
         case .deckCrowded:

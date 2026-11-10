@@ -737,10 +737,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
                 actions.setSearching(true)
                 return nil
             case "r":
-                guard let selected = presentation.selected, selected.status != .blocked else {
-                    return nil
-                }
-                actions.composerFocus(true)
+                actions.beginReply()
                 return nil
             case "s":
                 guard let selected = presentation.selected else { return nil }
@@ -773,7 +770,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             onEvent?(.moveSelection(delta))
             return nil
         case .focusComposer:
-            onEvent?(.setComposerFocus(true))
+            onEvent?(.beginReply)
             return nil
         case .passThrough:
             return event

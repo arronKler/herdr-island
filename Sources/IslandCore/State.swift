@@ -93,6 +93,8 @@ public struct IslandState: Sendable, Equatable {
     public internal(set) var hoverOpen: Bool
     public internal(set) var drafts: [PaneID: String]
     public internal(set) var composerFocused: Bool
+    /// The deck pane whose reply editor is open.
+    public internal(set) var replyPane: PaneID?
     public internal(set) var terminalPane: PaneID? = nil
     public let supportsInteractiveTerminal: Bool
     public internal(set) var sendsInFlight: Set<PaneID>
@@ -144,6 +146,7 @@ public struct IslandState: Sendable, Equatable {
         self.hoverOpen = false
         self.drafts = [:]
         self.composerFocused = false
+        self.replyPane = nil
         self.sendsInFlight = []
         self.previews = [:]
         self.previewRequests = []

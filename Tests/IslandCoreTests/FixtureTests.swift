@@ -34,6 +34,7 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(blocked.deckHeight, IslandGeometry.deckMinHeight)
         XCTAssertEqual(expanded.deckHeight, 457)
         XCTAssertEqual(Fixtures.presentation(named: .deckRunning).deckHeight, IslandGeometry.deckMinHeight)
+        XCTAssertTrue(Fixtures.presentation(named: .deckReplying).isReplying)
         XCTAssertEqual(Fixtures.presentation(named: .deckCrowded).deckHeight, IslandGeometry.deckMaxHeight)
         XCTAssertEqual(Fixtures.presentation(named: .windowLocked).deckHeight, IslandGeometry.windowTaskSize.height)
 

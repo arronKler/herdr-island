@@ -216,6 +216,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actions.select = { [weak store] pane in store?.select(pane) }
         actions.hover = { [weak store] inside in store?.setHover(inside) }
         actions.composerFocus = { [weak store] focused in store?.setComposerFocus(focused) }
+        actions.beginReply = { [weak store] in store?.beginReply() }
+        actions.endReply = { [weak store] in store?.endReply() }
         actions.draft = { [weak store] text in store?.setDraft(text) }
         actions.send = { [weak store] in store?.sendMessage() }
         actions.close = { [weak store] in store?.closePanel() }

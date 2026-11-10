@@ -15,6 +15,7 @@ final class WorkflowAuditTests: XCTestCase {
     func testSendAcknowledgementPreservesNewerDraft() {
         var state = state()
         _ = state.apply(.setDraft(pane, "first message"), at: now)
+        _ = state.apply(.beginReply, at: now)
         XCTAssertTrue(state.apply(.sendMessage, at: now).contains(.sendPrompt(pane, "first message")))
         _ = state.apply(.setDraft(pane, "next message"), at: now)
         _ = state.apply(.sendResult(pane, .success), at: now)
@@ -24,6 +25,7 @@ final class WorkflowAuditTests: XCTestCase {
     func testFailedQueuedSendRetainsTextWithoutAutomaticRetry() {
         var state = state(.working)
         _ = state.apply(.setDraft(pane, "queued message"), at: now)
+        _ = state.apply(.beginReply, at: now)
         _ = state.apply(.sendMessage, at: now)
         _ = state.apply(.setDraft(pane, "new draft"), at: now)
         let effects = state.apply(.snapshot(makeSnapshot(2, [makeAgent("w1:p1", .idle)])), at: now)
@@ -38,6 +40,7 @@ final class WorkflowAuditTests: XCTestCase {
     func testQueuedAcknowledgementDoesNotClearUnrelatedDraft() {
         var state = state(.working)
         _ = state.apply(.setDraft(pane, "queued message"), at: now)
+        _ = state.apply(.beginReply, at: now)
         _ = state.apply(.sendMessage, at: now)
         _ = state.apply(.setDraft(pane, "new draft"), at: now)
         _ = state.apply(.snapshot(makeSnapshot(2, [makeAgent("w1:p1", .idle)])), at: now)
@@ -115,6 +118,7 @@ final class WorkflowAuditTests: XCTestCase {
     func testPausedQueueRequiresExplicitRetryAndStillRefusesBlockedAgents() {
         var state = state(.working)
         _ = state.apply(.setDraft(pane, "queued message"), at: now)
+        _ = state.apply(.beginReply, at: now)
         _ = state.apply(.sendMessage, at: now)
         _ = state.apply(.snapshot(makeSnapshot(2, [makeAgent("w1:p1", .idle)])), at: now)
         _ = state.apply(.sendResult(pane, .failure(BackendFailure(.timeout, "uncertain delivery"))), at: now)

@@ -44,12 +44,18 @@ final class ReducerInteractionTests: XCTestCase {
         XCTAssertEqual(effects, [])
 
         let p = presentation(of: state, at: t0.addingTimeInterval(0.2))
-        XCTAssertEqual(p.banner?.source, .send)
-        XCTAssertEqual(p.banner?.isError, true)
-        XCTAssertEqual(p.banner?.text, MessagePolicy.refusal(for: makeAgent("w1:p1", .blocked)))
+        XCTAssertNil(p.banner)
+        XCTAssertFalse(p.isReplying)
         XCTAssertEqual(p.composer?.isSending, false)
         XCTAssertEqual(p.composer?.canSend, false)
+        XCTAssertEqual(p.composer?.refusal, MessagePolicy.refusal(for: makeAgent("w1:p1", .blocked)))
         XCTAssertEqual(p.composer?.text, "yes, run it")
+
+        _ = state.apply(.openDetail(PaneID("w1:p1")), at: t0.addingTimeInterval(0.3))
+        _ = state.apply(.sendMessage, at: t0.addingTimeInterval(0.4))
+        let detail = presentation(of: state, at: t0.addingTimeInterval(0.4))
+        XCTAssertEqual(detail.banner?.source, .send)
+        XCTAssertEqual(detail.banner?.text, MessagePolicy.refusal(for: makeAgent("w1:p1", .blocked)))
 
         var working = IslandState()
         _ = working.apply(.snapshot(makeSnapshot(1, [
@@ -57,6 +63,7 @@ final class ReducerInteractionTests: XCTestCase {
         ])))
         _ = working.apply(.hotKey, at: t0.addingTimeInterval(0.05))
         _ = working.apply(.setDraft(PaneID("w1:p1"), "hello"), at: t0.addingTimeInterval(0.1))
+        _ = working.apply(.beginReply, at: t0.addingTimeInterval(0.15))
         let workingEffects = working.apply(.sendMessage, at: t0.addingTimeInterval(0.2))
         XCTAssertEqual(workingEffects, [])
         let queued = presentation(of: working, at: t0.addingTimeInterval(0.2))
@@ -73,6 +80,7 @@ final class ReducerInteractionTests: XCTestCase {
         ])))
         _ = state.apply(.hotKey, at: t0.addingTimeInterval(0.05))
         _ = state.apply(.setDraft(PaneID("w1:p1"), "  ship it  "), at: t0.addingTimeInterval(0.1))
+        _ = state.apply(.beginReply, at: t0.addingTimeInterval(0.15))
 
         let sendEffects = state.apply(.sendMessage, at: t0.addingTimeInterval(0.2))
         XCTAssertEqual(sendEffects, [.sendPrompt(PaneID("w1:p1"), "ship it")])
@@ -324,8 +332,9 @@ final class ReducerInteractionTests: XCTestCase {
             makeAgent("w1:p1", .idle, title: "Alpha"),
             makeAgent("w1:p2", .working, title: "Beta"),
         ])))
+        _ = focused.apply(.openDeck, at: t0.addingTimeInterval(0.1))
         _ = focused.apply(.select(PaneID("w1:p1")), at: t0.addingTimeInterval(0.1))
-        _ = focused.apply(.setComposerFocus(true), at: t0.addingTimeInterval(0.2))
+        _ = focused.apply(.beginReply, at: t0.addingTimeInterval(0.2))
         _ = focused.apply(.snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
             makeAgent("w1:p1", .idle, title: "Alpha"),
             makeAgent("w1:p2", .blocked, title: "Beta", stateChangeSeq: 8),
@@ -355,6 +364,7 @@ final class ReducerInteractionTests: XCTestCase {
         ])))
         _ = state.apply(.hotKey, at: t0.addingTimeInterval(0.05))
         _ = state.apply(.setDraft(PaneID("w1:p1"), "next turn"), at: t0.addingTimeInterval(0.1))
+        _ = state.apply(.beginReply, at: t0.addingTimeInterval(0.15))
         _ = state.apply(.sendMessage, at: t0.addingTimeInterval(0.2))
         XCTAssertEqual(presentation(of: state, at: t0.addingTimeInterval(0.2)).composer?.queuedText, "next turn")
 
@@ -362,6 +372,7 @@ final class ReducerInteractionTests: XCTestCase {
         XCTAssertNil(presentation(of: state, at: t0.addingTimeInterval(0.3)).composer?.queuedText)
 
         _ = state.apply(.setDraft(PaneID("w1:p1"), "ship it"), at: t0.addingTimeInterval(0.4))
+        _ = state.apply(.beginReply, at: t0.addingTimeInterval(0.45))
         _ = state.apply(.sendMessage, at: t0.addingTimeInterval(0.5))
         let effects = state.apply(
             .snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [

@@ -8,6 +8,7 @@ public enum IslandReducer {
     ) -> [IslandEffect] {
         defer {
             if !state.detailOpen { state.terminalPane = nil }
+            enforceReplyInvariant(&state)
         }
         switch event {
         case .snapshot(let snapshot):
@@ -66,6 +67,11 @@ public enum IslandReducer {
                     state.dropActive = false
                     state.banner = nil
                 }
+                return []
+            }
+            if state.replyPane != nil {
+                state.replyPane = nil
+                state.composerFocused = false
                 return []
             }
             if state.isSearching {
@@ -218,10 +224,34 @@ public enum IslandReducer {
             return []
         case .setComposerFocus(let focused):
             if focused { state.launchFeedbackUntil = nil }
+            // Focus follows an open editor; it cannot open one.
+            if focused, state.surface == .deck, state.replyPane == nil {
+                state.composerFocused = false
+                return []
+            }
             state.composerFocused = focused
             if !focused {
                 pruneExpiredCompletions(&state, now: now)
             }
+            return []
+        case .beginReply:
+            guard let pane = state.selection,
+                  let agent = state.agents[pane],
+                  agent.status == .working || agent.acceptsPrompt else { return [] }
+            switch state.surface {
+            case .detail:
+                state.composerFocused = true
+            case .deck:
+                state.replyPane = pane
+                state.composerFocused = true
+                state.launchFeedbackUntil = nil
+            default:
+                break
+            }
+            return []
+        case .endReply:
+            state.replyPane = nil
+            state.composerFocused = false
             return []
         case .lostFocus:
             state.composerFocused = false
@@ -515,6 +545,24 @@ public enum IslandReducer {
             }
             state.banner = nil
             return []
+        }
+    }
+
+    private static func enforceReplyInvariant(_ state: inout IslandState) {
+        if state.surface == .deck, state.replyPane == nil {
+            state.composerFocused = false
+            return
+        }
+        guard let pane = state.replyPane else { return }
+        let agent = state.agents[pane]
+        let replyable = agent.map { $0.status == .working || $0.acceptsPrompt } ?? false
+        let deckVisible = state.isExpanded
+            && state.surface == .deck
+            && state.quickTask == nil
+            && (state.windowTask == nil || state.windowTaskHidden)
+        if !replyable || !deckVisible || pane != state.selection {
+            state.replyPane = nil
+            state.composerFocused = false
         }
     }
 
@@ -1148,6 +1196,9 @@ public enum IslandReducer {
             state.banner = Banner(text: "先选一个 agent。", isError: true, source: .send)
             return []
         }
+        // The deck only sends from an open reply editor. A stray Return or
+        // Command-Return with no editor up must not deliver a hidden draft.
+        guard state.surface != .deck || state.replyPane == pane else { return [] }
         let draft = MessagePolicy.normalizedDraft(state.drafts[pane] ?? "")
         guard !draft.isEmpty else { return [] }
         guard !state.sendsInFlight.contains(pane) else { return [] }
@@ -1157,6 +1208,10 @@ public enum IslandReducer {
             state.queued[pane] = QueuedPrompt(text: draft, createdAt: now)
             state.drafts[pane] = nil
             state.banner = nil
+            if state.replyPane == pane {
+                state.replyPane = nil
+                state.composerFocused = false
+            }
             return []
         case .blocked:
             state.banner = Banner(
@@ -1333,6 +1388,10 @@ public enum IslandReducer {
             state.completionExpiry[pane] = nil
             if wasExpanded {
                 state.manualOpen = true
+            }
+            if state.replyPane == pane {
+                state.replyPane = nil
+                state.composerFocused = false
             }
             state.banner = Banner(text: "已发送。", isError: false, source: .send)
             return [.sampleNow]

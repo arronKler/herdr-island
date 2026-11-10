@@ -14,6 +14,8 @@ public enum IslandEvent: Sendable, Equatable {
     case moveSelection(Int)
     case setHover(Bool)
     case setComposerFocus(Bool)
+    case beginReply
+    case endReply
     case setTerminalActive(PaneID, Bool)
     case lostFocus
     case setDraft(PaneID, String)

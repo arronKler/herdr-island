@@ -10,6 +10,8 @@ struct IslandViewActions {
     var select: (PaneID) -> Void = { _ in }
     var hover: (Bool) -> Void = { _ in }
     var composerFocus: (Bool) -> Void = { _ in }
+    var beginReply: () -> Void = {}
+    var endReply: () -> Void = {}
     var draft: (String) -> Void = { _ in }
     var send: () -> Void = {}
     var close: () -> Void = {}

@@ -790,6 +790,7 @@ public struct IslandPresentation: Sendable, Equatable {
     public let banner: Banner?
     public let health: BackendHealth
     public let isComposerFocused: Bool
+    public let isReplying: Bool
     public let quickTask: QuickTaskPresentation?
     public let windowLock: WindowLockPresentation?
     public let windowTask: WindowTaskPresentation?
@@ -820,6 +821,7 @@ public struct IslandPresentation: Sendable, Equatable {
         banner: Banner?,
         health: BackendHealth,
         isComposerFocused: Bool,
+        isReplying: Bool = false,
         quickTask: QuickTaskPresentation?,
         windowLock: WindowLockPresentation? = nil,
         windowTask: WindowTaskPresentation? = nil,
@@ -854,6 +856,7 @@ public struct IslandPresentation: Sendable, Equatable {
         self.banner = banner
         self.health = health
         self.isComposerFocused = isComposerFocused
+        self.isReplying = isReplying
         self.quickTask = quickTask
         self.windowLock = windowLock
         self.windowTask = windowTask

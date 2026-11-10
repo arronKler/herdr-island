@@ -315,6 +315,8 @@ final class IslandStore: ObservableObject {
         handle(.setHover(inside))
     }
     func setComposerFocus(_ focused: Bool) { handle(.setComposerFocus(focused)) }
+    func beginReply() { handle(.beginReply) }
+    func endReply() { handle(.endReply) }
     func lostFocus() { handle(.lostFocus) }
     func sendMessage() { handle(.sendMessage) }
     func dismissBanner() { handle(.dismissBanner) }

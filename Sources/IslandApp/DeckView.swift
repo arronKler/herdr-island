@@ -45,7 +45,11 @@ struct DeckView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(background)
         .onChange(of: presentation.isComposerFocused) { _, focused in
-            if composerFocused != focused { composerFocused = focused }
+            if focused {
+                DispatchQueue.main.async { composerFocused = true }
+            } else if composerFocused {
+                composerFocused = false
+            }
         }
         .onChange(of: composerFocused) { _, focused in
             if presentation.isComposerFocused != focused { actions.composerFocus(focused) }
@@ -116,8 +120,7 @@ struct DeckView: View {
 
             Spacer(minLength: 4)
 
-            machineChip
-
+            iconButton("plus", help: "新任务 (⌃⌥N)") { actions.openQuickTask() }
             iconButton("magnifyingglass", help: "搜索 (/)") {
                 actions.setSearching(true)
             }
@@ -142,22 +145,16 @@ struct DeckView: View {
         .lineLimit(1)
     }
 
-    private var machineChip: some View {
-        HStack(spacing: 6) {
+    private var machineStatus: some View {
+        HStack(spacing: 5) {
             Circle()
                 .fill(presentation.health == .ok ? Theme.mint : Theme.amber)
                 .frame(width: 5, height: 5)
             Text(presentation.machineLabel)
-                .font(Theme.code(Theme.TypeSize.mono))
-                .foregroundStyle(Theme.textSecondary)
+                .font(Theme.code(9.5))
+                .foregroundStyle(Theme.textTertiary)
+                .lineLimit(1)
         }
-        .padding(.horizontal, 10)
-        .frame(height: 26)
-        .background(
-            Capsule()
-                .fill(Color.white.opacity(0.045))
-                .overlay(Capsule().stroke(Theme.hairline, lineWidth: 0.6))
-        )
     }
 
     private func iconButton(_ name: String, help: String, action: @escaping () -> Void) -> some View {
@@ -388,9 +385,20 @@ struct DeckView: View {
                     RoundedRectangle(cornerRadius: 14)
                         .stroke(row.isSelected ? Theme.amberLine : Theme.hairline, lineWidth: 0.6)
                 )
+                .overlay(alignment: .leading) { selectionRail(row) }
         )
         .contentShape(Rectangle())
         .onTapGesture { actions.openDetail(row.id) }
+    }
+
+    @ViewBuilder
+    private func selectionRail(_ row: AgentRow) -> some View {
+        if row.isSelected {
+            Capsule()
+                .fill(Theme.color(for: row.status))
+                .frame(width: 2, height: 22)
+                .padding(.leading, 5)
+        }
     }
 
     private func workingRow(_ row: AgentRow) -> some View {
@@ -441,11 +449,12 @@ struct DeckView: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(row.isSelected ? Color.white.opacity(0.055) : .clear)
+                .fill(row.isSelected ? Theme.selection : .clear)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(row.isSelected ? Theme.hairline : Color.clear, lineWidth: 0.6)
+                        .stroke(row.isSelected ? Theme.hairlineHigh : Color.clear, lineWidth: 0.8)
                 )
+                .overlay(alignment: .leading) { selectionRail(row) }
         )
         .contentShape(Rectangle())
         .onTapGesture { actions.openDetail(row.id) }
@@ -481,11 +490,15 @@ struct DeckView: View {
         .padding(.vertical, 10)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Theme.mintWash)
+                .fill(row.isSelected ? Theme.mint.opacity(0.10) : Theme.mintWash)
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(row.isSelected ? Theme.mintLine : Theme.mint.opacity(0.12), lineWidth: 0.6)
+                        .stroke(
+                            row.isSelected ? Theme.mintLine : Theme.mint.opacity(0.12),
+                            lineWidth: row.isSelected ? 0.8 : 0.6
+                        )
                 )
+                .overlay(alignment: .leading) { selectionRail(row) }
         )
         .contentShape(Rectangle())
         .onTapGesture { actions.openDetail(row.id) }
@@ -516,8 +529,10 @@ struct DeckView: View {
             if let selected {
                 if selected.status == .blocked {
                     decisionFooter(selected)
+                } else if presentation.isReplying {
+                    composerEditor(selected)
                 } else {
-                    composerFooter(selected)
+                    replyStrip(selected)
                 }
             } else {
                 idleFooter
@@ -562,15 +577,92 @@ struct DeckView: View {
         .padding(.top, 12)
     }
 
-    private func composerFooter(_ row: AgentRow) -> some View {
+    private func replyStrip(_ row: AgentRow) -> some View {
+        let refusal = presentation.composer?.refusal
+        return VStack(alignment: .leading, spacing: 6) {
+            Button(action: actions.beginReply) {
+                HStack(spacing: 8) {
+                    AgentMarkView(kind: row.kind, size: 24, status: row.status)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(row.title)
+                            .font(Theme.sans(Theme.TypeSize.row, weight: .medium))
+                            .foregroundStyle(Theme.textPrimary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                        Text(replyCaption(row))
+                            .font(Theme.sans(Theme.TypeSize.caption))
+                            .foregroundStyle(Theme.textTertiary)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                    }
+                    Spacer(minLength: 4)
+                    HStack(spacing: 5) {
+                        KeyCap(text: "R")
+                        Text("回复")
+                            .font(Theme.code(9.5))
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                    .opacity(refusal == nil ? 1 : 0.4)
+                }
+                .padding(.horizontal, 12)
+                .frame(height: 38)
+                .background(
+                    RoundedRectangle(cornerRadius: 9)
+                        .fill(Theme.field)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 9)
+                                .stroke(Theme.hairline, lineWidth: 0.6)
+                        )
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(refusal != nil)
+            .help("回复 \(row.title) (R)")
+            .accessibilityLabel("回复 \(row.title)")
+
+            if let queued = presentation.composer?.queuedText {
+                queuedRow(row, text: queued)
+            }
+        }
+        .padding(.top, 10)
+    }
+
+    private func replyCaption(_ row: AgentRow) -> String {
+        var parts: [String] = []
+        parts.append(AgentMark(kind: row.kind).displayName)
+        parts.append(row.project)
+        switch row.status {
+        case .working:
+            parts.append("本轮结束后自动发送")
+        case .idle, .done:
+            parts.append("发送到终端")
+        case .blocked, .unknown:
+            parts.append(presentation.composer?.refusal ?? "暂时不能发送")
+        }
+        let draft = presentation.composer?.text ?? ""
+        if !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            parts.append("草稿未发送")
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    private func composerEditor(_ row: AgentRow) -> some View {
         let queued = presentation.composer?.queuedText
-        let placeholder = composerPlaceholder(row)
+        let placeholder = presentation.composer?.placeholder ?? ""
         return VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
                 HStack(spacing: 8) {
-                    Image(systemName: "text.bubble")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(Theme.textTertiary)
+                    AgentMarkView(kind: row.kind, size: 16, status: row.status)
+                    Text(row.title)
+                        .font(Theme.sans(Theme.TypeSize.caption, weight: .medium))
+                        .foregroundStyle(Theme.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .frame(maxWidth: 170, alignment: .leading)
+                    Rectangle()
+                        .fill(Theme.hairline)
+                        .frame(width: 1, height: 18)
                     TextField("", text: draftBinding)
                         .textFieldStyle(.plain)
                         .font(Theme.sans(Theme.TypeSize.body))
@@ -596,6 +688,22 @@ struct DeckView: View {
                                 .stroke(composerFocused ? Theme.amberLine : Color.clear, lineWidth: 0.7)
                         )
                 )
+                .onAppear {
+                    if presentation.isComposerFocused {
+                        DispatchQueue.main.async { composerFocused = true }
+                    }
+                }
+
+                Button(action: actions.endReply) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(Theme.textTertiary)
+                        .frame(width: 24, height: 34)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("收起回复 (esc)")
+                .accessibilityLabel("收起回复")
 
                 Button(action: actions.send) {
                     Image(systemName: presentation.composer?.isSending == true ? "hourglass" : "arrow.up")
@@ -619,20 +727,6 @@ struct DeckView: View {
                 .disabled(presentation.composer?.canSend != true)
                 .help("发送 (⌘↩)")
                 .accessibilityLabel("发送消息")
-
-                Button(action: actions.openQuickTask) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Theme.textSecondary)
-                        .frame(width: 34, height: 34)
-                        .background(
-                            RoundedRectangle(cornerRadius: 9)
-                                .stroke(Theme.hairline, lineWidth: 0.6)
-                        )
-                }
-                .buttonStyle(.plain)
-                .help("新任务 (⌃⌥N)")
-                .accessibilityLabel("新建 agent 任务")
             }
 
             if let queued {
@@ -643,7 +737,7 @@ struct DeckView: View {
                     .foregroundStyle(Theme.textTertiary)
                     .lineLimit(1)
             } else if row.status == .working {
-                Text("发送后会在这一轮结束时自动投递")
+                Text("本轮结束后自动发送")
                     .font(Theme.code(9.5))
                     .foregroundStyle(Theme.textTertiary)
             }
@@ -706,12 +800,6 @@ struct DeckView: View {
         .padding(.top, 16)
     }
 
-    private func composerPlaceholder(_ row: AgentRow) -> String {
-        if let refusal = presentation.composer?.refusal { return refusal }
-        if row.status == .working { return "写一条回复，本轮结束后自动发送…" }
-        return "给 \(AgentMark(kind: row.kind).displayName) 发消息…"
-    }
-
     private var draftBinding: Binding<String> {
         Binding(
             get: { presentation.composer?.text ?? "" },
@@ -763,10 +851,16 @@ struct DeckView: View {
             } else {
                 hint("↵", "打开")
                 hint("/", "搜索")
-                hint("R", "回复")
+                if presentation.isReplying {
+                    hint("esc", "收起回复")
+                } else if presentation.selected != nil,
+                          presentation.composer?.refusal == nil {
+                    hint("R", "回复")
+                }
                 hint("S", "稍后")
             }
             Spacer(minLength: 4)
+            machineStatus
             Text(presentation.isSearching ? "输入以筛选" : AmbientBarView.summaryLine(presentation))
                 .font(Theme.code(9.5))
                 .foregroundStyle(Theme.textTertiary)

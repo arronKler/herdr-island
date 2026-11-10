@@ -66,6 +66,7 @@ public enum IslandPresenter {
             || state.dropActive
             || state.windowLock != nil
 
+        let isReplying = surface == .deck && state.replyPane != nil
         let deckRows = makeDeckRows(state, rows: rows)
         let deckGroups = makeGroups(state, rows: deckRows)
         let deckHeight = makeDeckHeight(state, rows: deckRows, groups: deckGroups)
@@ -96,6 +97,7 @@ public enum IslandPresenter {
             banner: state.banner,
             health: health,
             isComposerFocused: state.composerFocused,
+            isReplying: isReplying,
             quickTask: quickTask,
             windowLock: windowLock,
             windowTask: windowTask,
