@@ -167,7 +167,7 @@ public enum IslandPresenter {
             listHeight = height
         }
 
-        let chrome: CGFloat = 30 + 32 + 12 + 36 + 12 + 96 + 9 + 24 + 16
+        let chrome = IslandGeometry.expandedTopInset + 32 + 12 + 36 + 12 + 96 + 9 + 24 + 16
         let extra: CGFloat = (state.isSearching ? 24 : 0) + (state.banner == nil ? 0 : 38)
         let natural = chrome + extra + listHeight
         return min(max(natural, IslandGeometry.deckMinHeight), IslandGeometry.deckMaxHeight)

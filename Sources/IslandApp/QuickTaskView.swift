@@ -28,7 +28,7 @@ struct QuickTaskView: View {
             if quickTask.creation == nil { footer }
         }
         .padding(.horizontal, Theme.Layout.pad)
-        .padding(.top, 16)
+        .padding(.top, IslandGeometry.expandedTopInset)
         .padding(.bottom, 14)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .onAppear {

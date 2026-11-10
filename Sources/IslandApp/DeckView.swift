@@ -38,7 +38,7 @@ struct DeckView: View {
                 hintBar
             }
             .padding(.horizontal, Theme.Layout.pad)
-            .padding(.top, 30)
+            .padding(.top, IslandGeometry.expandedTopInset)
             .padding(.bottom, 16)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

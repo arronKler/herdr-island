@@ -56,6 +56,10 @@ public enum IslandGeometry {
     /// transparent lip so the drop is visible instead of hiding behind the
     /// camera cutout.
     public static let ambientLip: CGFloat = 32
+    /// Gap between the notch bar and the first row of an expanded surface.
+    /// Shared by the presenter's height model and the views so the panel never
+    /// reserves a strip that the content does not fill.
+    public static let expandedTopInset: CGFloat = 16
 
     /// Kept for callers that still describe the expanded surface as one thing.
     public static var expandedSize: CGSize { deckSize }
