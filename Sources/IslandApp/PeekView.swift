@@ -10,6 +10,10 @@ struct PeekView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var progress: CGFloat = 1
 
+    /// The countdown line stays inside the card's rounded bottom corners.
+    private static let barInset: CGFloat = 20
+    private static let barHeight: CGFloat = 2
+
     private var completed: [AgentRow] {
         presentation.rows
             .filter { $0.isPendingCompletion || $0.status == .done }
@@ -48,28 +52,34 @@ struct PeekView: View {
         .background(background)
         .overlay(alignment: .bottom) {
             GeometryReader { proxy in
-                Rectangle()
+                let track = max(0, proxy.size.width - Self.barInset * 2)
+                let width = track * progress
+                Capsule()
                     .fill(completed.isEmpty ? Theme.amber : Theme.mint)
-                    .frame(width: proxy.size.width * progress, height: 2)
+                    .frame(width: width, height: Self.barHeight)
+                    .position(
+                        x: Self.barInset + width / 2,
+                        y: proxy.size.height - Self.barHeight / 2
+                    )
                     .opacity(0.7)
-                }
-                .frame(height: 2)
+            }
+            .allowsHitTesting(false)
         }
         .onAppear {
             restartCountdown()
         }
-        .onChange(of: presentation.summary.completed) { _, _ in
-            restartCountdown()
-        }
-        .onChange(of: reduceMotion) { _, _ in
-            restartCountdown()
+        .onChange(of: presentation.summary.completed) { old, new in
+            if new > old { restartCountdown() }
         }
     }
 
+    /// Runs the line down over the newest completion's remaining hold, so the
+    /// bar reaches the end when the reducer is ready to drop the peek.
     private func restartCountdown() {
-        progress = 1
-        guard !reduceMotion else { return }
-        withAnimation(.linear(duration: 4.0)) {
+        let remaining = presentation.completionRemaining
+        progress = remaining > 0 ? 1 : 0
+        guard !reduceMotion, remaining > 0 else { return }
+        withAnimation(.linear(duration: remaining)) {
             progress = 0
         }
     }

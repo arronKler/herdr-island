@@ -135,6 +135,32 @@ final class ReducerTransitionTests: XCTestCase {
         XCTAssertFalse(presentation(of: state, at: t0.addingTimeInterval(9.1)).isExpanded)
     }
 
+    func testPeekCountdownSharesTheCompletionHold() {
+        var state = IslandState(rules: IslandRules(completionHold: 8))
+        _ = state.apply(.snapshot(makeSnapshot(1, [
+            makeAgent("w1:p1", .working),
+        ])))
+        _ = state.apply(.snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
+            makeAgent("w1:p1", .idle, completionSeq: 11),
+        ])), at: t0.addingTimeInterval(1))
+
+        XCTAssertEqual(
+            presentation(of: state, at: t0.addingTimeInterval(1)).completionRemaining,
+            8,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            presentation(of: state, at: t0.addingTimeInterval(5)).completionRemaining,
+            4,
+            accuracy: 0.001
+        )
+        XCTAssertEqual(
+            presentation(of: state, at: t0.addingTimeInterval(9)).completionRemaining,
+            0,
+            accuracy: 0.001
+        )
+    }
+
     func testDeckHeightGrowsWithRowsAndClampsToMax() {
         var state = IslandState()
         let agents = (0..<20).map { index in

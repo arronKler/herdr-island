@@ -800,6 +800,10 @@ public struct IslandPresentation: Sendable, Equatable {
     public let isDropActive: Bool
     public let isDetailOpen: Bool
     public let machineLabel: String
+    /// Seconds left on the newest pending completion's hold. The peek's
+    /// countdown line runs for exactly this long, so the bar reaches the end
+    /// as the reducer is about to collapse the surface.
+    public let completionRemaining: TimeInterval
 
     public init(
         isVisible: Bool,
@@ -830,7 +834,8 @@ public struct IslandPresentation: Sendable, Equatable {
         drop: DropTaskPresentation? = nil,
         isDropActive: Bool = false,
         isDetailOpen: Bool = false,
-        machineLabel: String = "本机"
+        machineLabel: String = "本机",
+        completionRemaining: TimeInterval = 0
     ) {
         self.isVisible = isVisible
         self.isExpanded = isExpanded
@@ -866,6 +871,7 @@ public struct IslandPresentation: Sendable, Equatable {
         self.isDropActive = isDropActive
         self.isDetailOpen = isDetailOpen
         self.machineLabel = machineLabel
+        self.completionRemaining = completionRemaining
     }
 }
 

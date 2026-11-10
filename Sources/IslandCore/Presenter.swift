@@ -67,6 +67,7 @@ public enum IslandPresenter {
             || state.windowLock != nil
 
         let isReplying = surface == .deck && state.replyPane != nil
+        let completionRemaining = completionRemaining(state, now: now)
         let deckRows = makeDeckRows(state, rows: rows)
         let deckGroups = makeGroups(state, rows: deckRows)
         let deckHeight = makeDeckHeight(state, rows: deckRows, groups: deckGroups)
@@ -106,8 +107,16 @@ public enum IslandPresenter {
             drop: drop,
             isDropActive: state.dropActive,
             isDetailOpen: state.detailOpen,
-            machineLabel: "本机"
+            machineLabel: "本机",
+            completionRemaining: completionRemaining
         )
+    }
+
+    /// The newest completion owns the peek: the surface stays until that hold
+    /// runs out, so the countdown line must share the same deadline.
+    private static func completionRemaining(_ state: IslandState, now: Date) -> TimeInterval {
+        guard let deadline = state.completionExpiry.values.max() else { return 0 }
+        return max(0, deadline.timeIntervalSince(now))
     }
 
     private static func isDismissed(_ state: IslandState, _ row: AgentRow) -> Bool {
