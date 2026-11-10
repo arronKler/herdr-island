@@ -40,6 +40,7 @@
   --ice-deep: #9FD3ED;
   --ok: #2F6B45;
   --ok-bright: #7DD8A0;
+  --danger: #9C3B2E;
   --focus: #7C5000;
   --serif: "Songti SC", "STSong", "Noto Serif SC", "Source Han Serif SC", "SimSun", Georgia, serif;
   --sans: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, -apple-system, "Segoe UI", sans-serif;
@@ -253,6 +254,9 @@ kbd {
   font-family: var(--sans); font-size: 12px; line-height: 1.55;
 }
 .card-input::placeholder { color: var(--muted); }
+.card-input[aria-invalid="true"] { border-color: var(--danger); }
+.card-error { margin: -2px 0 6px; font-size: 10.5px; line-height: 1.5; color: var(--danger); }
+.card-error[hidden] { display: none; }
 .card-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 6px; }
 .models { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 0; padding: 0; border: 0; min-width: 0; }
 .chip {
@@ -270,7 +274,8 @@ kbd {
 .card-dir { display: inline-flex; align-items: center; gap: 4px; min-width: 0; font-family: var(--mono); font-size: 9.5px; line-height: 1.4; color: var(--muted); }
 .card-dir svg { width: 12px; height: 12px; flex: none; }
 .card-dir span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.card-go { padding: 5px 12px; border: 1px solid var(--ink); background: var(--amber); color: var(--ink); font-family: var(--sans); font-size: 11px; font-weight: 700; line-height: 1.2; cursor: pointer; }
+.card-go { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border: 1px solid var(--ink); background: var(--amber); color: var(--ink); font-family: var(--sans); font-size: 11px; font-weight: 700; line-height: 1.2; cursor: pointer; }
+.card-go kbd { font-family: var(--mono); font-size: 9px; font-weight: 400; line-height: 1; opacity: .68; }
 .card-go:hover { background: #FFC24D; }
 .card-go:active { transform: translateY(1px); }
 .card-done p { margin: 4px 0 10px; font-size: 11.5px; line-height: 1.7; color: var(--ink-2); }
@@ -565,6 +570,7 @@ section[id] { scroll-margin-top: 84px; }
             <div class="card-body" id="card-body">
               <label class="sr-only" for="demo-task">任务</label>
               <textarea class="card-input" id="demo-task" rows="2" placeholder="例如：修复失败的重试测试。"></textarea>
+              <p class="card-error" id="demo-error" role="alert" hidden>先写一句任务。</p>
               <div class="card-row">
                 <fieldset class="models">
                   <legend class="sr-only">模型</legend>
@@ -579,7 +585,7 @@ section[id] { scroll-margin-top: 84px; }
                   <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 4.5h4l1.2 1.6h7.8v7.4h-13z" fill="none" stroke="currentColor" stroke-width="1"></path></svg>
                   <span>~/projects/herdr-core</span>
                 </span>
-                <button class="card-go" type="submit">开始</button>
+                <button class="card-go" type="submit">开始 <kbd aria-hidden="true">⌘↵</kbd></button>
               </div>
             </div>
             <div class="card-done" id="card-done" role="status" hidden>
@@ -725,7 +731,7 @@ section[id] { scroll-margin-top: 84px; }
           <aside class="aside">
             <span class="aside-label">边注</span>
             <p>关闭窗口只停止本应用启动的客户端，不停止 Herdr server、shell 和 agent。</p>
-            <p>完整终端需要 Herdr 0.9.5+ 的 generation-1 原生客户端协议。终端只转发你主动输入的按键和粘贴内容。</p>
+            <p>完整终端通过 Herdr 的终端会话连接，需要 Herdr 0.9.5+。终端只转发你主动输入的按键和粘贴内容。</p>
           </aside>
         </div>
         <figure class="plate plate--terminal">
@@ -925,6 +931,7 @@ section[id] { scroll-margin-top: 84px; }
   const body = document.getElementById('card-body');
   const done = document.getElementById('card-done');
   const task = document.getElementById('demo-task');
+  const error = document.getElementById('demo-error');
   const status = document.getElementById('demo-status');
   const stageState = document.getElementById('stage-state');
   const rippleLayer = document.getElementById('ripple-layer');
@@ -963,7 +970,23 @@ section[id] { scroll-margin-top: 84px; }
   }
 
   function setStageState(text) {
-    if (stageState) stageState.textContent = text;
+    if (stageState && stageState.textContent !== text) stageState.textContent = text;
+  }
+
+  function clearError() {
+    if (error) error.hidden = true;
+    if (task) task.removeAttribute('aria-invalid');
+  }
+
+  function showError() {
+    if (error) error.hidden = false;
+    if (task) {
+      task.setAttribute('aria-invalid', 'true');
+      task.focus({ preventScroll: true });
+    }
+    positionCard();
+    revealCard();
+    announce('先写一句任务。');
   }
 
   function announce(text) {
@@ -1026,6 +1049,7 @@ section[id] { scroll-margin-top: 84px; }
 
   function openCard() {
     window.clearTimeout(hideTimer);
+    clearError();
     card.hidden = false;
     card.setAttribute('aria-hidden', 'false');
     droplet.setAttribute('aria-expanded', 'true');
@@ -1075,7 +1099,7 @@ section[id] { scroll-margin-top: 84px; }
     openCard();
   }
 
-  function returnToHang(animate) {
+  function returnToHang(animate, note) {
     window.clearTimeout(hideTimer);
     closeCard();
     const sx = x;
@@ -1086,11 +1110,11 @@ section[id] { scroll-margin-top: 84px; }
     if (!animate || reduced()) {
       mode = 'hanging';
       draw(ex, ey);
-      setStageState('待机');
+      setStageState(note || '待机');
       return;
     }
     mode = 'returning';
-    setStageState('归位');
+    setStageState(note || '归位');
     const t0 = performance.now();
     const dur = 380;
     const tick = (now) => {
@@ -1102,7 +1126,7 @@ section[id] { scroll-margin-top: 84px; }
       } else {
         mode = 'hanging';
         draw(ex, ey);
-        setStageState('待机');
+        setStageState(note || '待机');
       }
     };
     raf = window.requestAnimationFrame(tick);
@@ -1170,9 +1194,11 @@ section[id] { scroll-margin-top: 84px; }
       clamp(baseX + dx, R + 10, W - R - 10),
       clamp(baseY + dy, NOTCH_H + 18, H - R - 14)
     );
-    if (stage.classList.contains('is-detached') !== wasDetached) {
-      setStageState(stage.classList.contains('is-detached') ? '已脱离' : '拖动中');
-      announce(stage.classList.contains('is-detached') ? '水滴已脱离刘海。松手放下。' : '水滴已接回刘海。');
+    const dist = Math.hypot(x - notchX, y - NOTCH_H);
+    const detachedNow = stage.classList.contains('is-detached');
+    setStageState(detachedNow ? '已脱离' : Math.min(DETACH, Math.round(dist)) + ' / ' + DETACH + 'pt');
+    if (detachedNow !== wasDetached) {
+      announce(detachedNow ? '水滴已脱离刘海。松手放下。' : '水滴已接回刘海。');
     }
     e.preventDefault();
   }
@@ -1186,8 +1212,8 @@ section[id] { scroll-margin-top: 84px; }
     if (detached) {
       place();
     } else if (moved) {
-      returnToHang(true);
-      announce('水滴回到刘海下。');
+      returnToHang(true, '还差一点');
+      announce('还差一点，再拖远一些。水滴回到刘海下。');
     } else {
       openDefault();
     }
@@ -1245,8 +1271,22 @@ section[id] { scroll-margin-top: 84px; }
     });
   }
 
+  document.addEventListener('pointerdown', (e) => {
+    if (!card.classList.contains('is-open')) return;
+    if (card.contains(e.target) || droplet.contains(e.target)) return;
+    returnToHang(true);
+    droplet.focus({ preventScroll: true });
+    announce('输入框已收起。');
+  });
+
   card.addEventListener('submit', (e) => {
     e.preventDefault();
+    const text = task ? task.value.trim() : '';
+    if (!text) {
+      showError();
+      return;
+    }
+    clearError();
     if (body) body.hidden = true;
     if (done) done.hidden = false;
     positionCard();
@@ -1255,8 +1295,15 @@ section[id] { scroll-margin-top: 84px; }
     announce('演示到此。真实应用会把任务交给 Herdr。');
   });
 
+  if (task) {
+    task.addEventListener('input', () => {
+      if (task.value.trim()) clearError();
+    });
+  }
+
   if (againBtn) {
     againBtn.addEventListener('click', () => {
+      clearError();
       if (body) body.hidden = false;
       if (done) done.hidden = true;
       if (task) task.value = '';
@@ -1278,7 +1325,7 @@ section[id] { scroll-margin-top: 84px; }
       announce('输入框已收起。');
       return;
     }
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && e.target === task) {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       if (typeof card.requestSubmit === 'function') card.requestSubmit();
     }
