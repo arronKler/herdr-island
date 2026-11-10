@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title">
+  <title id="title">Herdr Island</title>
+  <!-- Canonical artwork. Regenerate native assets with Scripts/make-icons.sh. -->
+  <path fill="#D7EFFC" d="M288 64H736C888 64 960 136 960 288V736C960 888 888 960 736 960H288C136 960 64 888 64 736V288C64 136 136 64 288 64Z"/>
+  <path id="island-mark" data-viewbox="182 364 660 356" fill="#08090C" d="M362 364H662C772 364 842 433 842 536C842 638 776 720 681 720H592C616 692 620 655 612 621C601 574 549 529 512 456C475 529 423 574 412 621C404 655 408 692 432 720H343C248 720 182 638 182 536C182 433 252 364 362 364Z"/>
+</svg>

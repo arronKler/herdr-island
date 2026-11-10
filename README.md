@@ -2,6 +2,8 @@
 
 Herdr Island 把 Herdr 里的 agent 状态收进 macOS 摄像头刘海的左右两耳，并在刘海下挂一滴水。收起时它只占菜单栏高度，不改变刘海的形状。把水滴拖到桌面任意位置，输入框就落在那里：选模型、选目录、可选隔离 worktree，输入任务后直接在 Herdr 里创建 workspace、启动 agent 并提交。按住 Option 拖动同一滴水，则改为锁定指针下的窗口，发送任务时附带一张该窗口的截图。
 
+产品页在 <https://arronkler.github.io/herdr-island/>，源码在 `site/`，由 GitHub Pages 部署。
+
 ## 界面
 
 - **环境条**。左右耳位于刘海两侧，左侧显示待处理或安静，右侧显示运行、完成或空闲。刘海下方 32pt 的透明延伸区只画水滴，不遮挡桌面点击；鼠标移到水滴或两耳上才接收事件。
@@ -65,6 +67,28 @@ blocked 需要人亲自处理。可以直接在详情的交互终端中阅读、
 - Automation 权限。首次 Jump 时 macOS 会询问是否可以控制 Ghostty
 - Screen Recording 权限。窗口锁定功能需要它在发送时截图；授权后可能需要重启 app
 
+## 安装
+
+预编译版本发布在 [Releases](https://github.com/arronKler/herdr-island/releases)，为 Apple Silicon 构建，要求 macOS 14 或更新版本。
+
+1. 下载 `HerdrIsland-<版本>.zip` 和 `HerdrIsland-<版本>.zip.sha256`，放在同一目录后校验：
+
+   ```bash
+   shasum -a 256 -c HerdrIsland-<版本>.zip.sha256
+   ```
+
+2. 解压，把 `HerdrIsland.app` 拖进 `/Applications`。
+3. 首次打开会被 Gatekeeper 拦截。应用只有 ad-hoc 签名，没有经过 Apple 公证，所以系统不会显示“已识别的开发者”。到 **系统设置 → 隐私与安全性**，在“安全性”一栏点 **仍要打开**，再输入管理员密码。也可以在终端去掉下载隔离标记后正常打开：
+
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/HerdrIsland.app
+   ```
+
+   每个新下载的版本可能都需要再放行一次。不要用 `sudo spctl --master-disable` 全局关闭 Gatekeeper。
+4. 按提示授予 Screen Recording 和 Automation 权限。替换应用后这些权限可能再次询问。
+
+从源码构建的 app 没有 quarantine 标记，不需要上面的放行步骤。
+
 ## 构建
 
 ```bash
@@ -74,6 +98,20 @@ open build/HerdrIsland.app
 ```
 
 `Scripts/make-app.sh` 执行 release 构建，组装 `build/HerdrIsland.app`，然后做 ad-hoc 签名。应用是 `LSUIElement`，不会出现在 Dock。
+
+发版用 `Scripts/make-release.sh`：
+
+```bash
+Scripts/make-release.sh 0.1.0
+```
+
+脚本把版本写入 `Info.plist`，重新做 ad-hoc 签名，在 `build/release/` 生成 `HerdrIsland-<版本>.zip` 和同名的 `.sha256`。推送 `v<版本>` 标签会触发 `.github/workflows/release.yml`，执行同一脚本并创建 GitHub Release；带 `-` 的版本（如 `0.1.0-beta.1`）标记为 prerelease。
+
+站点由 `.github/workflows/pages.yml` 发布。推送 `site/` 下的改动后，工作流先运行 `python3 Scripts/check-site.py site` 检查本地链接与页内锚点，再把 `site/` 上传到 GitHub Pages。首次部署前，在仓库的 Settings → Pages 把 Source 设为 GitHub Actions。本地预览：
+
+```bash
+python3 -m http.server --directory site 8000
+```
 
 应用图标采用「负形之岛」：冰蓝色底板上的刘海轮廓，用水滴负形留出开口。[SVG 源文件](Sources/IslandApp/Resources/Brand/HerdrIsland.svg) 是唯一手工维护的图稿；菜单栏、任务台、设置页和设计预览页共用从它派生的标记。菜单栏始终使用无底板、透明镂空的单色模板，由 macOS 按背景自动显示为白色或深色，不随任务状态变色；状态通过提示文字和任务面板呈现。
 

@@ -1,0 +1,40 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Test
+        run: swift test
+
+      - name: Package
+        run: Scripts/make-release.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          prerelease=""
+          case "$version" in
+            *-*) prerelease="--prerelease" ;;
+          esac
+          gh release create "$GITHUB_REF_NAME" \
+            "build/release/HerdrIsland-$version.zip" \
+            "build/release/HerdrIsland-$version.zip.sha256" \
+            --title "Herdr Island $version" \
+            --generate-notes \
+            $prerelease
