@@ -167,7 +167,25 @@ public enum IslandPresenter {
             listHeight = height
         }
 
-        let chrome = IslandGeometry.expandedTopInset + 32 + 12 + 36 + 12 + 96 + 9 + 24 + 16
+        // The footer renders only when it has something to show: the blocked
+        // decision row, the reply editor, or a queued reply. A plain selection
+        // gets no footer, so the panel must not reserve one either.
+        let footer: CGFloat
+        if state.replyPane != nil {
+            footer = 96
+        } else if let selection = state.selection,
+                  state.agents[selection]?.status == .blocked {
+            footer = 60
+        } else if let selection = state.selection,
+                  state.queued[selection] != nil {
+            footer = 46
+        } else if state.selection == nil {
+            footer = 96
+        } else {
+            footer = 0
+        }
+
+        let chrome = IslandGeometry.expandedTopInset + 32 + 12 + 36 + 12 + footer + 9 + 24 + 16
         let extra: CGFloat = (state.isSearching ? 24 : 0) + (state.banner == nil ? 0 : 38)
         let natural = chrome + extra + listHeight
         return min(max(natural, IslandGeometry.deckMinHeight), IslandGeometry.deckMaxHeight)

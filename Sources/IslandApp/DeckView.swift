@@ -523,22 +523,35 @@ struct DeckView: View {
 
     @ViewBuilder
     private var footer: some View {
-        VStack(spacing: 0) {
-            Hairline()
-                .padding(.top, 10)
-            if let selected {
-                if selected.status == .blocked {
-                    decisionFooter(selected)
-                } else if presentation.isReplying {
-                    composerEditor(selected)
-                } else {
-                    replyStrip(selected)
-                }
-            } else {
+        if let selected, selected.status == .blocked {
+            VStack(spacing: 0) {
+                Hairline()
+                    .padding(.top, 10)
+                decisionFooter(selected)
+            }
+            .frame(minHeight: 60, alignment: .top)
+        } else if let selected, presentation.isReplying {
+            VStack(spacing: 0) {
+                Hairline()
+                    .padding(.top, 10)
+                composerEditor(selected)
+            }
+            .frame(minHeight: 96, alignment: .top)
+        } else if let selected, let queued = presentation.composer?.queuedText {
+            VStack(spacing: 0) {
+                Hairline()
+                    .padding(.top, 10)
+                queuedRow(selected, text: queued)
+                    .padding(.top, 10)
+            }
+        } else if selected == nil {
+            VStack(spacing: 0) {
+                Hairline()
+                    .padding(.top, 10)
                 idleFooter
             }
+            .frame(minHeight: 96, alignment: .top)
         }
-        .frame(minHeight: selected?.status == .blocked ? 60 : 96, alignment: .top)
     }
 
     private func decisionFooter(_ row: AgentRow) -> some View {
@@ -575,76 +588,6 @@ struct DeckView: View {
             }
         }
         .padding(.top, 12)
-    }
-
-    private func replyStrip(_ row: AgentRow) -> some View {
-        let refusal = presentation.composer?.refusal
-        return VStack(alignment: .leading, spacing: 6) {
-            Button(action: actions.beginReply) {
-                HStack(spacing: 8) {
-                    AgentMarkView(kind: row.kind, size: 24, status: row.status)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(row.title)
-                            .font(Theme.sans(Theme.TypeSize.row, weight: .medium))
-                            .foregroundStyle(Theme.textPrimary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                        Text(replyCaption(row))
-                            .font(Theme.sans(Theme.TypeSize.caption))
-                            .foregroundStyle(Theme.textTertiary)
-                            .lineLimit(1)
-                            .truncationMode(.tail)
-                    }
-                    Spacer(minLength: 4)
-                    HStack(spacing: 5) {
-                        KeyCap(text: "R")
-                        Text("回复")
-                            .font(Theme.code(9.5))
-                            .foregroundStyle(Theme.textTertiary)
-                    }
-                    .opacity(refusal == nil ? 1 : 0.4)
-                }
-                .padding(.horizontal, 12)
-                .frame(height: 38)
-                .background(
-                    RoundedRectangle(cornerRadius: 9)
-                        .fill(Theme.field)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 9)
-                                .stroke(Theme.hairline, lineWidth: 0.6)
-                        )
-                )
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(refusal != nil)
-            .help("回复 \(row.title) (R)")
-            .accessibilityLabel("回复 \(row.title)")
-
-            if let queued = presentation.composer?.queuedText {
-                queuedRow(row, text: queued)
-            }
-        }
-        .padding(.top, 10)
-    }
-
-    private func replyCaption(_ row: AgentRow) -> String {
-        var parts: [String] = []
-        parts.append(AgentMark(kind: row.kind).displayName)
-        parts.append(row.project)
-        switch row.status {
-        case .working:
-            parts.append("本轮结束后自动发送")
-        case .idle, .done:
-            parts.append("发送到终端")
-        case .blocked, .unknown:
-            parts.append(presentation.composer?.refusal ?? "暂时不能发送")
-        }
-        let draft = presentation.composer?.text ?? ""
-        if !draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            parts.append("草稿未发送")
-        }
-        return parts.joined(separator: " · ")
     }
 
     private func composerEditor(_ row: AgentRow) -> some View {
