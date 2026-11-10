@@ -111,6 +111,11 @@ final class LiquidDropSurfaceView: NSView {
     private var causticAlpha: CGFloat = 0
     private var satelliteAlpha: CGFloat = 0
     private var markAlpha: CGFloat = 0.62
+    /// The idle droplet is a small bead at the menu bar's lip rather than the
+    /// full pearl. Hover, a press, or an open composer swells it back to full
+    /// size, so the resting island stops covering the window's toolbar.
+    private var shapeScale: CGFloat = LiquidDropSurfaceView.idleShapeScale
+    private static let idleShapeScale: CGFloat = 0.32
     private var ripples: [Ripple] = []
 
     // Housekeeping.
@@ -142,8 +147,10 @@ final class LiquidDropSurfaceView: NSView {
 
     private var restPoint: CGPoint {
         // The island can sit anywhere on a drop surface that spans every
-        // display, so rest under the anchor, never the panel's midpoint.
-        CGPoint(x: anchor.x, y: anchor.y + 12)
+        // display, so rest under the anchor, never the panel's midpoint. The
+        // bead hangs closer to the bar than the full pearl so it stays on the
+        // menu bar's lip instead of over the window beneath it.
+        CGPoint(x: anchor.x, y: anchor.y + 12 * shapeScale)
     }
 
     private var floorY: CGFloat {
@@ -366,7 +373,7 @@ final class LiquidDropSurfaceView: NSView {
             }
         } else {
             if !detached {
-                rest = CGPoint(x: a.x, y: a.y + 12)
+                rest = CGPoint(x: a.x, y: a.y + 12 * shapeScale)
             }
             velocity.dx += (rest.x - point.x) * 0.16
             velocity.dy += (rest.y - point.y) * 0.16
@@ -388,6 +395,16 @@ final class LiquidDropSurfaceView: NSView {
             layerAlpha = layerFrom + (layerTo - layerFrom) * CGFloat(eased)
             if t >= 1 { layerAlpha = layerTo }
         }
+
+        let resting = !hover
+            && !dragging
+            && !optionDragging
+            && !detached
+            && !returning
+            && !composerVisible
+        let targetScale = resting ? Self.idleShapeScale : 1
+        let scaleK = CGFloat(1 - exp(-dt / 0.12))
+        shapeScale += (targetScale - shapeScale) * scaleK
 
         let raw = visualValues()
         let k = CGFloat(1 - exp(-dt / 0.1))
@@ -431,8 +448,8 @@ final class LiquidDropSurfaceView: NSView {
         let showNeck = !detached && distance > 8
         let rawNeckAlpha = clamp01((distance - 15) / 12)
         let tension = clamp01(distance / breakDistance)
-        let footRx = 6.4 - tension * 1.8
-        let footRy = 2.6 - tension * 0.6
+        let footRx = (6.4 - tension * 1.8) * shapeScale
+        let footRy = (2.6 - tension * 0.6) * shapeScale
 
         let speed = hypot(velocity.dx, velocity.dy)
         let pull = detached ? 0 : tension * 0.26
@@ -452,7 +469,8 @@ final class LiquidDropSurfaceView: NSView {
         }
 
         let bob = (reduceMotion || dragging) ? 0 : sin(now / 1.15) * 0.45
-        let base = 11 - (detached ? 0 : tension * 0.5) + bob + (hover ? 0.9 : 0)
+        let fullBase = 11 - (detached ? 0 : tension * 0.5) + bob + (hover ? 0.9 : 0)
+        let base = fullBase * shapeScale
         let rx = base * (1 + stretch)
         let ry = base * (1 - stretch * 0.52)
 
@@ -694,7 +712,7 @@ final class LiquidDropSurfaceView: NSView {
             }
         } else {
             detached = false
-            rest = CGPoint(x: a.x, y: a.y + 12)
+            rest = CGPoint(x: a.x, y: a.y + 12 * shapeScale)
         }
     }
 
@@ -708,7 +726,7 @@ final class LiquidDropSurfaceView: NSView {
 
     private func goHome() {
         let a = anchor
-        rest = CGPoint(x: a.x, y: a.y + 12)
+        rest = CGPoint(x: a.x, y: a.y + 12 * shapeScale)
         guard detached, !dragging else { return }
         returning = true
         returnStart = now
@@ -780,7 +798,7 @@ private enum LiquidDropRenderer {
             center: CGPoint(x: s.point.x, y: s.point.y + 2),
             rx: s.base * 1.5,
             ry: s.base * 1.35,
-            blur: 3.4,
+            blur: 3.4 * min(1, s.base / 11),
             color: srgb(0x7AA0E6, alpha: 0.16),
             opacity: (s.dragging ? 0.45 : 0.8) * s.layerAlpha
         )
@@ -924,7 +942,7 @@ private enum LiquidDropRenderer {
             center: CGPoint(x: s.point.x + s.base * 0.08, y: s.point.y + s.base * 0.42),
             rx: s.base * 0.46,
             ry: s.base * 0.2,
-            blur: 1.1,
+            blur: 1.1 * min(1, s.base / 11),
             color: srgb(0x96BEFF, alpha: 0.22),
             opacity: (s.dragging ? 0.5 : 1) * s.layerAlpha
         )
@@ -934,16 +952,19 @@ private enum LiquidDropRenderer {
         ctx.addPath(body)
         ctx.setStrokeColor(srgb(0xFFFFFF, alpha: 0.44))
         ctx.setAlpha(s.layerAlpha)
-        ctx.setLineWidth(1)
+        ctx.setLineWidth(min(1, max(0.5, s.base * 0.1)))
         ctx.strokePath()
         ctx.restoreGState()
 
-        // Specular highlight.
+        // Specular highlight. Proportions stay the design's at full size; the
+        // idle bead caps them so the highlight cannot outgrow the body.
+        let shineRx = min(max(1.2, 2.8 - s.stretch * 2), max(0.8, s.base * 0.36))
+        let shineRy = min(max(1, 1.9 - s.stretch), max(0.6, s.base * 0.26))
         let shineRect = CGRect(
-            x: s.point.x - s.base * 0.36 - max(1.2, 2.8 - s.stretch * 2),
-            y: s.point.y - s.base * 0.4 - max(1, 1.9 - s.stretch),
-            width: max(1.2, 2.8 - s.stretch * 2) * 2,
-            height: max(1, 1.9 - s.stretch) * 2
+            x: s.point.x - s.base * 0.36 - shineRx,
+            y: s.point.y - s.base * 0.4 - shineRy,
+            width: shineRx * 2,
+            height: shineRy * 2
         )
         ctx.saveGState()
         ctx.setFillColor(srgb(0xFFFFFF, alpha: 0.5))
@@ -972,9 +993,10 @@ private enum LiquidDropRenderer {
             ctx.restoreGState()
         }
 
-        // Agent mark, drawn in the design's 11 pt box with the exact logo
-        // geometry from the design's icon sprite.
-        let markAlpha = s.markAlpha * s.layerAlpha
+        // The agent mark is drawn in a fixed 11 pt box, so it belongs on the
+        // full pearl only. On the idle bead it would spill past the body.
+        let markVisibility = clamp01((s.base / 11 - 0.72) / 0.28)
+        let markAlpha = s.markAlpha * markVisibility * s.layerAlpha
         if markAlpha > 0.001 {
             let tint = DropMarkRenderer.tint(for: s.markKind).cgColor
             for part in DesignMark.parts(for: s.markKind) {
