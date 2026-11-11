@@ -203,9 +203,9 @@ launchctl list | grep -i herdr || echo "no launch agent"</code></pre>
             <h2><span class="idx">07 / Clean reinstall</span>Start from a blank slate</h2>
             <ol>
               <li>Quit Island and delete <code>/Applications/HerdrIsland.app</code>.</li>
-              <li>Remove the two data directories and the preference domain as above.</li>
+              <li>Remove the data directories and the preference domain as above.</li>
               <li>Reset the three permission grants with the <code>tccutil</code> commands above.</li>
-              <li>Download the latest release and <code>.sha256</code>, verify, unzip, and drag the app to <code>/Applications</code>.</li>
+              <li>Download the latest release, unzip it, and drag the app to <code>/Applications</code>.</li>
               <li>Open it, approve Gatekeeper, then grant Automation, Screen Recording, and Accessibility again when prompted.</li>
             </ol>
             <p>The install walkthrough, including the quarantine command, is on the <a href="index.html#install">main page</a>. If a permission still does not appear after reinstall, log out and back in or reboot; macOS caches privacy decisions per app identity.</p>

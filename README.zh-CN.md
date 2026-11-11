@@ -116,25 +116,23 @@ Herdr 能识别的 agent 都会出现在 Island 里。新任务可以启动以�
 
 预编译版本发布在 [GitHub Releases](https://github.com/arronKler/herdr-island/releases)。
 
-1. 下载 `HerdrIsland-<版本>.zip` 和同名的 `.sha256` 文件，放在同一目录。
+1. 下载 `HerdrIsland-<版本>.zip`，解压后把 `HerdrIsland.app` 放进 `/Applications`。
 
-2. 校验并安装：
+   Release 里还有一个 `.sha256` 文件。校验它是可选的，只用于发现下载损坏。自动更新由 EdDSA 签名验证，不需要手动校验。想校验第一次下载可以运行：
 
    ```bash
    shasum -a 256 -c HerdrIsland-<版本>.zip.sha256
-   unzip HerdrIsland-<版本>.zip
-   mv HerdrIsland.app /Applications/
    ```
 
-3. 首次打开会被 Gatekeeper 拦截：应用只有 ad-hoc 签名，没有经过 Apple 公证，所以系统不会显示“已识别的开发者”。到 **系统设置 → 隐私与安全性**，点 **仍要打开** 并输入管理员密码。也可以在终端去掉隔离标记：
+2. 首次打开会被 Gatekeeper 拦截：应用只有 ad-hoc 签名，没有经过 Apple 公证，所以系统不会显示“已识别的开发者”。到 **系统设置 → 隐私与安全性**，点 **仍要打开** 并输入管理员密码。也可以在终端去掉隔离标记：
 
    ```bash
    xattr -dr com.apple.quarantine /Applications/HerdrIsland.app
    ```
 
-   每个新下载的版本可能都需要再放行一次。不要用 `sudo spctl --master-disable` 全局关闭 Gatekeeper。
+   手动下载的新版本可能还需要再放行一次，自动更新不会。不要用 `sudo spctl --master-disable` 全局关闭 Gatekeeper。
 
-4. 按提示授予 Screen Recording、Automation 和辅助功能权限。三者都不阻断基本使用，并且会独立降级。
+3. 按提示授予 Screen Recording、Automation 和辅助功能权限。三者都不阻断基本使用，并且会独立降级。
 
 从源码构建的 app 没有 quarantine 标记，不需要上面的放行步骤。
 

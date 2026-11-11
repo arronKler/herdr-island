@@ -149,17 +149,18 @@ terminal, and delivery still work; the droplet and window lock are unavailable.
 
 Prebuilt releases are on [GitHub Releases](https://github.com/arronKler/herdr-island/releases).
 
-1. Download `HerdrIsland-<version>.zip` and its matching `.sha256` file into the same folder.
+1. Download `HerdrIsland-<version>.zip`, unzip it, and move `HerdrIsland.app` into
+   `/Applications`.
 
-2. Verify the archive and move the app into place:
+   The release also publishes a `.sha256` file. Checking it is optional and only detects a
+   corrupted download. Updates are verified automatically by their EdDSA signature, so you never
+   need to check an update by hand. To check the first download:
 
    ```bash
    shasum -a 256 -c HerdrIsland-<version>.zip.sha256
-   unzip HerdrIsland-<version>.zip
-   mv HerdrIsland.app /Applications/
    ```
 
-3. The first launch is blocked by Gatekeeper: the app is ad-hoc signed and not notarized, so macOS
+2. The first launch is blocked by Gatekeeper: the app is ad-hoc signed and not notarized, so macOS
    does not show an identified developer. Go to **System Settings → Privacy & Security**, click
    **Open Anyway**, and authenticate. Or remove the quarantine flag:
 
@@ -167,10 +168,10 @@ Prebuilt releases are on [GitHub Releases](https://github.com/arronKler/herdr-is
    xattr -dr com.apple.quarantine /Applications/HerdrIsland.app
    ```
 
-   Each newly downloaded build may need this again. Do not disable Gatekeeper globally with
-   `sudo spctl --master-disable`.
+   A manually downloaded build may need this again. Automatic updates do not. Do not disable
+   Gatekeeper globally with `sudo spctl --master-disable`.
 
-4. Grant Screen Recording, Automation, and Accessibility when asked. None of them block basic
+3. Grant Screen Recording, Automation, and Accessibility when asked. None of them block basic
    use, and each degrades independently.
 
 Apps built from source carry no quarantine flag and skip the Gatekeeper step.

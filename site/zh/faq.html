@@ -310,8 +310,10 @@
             <details class="qa">
               <summary>怎么安装？</summary>
               <div class="qa-body">
-                <p>下载 <code>HerdrIsland-&lt;版本&gt;.zip</code> 和同名 <code>.sha256</code>，放在同一目录校验后解压，把 <code>HerdrIsland.app</code> 拖进 <code>/Applications</code>。</p>
-                <pre><code>shasum -a 256 -c HerdrIsland-&lt;版本&gt;.zip.sha256
+                <p>下载 <code>HerdrIsland-&lt;版本&gt;.zip</code>，解压后把 <code>HerdrIsland.app</code> 拖进 <code>/Applications</code>。同名 <code>.sha256</code> 是可选的，只用于发现下载损坏；自动更新由签名验证。</p>
+                <pre><code># 可选的下载校验
+shasum -a 256 -c HerdrIsland-&lt;版本&gt;.zip.sha256
+# 如果不想用系统设置，也可以在这里去掉隔离标记
 xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
                 <p>也可以在系统设置 → 隐私与安全性里点「仍要打开」。具体步骤见<a href="index.html#install">安装</a>。</p>
               </div>
@@ -350,7 +352,7 @@ xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
             <details class="qa">
               <summary>怎么完全卸载？</summary>
               <div class="qa-body">
-                <p>退出 app，删除 app、Application Support/HerdrIsland 和 Caches/HerdrIsland，再到系统设置移除自动化、屏幕录制和辅助功能授权。Island 不安装后台服务，也不注册登录项。</p>
+                <p>退出 app，删除 app、Application Support/HerdrIsland、Caches/HerdrIsland 和 Caches/local.herdr.island，再到系统设置移除自动化、屏幕录制和辅助功能授权。Island 不安装后台服务，也不注册登录项。</p>
                 <p>逐项步骤见<a href="uninstall.html">卸载</a>。</p>
               </div>
             </details>

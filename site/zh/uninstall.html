@@ -203,9 +203,9 @@ launchctl list | grep -i herdr || echo "no launch agent"</code></pre>
             <h2><span class="idx">07 / 干净重装</span>从空白状态开始</h2>
             <ol>
               <li>退出 Island，删除 <code>/Applications/HerdrIsland.app</code>。</li>
-              <li>按上面的步骤删除两个数据目录和偏好域。</li>
+              <li>按上面的步骤删除数据目录和偏好域。</li>
               <li>用上面的 <code>tccutil</code> 命令重置三项授权。</li>
-              <li>下载最新版本和 <code>.sha256</code>，校验、解压，把应用拖进 <code>/Applications</code>。</li>
+              <li>下载最新版本，解压，把应用拖进 <code>/Applications</code>。</li>
               <li>打开应用，放行 Gatekeeper，再按提示授予自动化、屏幕录制和辅助功能。</li>
             </ol>
             <p>包含 quarantine 命令的安装步骤在<a href="index.html#install">主页</a>。如果重装后权限仍然不出现，注销再登录或重启；macOS 会按 app 身份缓存隐私决定。</p>

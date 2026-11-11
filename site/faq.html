@@ -310,8 +310,10 @@
             <details class="qa">
               <summary>How do I install it?</summary>
               <div class="qa-body">
-                <p>Download <code>HerdrIsland-&lt;version&gt;.zip</code> and the matching <code>.sha256</code>, put them in the same directory, verify, unzip, and drag <code>HerdrIsland.app</code> into <code>/Applications</code>.</p>
-                <pre><code>shasum -a 256 -c HerdrIsland-&lt;version&gt;.zip.sha256
+                <p>Download <code>HerdrIsland-&lt;version&gt;.zip</code>, unzip it, and drag <code>HerdrIsland.app</code> into <code>/Applications</code>. The matching <code>.sha256</code> is optional and only checks the download for corruption; automatic updates are signature-verified.</p>
+                <pre><code># optional download check
+shasum -a 256 -c HerdrIsland-&lt;version&gt;.zip.sha256
+# only if you prefer Terminal over System Settings
 xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
                 <p>You can also click "Open Anyway" in System Settings → Privacy &amp; Security. The full walkthrough is in <a href="index.html#install">Install</a>.</p>
               </div>
@@ -350,7 +352,7 @@ xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
             <details class="qa">
               <summary>How do I uninstall it completely?</summary>
               <div class="qa-body">
-                <p>Quit the app, delete the app, Application Support/HerdrIsland, and Caches/HerdrIsland, then remove the Automation, Screen Recording, and Accessibility grants in System Settings. Island installs no background service and registers no login item.</p>
+                <p>Quit the app, delete the app, Application Support/HerdrIsland, Caches/HerdrIsland, and Caches/local.herdr.island, then remove the Automation, Screen Recording, and Accessibility grants in System Settings. Island installs no background service and registers no login item.</p>
                 <p>Step-by-step instructions are in <a href="uninstall.html">Uninstall</a>.</p>
               </div>
             </details>
