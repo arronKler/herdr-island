@@ -8,12 +8,20 @@ final class IslandStore: ObservableObject {
     @Published private(set) var presentation: IslandPresentation
 
     private(set) var state: IslandState
-    private let source: AgentSource
-    private let actions: AgentActions
+    private var backend: BackendAttachment
+    private var source: any AgentSource { backend.source }
+    private var actions: any AgentActions { backend.actions }
     private let mainAgentStore: MainAgentStore
+    private let installer: any HerdrInstalling
+    private let factory: any BackendFactory
+    private let resolver: @Sendable () throws -> HerdrEnvironment
 
+    private var backendEpoch: UInt64 = 0
     private var streamTask: Task<Void, Never>?
-    private var tickTimer: Timer?
+    var tickTimer: Timer?
+    private var installTask: Task<Void, Never>?
+    private var lastInstallPercent: Int?
+    private var publishedDownloadWithoutFraction = false
     private var previewInFlight: Set<PaneID> = []
     private var jumpInFlight: Set<PaneID> = []
     private var hoverTask: Task<Void, Never>?
@@ -25,18 +33,28 @@ final class IslandStore: ObservableObject {
     var onPresentationChange: ((IslandPresentation) -> Void)?
 
     init(
-        source: AgentSource,
-        actions: AgentActions,
+        initial: InitialBackend,
+        installer: any HerdrInstalling,
+        factory: any BackendFactory,
+        resolver: @escaping @Sendable () throws -> HerdrEnvironment,
         rules: IslandRules = .default,
-        supportsInteractiveTerminal: Bool = false,
         mainAgentStore: MainAgentStore = MainAgentStore()
     ) {
-        self.source = source
-        self.actions = actions
         self.mainAgentStore = mainAgentStore
+        self.installer = installer
+        self.factory = factory
+        self.resolver = resolver
+        self.backend = factory.makeInitialBackend(initial, rules: rules)
+
+        let setup: HerdrSetup
+        switch initial {
+        case .live(let environment): setup = .ready(environment)
+        case .unavailable(let failure): setup = .missing(SetupFailure(failure))
+        case .demo: setup = .ready(nil)
+        }
         let state = IslandState(
             rules: rules,
-            supportsInteractiveTerminal: supportsInteractiveTerminal,
+            setup: setup,
             mainAgent: mainAgentStore.load()
         )
         self.state = state
@@ -46,15 +64,8 @@ final class IslandStore: ObservableObject {
     var rules: IslandRules { state.rules }
 
     func start() {
-        guard streamTask == nil else { return }
-        let source = self.source
-        streamTask = Task { [weak self] in
-            let stream = await source.start()
-            for await event in stream {
-                if Task.isCancelled { break }
-                await MainActor.run { self?.handle(sourceEvent: event) }
-            }
-        }
+        guard streamTask == nil, tickTimer == nil else { return }
+        startStream()
 
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.handle(.tick) }
@@ -65,12 +76,106 @@ final class IslandStore: ObservableObject {
     }
 
     func stop() {
+        installTask?.cancel()
+        installTask = nil
         streamTask?.cancel()
         streamTask = nil
         tickTimer?.invalidate()
         tickTimer = nil
         let source = self.source
         Task { await source.stop() }
+    }
+
+    func installHerdr() { handle(.setup(.installRequested)) }
+    func redetectHerdr() { handle(.setup(.redetectRequested)) }
+
+    private func startStream() {
+        guard streamTask == nil else { return }
+        let source = backend.source
+        let epoch = backendEpoch
+        streamTask = Task { [weak self] in
+            let stream = await source.start()
+            for await event in stream {
+                guard !Task.isCancelled, let self, self.backendEpoch == epoch else { break }
+                self.handle(sourceEvent: event)
+            }
+        }
+    }
+
+    private func attach(_ environment: HerdrEnvironment) async {
+        streamTask?.cancel()
+        streamTask = nil
+        await backend.source.stop()
+
+        backendEpoch &+= 1
+        backend = factory.makeBackend(for: environment, rules: state.rules)
+        cachedFocusedCwd = nil
+
+        handle(.setup(.installed(environment)))
+        startStream()
+    }
+
+    private func performInstall() async {
+        do {
+            let installation = try await installer.install { progress in
+                await self.report(progress)
+            }
+            appLog("install: herdr \(installation.version) at \(installation.binary.path)")
+            do {
+                let environment = try resolver()
+                handle(.setup(.progress(.connecting)))
+                await attach(environment)
+            } catch {
+                let failure = SetupFailure(
+                    .verificationFailed,
+                    detail: error.localizedDescription
+                )
+                appLog("install: resolve failed: \(failure.detail)")
+                handle(.setup(.failed(failure)))
+            }
+        } catch {
+            let failure: SetupFailure
+            if let installError = error as? HerdrInstallError {
+                failure = installError.setupFailure
+            } else if error is CancellationError {
+                failure = SetupFailure(.cancelled)
+            } else {
+                failure = SetupFailure(.other, detail: error.localizedDescription)
+            }
+            appLog("install failed: \(failure.kind.rawValue) \(failure.detail)")
+            handle(.setup(.failed(failure)))
+        }
+    }
+
+    private func performRedetect() async {
+        do {
+            let environment = try resolver()
+            await attach(environment)
+        } catch {
+            let failure: SetupFailure
+            if error is CancellationError {
+                failure = SetupFailure(.cancelled)
+            } else {
+                failure = SetupFailure(.binaryStillMissing, detail: error.localizedDescription)
+            }
+            appLog("redetect failed: \(failure.detail)")
+            handle(.setup(.failed(failure)))
+        }
+    }
+
+    private func report(_ progress: HerdrInstallProgress) {
+        if case .downloading(_, let fraction) = progress {
+            guard let fraction else {
+                guard !publishedDownloadWithoutFraction else { return }
+                publishedDownloadWithoutFraction = true
+                handle(.setup(.progress(progress.setupStage)))
+                return
+            }
+            let percent = Int(fraction * 100)
+            guard percent != lastInstallPercent else { return }
+            lastInstallPercent = percent
+        }
+        handle(.setup(.progress(progress.setupStage)))
     }
 
     func handle(_ event: IslandEvent) {
@@ -130,7 +235,8 @@ final class IslandStore: ObservableObject {
     }
 
     func openQuickTask() {
-        guard state.quickTask == nil,
+        guard state.setup.isReady,
+              state.quickTask == nil,
               state.drop == nil,
               !state.dropActive,
               state.windowTask == nil else { return }
@@ -179,7 +285,7 @@ final class IslandStore: ObservableObject {
     func cancelQueued(_ pane: PaneID) { handle(.cancelQueued(pane)) }
 
     func beginDrop() {
-        guard state.drop == nil else { return }
+        guard state.setup.isReady, state.drop == nil else { return }
         let kind = AgentKindOption(
             rawValue: UserDefaults.standard.string(forKey: Self.quickTaskKindKey) ?? ""
         ) ?? .claude
@@ -307,6 +413,7 @@ final class IslandStore: ObservableObject {
     private static let dropDefaultCwdKey = "herdrIsland.dropDefaultCwd"
 
     func lockWindow(_ target: WindowTarget) {
+        guard state.setup.isReady else { return }
         let kind = AgentKindOption(
             rawValue: UserDefaults.standard.string(forKey: Self.quickTaskKindKey) ?? ""
         ) ?? .claude
@@ -532,6 +639,16 @@ final class IslandStore: ObservableObject {
 
         case .sendQueuedDelivery(let pane, let payload):
             sendQueuedDelivery(payload, pane: pane)
+
+        case .installHerdr:
+            lastInstallPercent = nil
+            publishedDownloadWithoutFraction = false
+            installTask?.cancel()
+            installTask = Task { [weak self] in await self?.performInstall() }
+
+        case .redetectHerdr:
+            installTask?.cancel()
+            installTask = Task { [weak self] in await self?.performRedetect() }
 
         case .playCue(let cue):
             AlertSoundPlayer.play(cue)

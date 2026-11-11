@@ -1,9 +1,9 @@
 import Foundation
-import HerdrKit
 import IslandCore
 
 struct IslandViewActions {
-    var terminalEnvironment: HerdrEnvironment?
+    var installHerdr: () -> Void = {}
+    var redetectHerdr: () -> Void = {}
     var terminalActive: (PaneID, Bool) -> Void = { _, _ in }
     var jump: (PaneID) -> Void = { _ in }
     var dismiss: () -> Void = {}

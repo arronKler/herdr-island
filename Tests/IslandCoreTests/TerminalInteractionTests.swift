@@ -5,7 +5,7 @@ final class TerminalInteractionTests: XCTestCase {
     let pane = PaneID("w1:p1")
 
     func testSingleTaskTerminalOnlyPausesItsOwnQueue() {
-        var state = IslandState(supportsInteractiveTerminal: true)
+        var state = IslandState(setup: .ready(.test))
         let other = PaneID("w2:p1")
         state.apply(.snapshot(makeSnapshot(1, [makeAgent(pane.rawValue, .working), makeAgent(other.rawValue, .working)])))
         for id in [pane, other] {
@@ -28,7 +28,7 @@ final class TerminalInteractionTests: XCTestCase {
     }
 
     func testOpeningLiveDetailProtectsPaneBeforeViewAppearsAndDoesNotReadPreview() {
-        var state = IslandState(supportsInteractiveTerminal: true)
+        var state = IslandState(setup: .ready(.test))
         state.apply(.snapshot(makeSnapshot(1, [makeAgent(pane.rawValue, .working)])))
         XCTAssertFalse(state.apply(.openDetail(pane)).contains(.loadPreview(pane)))
         XCTAssertEqual(state.terminalPane, pane)

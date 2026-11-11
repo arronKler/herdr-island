@@ -6,6 +6,13 @@ enum TestClock {
     static let start = Date(timeIntervalSince1970: 1_760_000_000)
 }
 
+extension HerdrEnvironment {
+    static let test = HerdrEnvironment(
+        binary: URL(fileURLWithPath: "/tmp/herdr"),
+        socket: URL(fileURLWithPath: "/tmp/herdr.sock")
+    )
+}
+
 func makeAgent(
     _ pane: String,
     _ status: AgentStatus,

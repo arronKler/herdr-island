@@ -25,6 +25,9 @@ public enum FixtureName: String, CaseIterable, Sendable {
     case mainAgentBlocked
     case mainAgentNew
     case dropMainAgent
+    case setupMissing
+    case setupInstalling
+    case setupFailed
 }
 
 public enum Fixtures {
@@ -65,7 +68,7 @@ public enum Fixtures {
         named name: FixtureName,
         rules: IslandRules = .default
     ) -> IslandPresentation {
-        var state = IslandState(rules: rules)
+        var state = initialState(for: name, rules: rules)
         let first = snapshot(for: name)
         _ = IslandReducer.reduce(&state, .snapshot(first), now: now)
 
@@ -124,6 +127,24 @@ public enum Fixtures {
             _ = IslandReducer.reduce(
                 &state,
                 .setWindowTaskDraft("Summarize the decisions and list the action items."),
+                now: now
+            )
+        case .setupMissing:
+            _ = IslandReducer.reduce(&state, .openDeck, now: now)
+        case .setupInstalling:
+            _ = IslandReducer.reduce(&state, .openDeck, now: now)
+            _ = IslandReducer.reduce(&state, .setup(.installRequested), now: now)
+            _ = IslandReducer.reduce(
+                &state,
+                .setup(.progress(.downloading(version: "0.9.5", fraction: 0.42))),
+                now: now
+            )
+        case .setupFailed:
+            _ = IslandReducer.reduce(&state, .openDeck, now: now)
+            _ = IslandReducer.reduce(&state, .setup(.installRequested), now: now)
+            _ = IslandReducer.reduce(
+                &state,
+                .setup(.failed(SetupFailure(.checksumMismatch))),
                 now: now
             )
         case .mainAgentLock:
@@ -321,8 +342,22 @@ public enum Fixtures {
         return IslandPresenter.present(state, now: now)
     }
 
+    private static func initialState(
+        for name: FixtureName,
+        rules: IslandRules
+    ) -> IslandState {
+        switch name {
+        case .setupMissing, .setupInstalling, .setupFailed:
+            IslandState(rules: rules, setup: .missing(SetupFailure(.binaryMissing)))
+        default:
+            IslandState(rules: rules)
+        }
+    }
+
     private static func snapshot(for name: FixtureName) -> AgentSnapshot {
         switch name {
+        case .setupMissing, .setupInstalling, .setupFailed:
+            return AgentSnapshot(generation: 1, sampledAt: now, agents: [])
         case .collapsed:
             return AgentSnapshot(
                 generation: 1,

@@ -93,6 +93,8 @@ final class StatusItemController: NSObject, NSMenuItemValidation {
             return "Herdr 启动中"
         case .empty:
             return "Herdr 空闲"
+        case .setup:
+            return "安装 Herdr"
         }
     }
 
@@ -115,6 +117,9 @@ final class StatusItemController: NSObject, NSMenuItemValidation {
     func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
         if menuItem.action == #selector(checkForUpdates) {
             return canCheckForUpdates?() ?? false
+        }
+        if menuItem.action == #selector(newTaskPressed) {
+            return presentation?.setup == nil
         }
         return true
     }

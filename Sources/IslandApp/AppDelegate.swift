@@ -14,7 +14,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var quickTaskHotKey: GlobalHotKey?
     private var settingsWindow: SettingsWindowController?
     private var updateController: UpdateController?
-    private var environment: HerdrEnvironment?
     private var pollActivity: NSObjectProtocol?
     private var dragCoordinator: WindowDragCoordinator?
     private var tetherController: WindowTetherController?
@@ -32,28 +31,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             rules.autoExpandOnCompletion = false
         }
 
-        let source: AgentSource
-        let actions: AgentActions
-
+        let initial: InitialBackend
         if options.demo {
-            let demo = DemoSource()
-            source = demo
-            actions = demo
+            initial = .demo
             appLog("demo mode: blocked fixture, no herdr process")
         } else {
             do {
                 let environment = try HerdrLocator.resolve()
-                self.environment = environment
-                let cli = HerdrCLI(binary: environment.binary, socketURL: environment.socket)
-                let service = HerdrService(
-                    cli: cli,
-                    socketURL: environment.socket,
-                    rules: rules
-                ) { message in
-                    appLog("herdr: \(message)")
-                }
-                source = service
-                actions = service
+                initial = .live(environment)
                 appLog(
                     "herdr binary=\(environment.binary.path) socket=\(environment.socket.path) "
                     + "autoExpand(blocked:\(rules.autoExpandOnBlocked) completion:\(rules.autoExpandOnCompletion))"
@@ -61,14 +46,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } catch {
                 let failure = (error as? BackendFailure)
                     ?? BackendFailure(.other, error.localizedDescription)
-                let unavailable = UnavailableSource(failure: failure)
-                source = unavailable
-                actions = unavailable
+                initial = .unavailable(failure)
                 appLog("herdr unavailable: \(failure.message)")
             }
         }
 
-        let store = IslandStore(source: source, actions: actions, rules: rules, supportsInteractiveTerminal: environment != nil)
+        let store = IslandStore(
+            initial: initial,
+            installer: HerdrInstaller(),
+            factory: HerdrBackendFactory(),
+            resolver: { try HerdrLocator.resolve() },
+            rules: rules
+        )
         self.store = store
 
         let viewActions = makeViewActions(store: store)
@@ -140,6 +129,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             self.panelController?.apply(presentation)
             self.statusItemController?.update(presentation)
+            self.settingsWindow?.apply(environment: presentation.environment)
             self.syncTether(presentation)
         }
 
@@ -189,6 +179,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         store.start()
         store.warmFocusedCwd()
+        if store.presentation.setup != nil, !options.noAutoExpand {
+            store.openDeck()
+        }
 
         if let text = options.newTaskText {
             let shouldSend = options.newTaskSend
@@ -229,7 +222,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func makeViewActions(store: IslandStore) -> IslandViewActions {
         var actions = IslandViewActions()
-        actions.terminalEnvironment = environment
+        actions.installHerdr = { [weak store] in store?.installHerdr() }
+        actions.redetectHerdr = { [weak store] in store?.redetectHerdr() }
         actions.terminalActive = { [weak store] pane, active in
             store?.handle(.setTerminalActive(pane, active))
         }
@@ -461,11 +455,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if settingsWindow == nil {
             settingsWindow = SettingsWindowController(
                 rules: store.rules,
-                herdrPath: environment?.binary.path ?? "herdr not found",
-                socketPath: environment?.socket.path ?? HerdrLocator.socketURL().path,
+                herdrPath: store.presentation.environment?.binary.path ?? "herdr not found",
+                socketPath: store.presentation.environment?.socket.path ?? HerdrLocator.socketURL().path,
                 onChange: { [weak store] rules in store?.updateRules(rules) }
             )
         }
+        settingsWindow?.apply(environment: store.presentation.environment)
         settingsWindow?.show()
     }
 

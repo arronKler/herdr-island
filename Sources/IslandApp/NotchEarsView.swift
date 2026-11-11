@@ -54,7 +54,25 @@ struct AmbientBarView: View {
     private var leftEar: some View {
         HStack(spacing: 5) {
             Spacer(minLength: 0)
-            switch presentation.health {
+            if presentation.setup != nil {
+                Circle()
+                    .fill(Theme.amber)
+                    .frame(width: 4, height: 4)
+                Text("安装")
+                    .font(Theme.code(Theme.TypeSize.micro, weight: .medium))
+                    .foregroundStyle(Theme.amber)
+            } else {
+                healthStatus
+            }
+            Spacer(minLength: 0)
+        }
+        .lineLimit(1)
+        .padding(.trailing, 10)
+    }
+
+    @ViewBuilder
+    private var healthStatus: some View {
+        switch presentation.health {
             case .stale, .failed:
                 Circle()
                     .fill(Theme.amber)
@@ -97,11 +115,7 @@ struct AmbientBarView: View {
                         .font(Theme.sans(Theme.TypeSize.micro, weight: .medium))
                         .foregroundStyle(Theme.textTertiary)
                 }
-            }
-            Spacer(minLength: 0)
         }
-        .lineLimit(1)
-        .padding(.trailing, 10)
     }
 
     private var rightEar: some View {

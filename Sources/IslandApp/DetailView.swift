@@ -95,10 +95,10 @@ struct DetailView: View {
                 }
                 terminal
                 actionsRow(selected)
-                if actions.terminalEnvironment == nil, selected.status != .blocked {
+                if presentation.environment == nil, selected.status != .blocked {
                     trustRow
                 }
-                if actions.terminalEnvironment == nil { composer(selected) }
+                if presentation.environment == nil { composer(selected) }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } else {
@@ -223,7 +223,7 @@ struct DetailView: View {
             Image(systemName: "clock.arrow.circlepath")
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(Theme.blue)
-            Text(presentation.composer?.queuedFailure != nil ? "发送未确认 · 检查终端后回任务台重试" : actions.terminalEnvironment == nil ? "已排队 · 本轮结束自动发送" : "已排队 · 离开终端后恢复发送")
+            Text(presentation.composer?.queuedFailure != nil ? "发送未确认 · 检查终端后回任务台重试" : presentation.environment == nil ? "已排队 · 本轮结束自动发送" : "已排队 · 离开终端后恢复发送")
                 .font(Theme.code(9.5))
                 .foregroundStyle(Theme.blue)
             Text(text)
@@ -254,9 +254,9 @@ struct DetailView: View {
 
     @ViewBuilder
     private var terminal: some View {
-        if let environment = actions.terminalEnvironment, let selected {
+        if let environment = presentation.environment, let selected {
             InteractiveTerminalView(environment: environment, pane: selected.id, active: actions.terminalActive)
-                .id(selected.id)
+                .id("\(environment.binary.path)#\(selected.id.rawValue)")
                 .frame(maxHeight: .infinity)
                 .frame(minHeight: 230)
         } else {
@@ -270,7 +270,7 @@ struct DetailView: View {
     private func actionsRow(_ row: AgentRow) -> some View {
         HStack(spacing: 8) {
             IslandButton(
-                title: actions.terminalEnvironment == nil ? "去终端" : "在 Herdr 打开",
+                title: presentation.environment == nil ? "去终端" : "在 Herdr 打开",
                 trailingIcon: "arrow.up.right",
                 tier: .secondary,
                 size: .medium
@@ -284,7 +284,7 @@ struct DetailView: View {
                 }
             }
 
-            if actions.terminalEnvironment == nil, presentation.preview?.command != nil {
+            if presentation.environment == nil, presentation.preview?.command != nil {
                 IslandButton(title: "复制命令", tier: .secondary, size: .medium) {
                     if let command = presentation.preview?.command {
                         NSPasteboard.general.clearContents()
@@ -295,7 +295,7 @@ struct DetailView: View {
 
             Spacer(minLength: 4)
 
-            Text(actions.terminalEnvironment == nil ? IslandFormat.age(row.waited) : "点击输入 · 拖动选择 · ⌘C / ⌘V")
+            Text(presentation.environment == nil ? IslandFormat.age(row.waited) : "点击输入 · 拖动选择 · ⌘C / ⌘V")
                 .font(Theme.code(Theme.TypeSize.micro))
                 .foregroundStyle(Theme.textTertiary)
         }

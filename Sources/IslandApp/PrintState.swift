@@ -105,6 +105,7 @@ enum PrintState {
         case .completed(let count): ["kind": "completed", "count": count]
         case .working(let count): ["kind": "working", "count": count]
         case .empty: ["kind": "empty"]
+        case .setup: ["kind": "setup"]
         }
     }
 
@@ -124,6 +125,7 @@ enum PrintState {
         case .send: "send"
         case .preview: "preview"
         case .info: "info"
+        case .setup: "setup"
         }
     }
 }

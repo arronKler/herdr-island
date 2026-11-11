@@ -292,7 +292,8 @@ public enum IslandReducer {
             state.banner = nil
             return []
         case .openQuickTask(let cwd, let kind):
-            guard !state.isCreatingTask,
+            guard state.setup.isReady,
+                  !state.isCreatingTask,
                   state.drop == nil,
                   !state.dropActive,
                   state.windowTask == nil else { return [] }
@@ -370,7 +371,7 @@ public enum IslandReducer {
                 return [.sampleNow]
             }
         case .beginDrop(let cwd, let kind, let branch):
-            guard !state.isCreatingTask else { return [] }
+            guard state.setup.isReady, !state.isCreatingTask else { return [] }
             saveQuickTaskDraftRecovery(&state)
             state.quickTask = nil
             bootstrapMainAgentIfNeeded(&state)
@@ -464,6 +465,7 @@ public enum IslandReducer {
         case .submitDropTask(let name):
             return submitDelivery(&state, surface: .drop, name: name, now: now)
         case .lockWindow(let target, let kind, let cwd):
+            guard state.setup.isReady else { return [] }
             guard !state.isCreatingTask else {
                 state.banner = Banner(
                     text: "当前任务仍在创建，结束后再锁定窗口。",
@@ -571,6 +573,8 @@ public enum IslandReducer {
             return finishDeliveryCreated(&state, token: token, launch: launch, now: now)
         case .deliveryResult(let token, let result):
             return finishDeliveryResult(&state, token: token, result: result)
+        case .setup(let event):
+            return applySetup(&state, event)
         case .resetTaskCreation:
             guard !state.isCreatingTask else { return [] }
             if state.drop?.error != nil {
@@ -1280,6 +1284,86 @@ public enum IslandReducer {
         return nil
     }
 
+    private static func applySetup(
+        _ state: inout IslandState,
+        _ event: SetupEvent
+    ) -> [IslandEffect] {
+        switch event {
+        case .installRequested:
+            switch state.setup {
+            case .missing, .failed:
+                state.setup = .working(.resolving)
+                return [.installHerdr]
+            case .ready, .working:
+                return []
+            }
+
+        case .redetectRequested:
+            switch state.setup {
+            case .missing, .failed:
+                state.setup = .working(.redetecting)
+                return [.redetectHerdr]
+            case .ready, .working:
+                return []
+            }
+
+        case .progress(let stage):
+            guard case .working = state.setup else { return [] }
+            state.setup = .working(stage)
+            return []
+
+        case .failed(let failure):
+            guard case .working = state.setup else { return [] }
+            state.setup = .failed(failure)
+            return []
+
+        case .installed(let environment):
+            guard case .working = state.setup else { return [] }
+            state.setup = .ready(environment)
+            resetForNewBackend(&state)
+            state.banner = Banner(
+                text: "Herdr 已安装。在终端运行 herdr 启动服务，岛会自动连接。",
+                isError: false,
+                source: .setup
+            )
+            return []
+        }
+    }
+
+    private static func resetForNewBackend(_ state: inout IslandState) {
+        state.agents = [:]
+        state.baselineEstablished = false
+        state.lastGeneration = 0
+        state.seenCompletionSeq = [:]
+        state.blockedAttention = []
+        state.dismissedBlockedSeq = [:]
+        state.completionExpiry = [:]
+        state.selection = nil
+        state.drafts = [:]
+        state.composerFocused = false
+        state.replyPane = nil
+        state.terminalPane = nil
+        state.sendsInFlight = []
+        state.promptDraftsInFlight = [:]
+        state.queuedPromptsInFlight = [:]
+        state.previews = [:]
+        state.previewRequests = []
+        state.previewsNeedingRefresh = []
+        state.previewLoadsInFlight = []
+        state.pendingAlertCues = PendingAlertCues()
+        state.banner = nil
+        state.consecutiveFailures = 0
+        state.lastSampleAt = nil
+        state.socketStatus = .disconnected
+        state.queued = [:]
+        state.detailOpen = false
+        state.isSearching = false
+        state.query = ""
+        state.filter = .needs
+        state.agentWorktrees = [:]
+        state.launchFeedbackUntil = nil
+    }
+
     private static func applySnapshot(
         _ state: inout IslandState,
         _ snapshot: AgentSnapshot,
@@ -1290,7 +1374,7 @@ public enum IslandReducer {
         state.lastGeneration = snapshot.generation
         state.lastSampleAt = snapshot.sampledAt
         state.consecutiveFailures = 0
-        if state.banner?.source == .health {
+        if state.banner?.source == .health || state.banner?.source == .setup {
             state.banner = nil
         }
 

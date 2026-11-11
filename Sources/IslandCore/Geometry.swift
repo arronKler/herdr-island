@@ -45,6 +45,7 @@ public enum IslandGeometry {
     public static let deckSize = CGSize(width: 560, height: 440)
     public static let deckMinHeight: CGFloat = 440
     public static let deckMaxHeight: CGFloat = 640
+    public static let setupDeckHeight: CGFloat = 480
     public static let detailSize = CGSize(width: 660, height: 640)
     /// The bounded drop canvas used by the menu-bar form and the render
     /// harness. The notch form uses the full screen while a drop is live.

@@ -329,6 +329,7 @@ enum RenderHarness {
         case .completed(let count): "completed(\(count))"
         case .working(let count): "working(\(count))"
         case .empty: "empty"
+        case .setup: "setup"
         }
     }
 }

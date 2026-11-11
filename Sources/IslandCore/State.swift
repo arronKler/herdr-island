@@ -96,7 +96,7 @@ public struct IslandState: Sendable, Equatable {
     /// The deck pane whose reply editor is open.
     public internal(set) var replyPane: PaneID?
     public internal(set) var terminalPane: PaneID? = nil
-    public let supportsInteractiveTerminal: Bool
+    public internal(set) var setup: HerdrSetup
     public internal(set) var sendsInFlight: Set<PaneID>
     var promptDraftsInFlight: [PaneID: String] = [:]
     var queuedPromptsInFlight: [PaneID: QueuedPrompt] = [:]
@@ -133,10 +133,10 @@ public struct IslandState: Sendable, Equatable {
 
     public init(
         rules: IslandRules = .default,
-        supportsInteractiveTerminal: Bool = false,
+        setup: HerdrSetup = .ready(nil),
         mainAgent: MainAgentIdentity? = nil
     ) {
-        self.supportsInteractiveTerminal = supportsInteractiveTerminal
+        self.setup = setup
         self.rules = rules
         self.agents = [:]
         self.baselineEstablished = false
@@ -179,6 +179,10 @@ public struct IslandState: Sendable, Equatable {
         self.dropDefaultCwd = nil
         self.agentWorktrees = [:]
     }
+
+    public var environment: HerdrEnvironment? { setup.environment }
+
+    public var supportsInteractiveTerminal: Bool { setup.environment != nil }
 
     public var surface: IslandSurface {
         if dropActive || drop != nil {

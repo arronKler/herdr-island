@@ -63,6 +63,26 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(newAgent.drop?.composer.recipient.mode, .new)
         XCTAssertEqual(newAgent.drop?.composer.showNewAgentSettings, true)
 
+        let setupMissing = Fixtures.presentation(named: .setupMissing)
+        XCTAssertEqual(setupMissing.setup?.phase, .missing)
+        XCTAssertNil(setupMissing.environment)
+        XCTAssertEqual(setupMissing.headline, .setup)
+        XCTAssertEqual(setupMissing.deckHeight, IslandGeometry.setupDeckHeight)
+
+        let setupInstalling = Fixtures.presentation(named: .setupInstalling)
+        XCTAssertEqual(
+            setupInstalling.setup?.phase,
+            .working(.downloading(version: "0.9.5", fraction: 0.42))
+        )
+        XCTAssertEqual(setupInstalling.deckHeight, IslandGeometry.setupDeckHeight)
+
+        let setupFailed = Fixtures.presentation(named: .setupFailed)
+        guard case .failed(let failure) = setupFailed.setup?.phase else {
+            return XCTFail("expected a failed setup phase")
+        }
+        XCTAssertEqual(failure.kind, .checksumMismatch)
+        XCTAssertEqual(setupFailed.deckHeight, IslandGeometry.setupDeckHeight)
+
         XCTAssertNotEqual(collapsed, expanded)
         XCTAssertNotEqual(collapsed, blocked)
         XCTAssertNotEqual(collapsed, completed)

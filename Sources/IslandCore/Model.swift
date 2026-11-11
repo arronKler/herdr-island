@@ -424,6 +424,7 @@ public struct Banner: Sendable, Equatable {
         case send
         case preview
         case info
+        case setup
     }
 
     public enum Action: Sendable, Equatable {
@@ -459,6 +460,21 @@ public enum IslandHeadline: Sendable, Equatable {
     case completed(Int)
     case working(Int)
     case empty
+    case setup
+}
+
+public struct SetupPresentation: Sendable, Equatable {
+    public enum Phase: Sendable, Equatable {
+        case missing
+        case working(SetupStage)
+        case failed(SetupFailure)
+    }
+
+    public let phase: Phase
+
+    public init(phase: Phase) {
+        self.phase = phase
+    }
 }
 
 public struct IslandSummary: Sendable, Equatable {
@@ -829,6 +845,8 @@ public struct IslandPresentation: Sendable, Equatable {
     /// countdown line runs for exactly this long, so the bar reaches the end
     /// as the reducer is about to collapse the surface.
     public let completionRemaining: TimeInterval
+    public let setup: SetupPresentation?
+    public let environment: HerdrEnvironment?
 
     public init(
         isVisible: Bool,
@@ -860,7 +878,9 @@ public struct IslandPresentation: Sendable, Equatable {
         isDropActive: Bool = false,
         isDetailOpen: Bool = false,
         machineLabel: String = "本机",
-        completionRemaining: TimeInterval = 0
+        completionRemaining: TimeInterval = 0,
+        setup: SetupPresentation? = nil,
+        environment: HerdrEnvironment? = nil
     ) {
         self.isVisible = isVisible
         self.isExpanded = isExpanded
@@ -897,6 +917,8 @@ public struct IslandPresentation: Sendable, Equatable {
         self.isDetailOpen = isDetailOpen
         self.machineLabel = machineLabel
         self.completionRemaining = completionRemaining
+        self.setup = setup
+        self.environment = environment
     }
 }
 

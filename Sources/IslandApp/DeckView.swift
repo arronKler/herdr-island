@@ -25,17 +25,22 @@ struct DeckView: View {
 
             VStack(spacing: 0) {
                 header
-                if presentation.isSearching {
-                    searchBar
+                if let setup = presentation.setup {
+                    SetupCard(setup: setup, actions: actions)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    filters
+                    if presentation.isSearching {
+                        searchBar
+                    } else {
+                        filters
+                    }
+                    bodyContent
+                    if let banner = presentation.banner {
+                        bannerView(banner)
+                    }
+                    footer
+                    hintBar
                 }
-                bodyContent
-                if let banner = presentation.banner {
-                    bannerView(banner)
-                }
-                footer
-                hintBar
             }
             .padding(.horizontal, Theme.Layout.pad)
             .padding(.top, IslandGeometry.expandedTopInset)
@@ -111,18 +116,22 @@ struct DeckView: View {
                 .foregroundStyle(Theme.textPrimary)
                 .fixedSize()
 
-            HStack(spacing: 10) {
-                countChip("待处理", presentation.filterCounts.needs, Theme.amber)
-                countChip("运行", presentation.filterCounts.running, Theme.blue)
-                countChip("完成", presentation.filterCounts.done, Theme.mint)
+            if presentation.setup == nil {
+                HStack(spacing: 10) {
+                    countChip("待处理", presentation.filterCounts.needs, Theme.amber)
+                    countChip("运行", presentation.filterCounts.running, Theme.blue)
+                    countChip("完成", presentation.filterCounts.done, Theme.mint)
+                }
+                .padding(.leading, 2)
             }
-            .padding(.leading, 2)
 
             Spacer(minLength: 4)
 
-            iconButton("plus", help: "新任务 (⌃⌥N)") { actions.openQuickTask() }
-            iconButton("magnifyingglass", help: "搜索 (/)") {
-                actions.setSearching(true)
+            if presentation.setup == nil {
+                iconButton("plus", help: "新任务 (⌃⌥N)") { actions.openQuickTask() }
+                iconButton("magnifyingglass", help: "搜索 (/)") {
+                    actions.setSearching(true)
+                }
             }
             iconButton("gearshape", help: "设置") { actions.openSettings() }
             iconButton("xmark", help: "收起") { actions.close() }
@@ -578,12 +587,12 @@ struct DeckView: View {
                 actions.snooze(row.id)
             }
             IslandButton(
-                title: actions.terminalEnvironment == nil ? "去终端处理" : "在岛内处理",
-                trailingIcon: actions.terminalEnvironment == nil ? "arrow.up.right" : "arrow.right",
+                title: presentation.environment == nil ? "去终端处理" : "在岛内处理",
+                trailingIcon: presentation.environment == nil ? "arrow.up.right" : "arrow.right",
                 tier: .primary,
                 size: .medium
             ) {
-                if actions.terminalEnvironment != nil { actions.openDetail(row.id) }
+                if presentation.environment != nil { actions.openDetail(row.id) }
                 else { actions.jump(row.id) }
             }
         }

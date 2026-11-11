@@ -54,7 +54,8 @@ public enum IslandPresenter {
             idle: idle,
             total: rows.count
         )
-        let headline = headline(summary: summary, health: health)
+        let setup = makeSetup(state)
+        let headline = setup == nil ? headline(summary: summary, health: health) : .setup
         let surface = state.surface
         let isExpanded = state.isExpanded || surface == .drop
         let selected = rows.first { $0.isSelected }
@@ -111,8 +112,19 @@ public enum IslandPresenter {
             isDropActive: state.dropActive,
             isDetailOpen: state.detailOpen,
             machineLabel: "本机",
-            completionRemaining: completionRemaining
+            completionRemaining: completionRemaining,
+            setup: setup,
+            environment: state.environment
         )
+    }
+
+    private static func makeSetup(_ state: IslandState) -> SetupPresentation? {
+        switch state.setup {
+        case .ready: nil
+        case .missing: SetupPresentation(phase: .missing)
+        case .working(let stage): SetupPresentation(phase: .working(stage))
+        case .failed(let failure): SetupPresentation(phase: .failed(failure))
+        }
     }
 
     /// The newest completion owns the peek: the surface stays until that hold
@@ -163,6 +175,7 @@ public enum IslandPresenter {
         guard state.windowTask == nil || state.windowTaskHidden else {
             return windowTaskHeight(state)
         }
+        if !state.setup.isReady { return IslandGeometry.setupDeckHeight }
 
         let listHeight: CGFloat
         if rows.isEmpty {

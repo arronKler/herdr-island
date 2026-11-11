@@ -79,6 +79,7 @@ public enum IslandEvent: Sendable, Equatable {
     case deliveryCreated(token: UUID, launch: TaskLaunchResult)
     case deliveryResult(token: UUID, result: Result<String, BackendFailure>)
     case resetTaskCreation
+    case setup(SetupEvent)
 }
 
 public enum IslandEffect: Sendable, Equatable {
@@ -93,4 +94,6 @@ public enum IslandEffect: Sendable, Equatable {
     case sendDelivery(DeliveryPayload, WindowTaskDestination)
     case sendQueuedDelivery(PaneID, DeliveryPayload)
     case playCue(AlertCue)
+    case installHerdr
+    case redetectHerdr
 }

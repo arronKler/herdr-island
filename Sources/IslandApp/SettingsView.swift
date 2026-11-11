@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import HerdrKit
 import IslandCore
 import SwiftUI
 
@@ -899,8 +900,8 @@ final class SettingsWindowController {
     private var window: NSWindow?
     private var hosting: NSHostingController<SettingsView>?
     private let model: SettingsModel
-    private let herdrPath: String
-    private let socketPath: String
+    private var herdrPath: String
+    private var socketPath: String
 
     init(
         rules: IslandRules,
@@ -914,16 +915,19 @@ final class SettingsWindowController {
         self.model.onChange = onChange
     }
 
+    func apply(environment: HerdrEnvironment?) {
+        let binary = environment?.binary.path ?? "herdr not found"
+        let socket = environment?.socket.path ?? HerdrLocator.socketURL().path
+        guard binary != herdrPath || socket != socketPath else { return }
+        herdrPath = binary
+        socketPath = socket
+        if window != nil {
+            hosting?.rootView = makeView()
+        }
+    }
+
     func show() {
-        let authorized = CGPreflightScreenCaptureAccess()
-        let view = SettingsView(
-            model: model,
-            herdrPath: herdrPath,
-            socketPath: socketPath,
-            screenCaptureAuthorized: authorized,
-            onOpenAutomation: SettingsWindowController.openAutomationSettings,
-            onOpenScreenRecording: SettingsWindowController.openScreenRecordingSettings
-        )
+        let view = makeView()
         if window == nil {
             let hosting = NSHostingController(rootView: view)
             let window = NSWindow(
@@ -967,6 +971,17 @@ final class SettingsWindowController {
         }
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
+    }
+
+    private func makeView() -> SettingsView {
+        SettingsView(
+            model: model,
+            herdrPath: herdrPath,
+            socketPath: socketPath,
+            screenCaptureAuthorized: CGPreflightScreenCaptureAccess(),
+            onOpenAutomation: SettingsWindowController.openAutomationSettings,
+            onOpenScreenRecording: SettingsWindowController.openScreenRecordingSettings
+        )
     }
 
     static func openAutomationSettings() {
