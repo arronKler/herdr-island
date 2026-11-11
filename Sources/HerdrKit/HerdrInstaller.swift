@@ -167,7 +167,7 @@ public struct HerdrInstaller: HerdrInstalling {
         }
         let manifest = try HerdrInstallManifest.decode(manifestData)
 
-        guard let platform = configuration.platform ?? HerdrPlatform.current() else {
+        guard let platform = configuration.platform else {
             throw HerdrInstallError.platformUnsupported(HerdrMachine.name)
         }
         let asset = try manifest.asset(for: platform)

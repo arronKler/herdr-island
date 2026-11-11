@@ -164,16 +164,16 @@ final class IslandStore: ObservableObject {
     }
 
     private func report(_ progress: HerdrInstallProgress) {
-        if case .downloading(_, let fraction) = progress {
-            guard let fraction else {
-                guard !publishedDownloadWithoutFraction else { return }
-                publishedDownloadWithoutFraction = true
-                handle(.setup(.progress(progress.setupStage)))
-                return
-            }
+        switch progress {
+        case .downloading(_, let fraction?):
             let percent = Int(fraction * 100)
             guard percent != lastInstallPercent else { return }
             lastInstallPercent = percent
+        case .downloading:
+            guard !publishedDownloadWithoutFraction else { return }
+            publishedDownloadWithoutFraction = true
+        default:
+            break
         }
         handle(.setup(.progress(progress.setupStage)))
     }
