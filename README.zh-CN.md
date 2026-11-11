@@ -15,6 +15,7 @@ Island 把状态放进摄像头刘海两侧，提供任务台、真实终端，�
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-08090C?style=flat-square)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-arm64-08090C?style=flat-square)
 ![Herdr 0.9.5](https://img.shields.io/badge/Herdr-0.9.5-08090C?style=flat-square)
+[![License: MIT](https://img.shields.io/badge/license-MIT-FFB224?style=flat-square)](LICENSE)
 [![产品页](https://img.shields.io/badge/website-live-FFB224?style=flat-square)](https://arronkler.github.io/herdr-island/zh/)
 
 </div>
@@ -322,4 +323,6 @@ Agent 名称和图标归各自所有者所有。
 
 ## 许可
 
-本仓库目前还没有添加许可证文件。源码用于审阅和贡献；如需复用，请先开 issue 讨论授权方式。
+Herdr Island 以 [MIT License](LICENSE) 发布。
+
+Copyright © 2026 arronKler.

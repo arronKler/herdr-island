@@ -16,6 +16,7 @@ a real pane terminal, and a composer you can drop anywhere.
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-08090C?style=flat-square)
 ![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-arm64-08090C?style=flat-square)
 ![Herdr 0.9.5](https://img.shields.io/badge/Herdr-0.9.5-08090C?style=flat-square)
+[![License: MIT](https://img.shields.io/badge/license-MIT-FFB224?style=flat-square)](LICENSE)
 [![Website](https://img.shields.io/badge/website-live-FFB224?style=flat-square)](https://arronkler.github.io/herdr-island/)
 
 </div>
@@ -423,5 +424,6 @@ Agent names and logos are trademarks of their respective owners.
 
 ## License
 
-No license file has been added to this repository yet. The source is published for review and
-contribution; if you want to reuse it, please open an issue to discuss licensing first.
+Herdr Island is released under the [MIT License](LICENSE).
+
+Copyright © 2026 arronKler.
