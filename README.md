@@ -41,7 +41,7 @@ Herdr Island 把 Herdr 里的 agent 状态收进 macOS 摄像头刘海的左右�
 ## Herdr 能力
 
 - **状态同步**。通过 Unix socket 直接读取 `agent.list` / `pane.list`，避免每次查询启动 CLI 和创建临时文件。每 1.5 秒采样，状态事件即时更新。直接读取不兼容或断线时回退 CLI，并冷却 10 秒后再尝试 socket；创建和提交等写操作不走自动重试。
-- **交互终端**。详情通过 `herdr terminal session control <pane>` 连接现有会话，使用 [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm/tree/v1.20.0) 原生渲染连续 ANSI 帧，尺寸直接同步给该 pane；键盘、文本、粘贴及历史滚动通过有序 socket 请求发送，特殊按键由 Herdr 按实际程序的键盘模式编码。点击终端输入，拖动选择、`⌘C / ⌘V` 复制粘贴，`⌘W` 返回任务台；Esc、方向键、Tab 和 Ctrl+C 交给终端。滚轮读取 Herdr 的主屏历史，Page Up / Down 始终交给终端程序。鼠标用于文本选择，程序内的鼠标点击暂未接入，以免跨接口乱序；菜单、确认和编辑使用键盘。关闭详情只释放连接，不停止 agent。断线后手动重连，输入不会自动重发；断开前已发出的输入可能已经执行，需要先检查终端；其他客户端占用时可以显式接管。
+- **交互终端**。详情通过 Herdr 的单 pane socket 协议连接现有会话，使用 [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm/tree/v1.20.0) 原生渲染连续 ANSI 帧，尺寸直接同步给该 pane。支持中文输入、文本选择、`⌘C / ⌘V`、文件和图片粘贴或拖入；图片转成当前任务可读取的本地 PNG 路径，不追加 Enter，关闭详情后仍保留。程序启用鼠标报告时，点击、拖动、右键和滚轮转给程序；按住 Shift 拖动可选择文字。`⌘W` 返回任务台；Esc、方向键、Tab 和 Ctrl+C 交给终端。滚轮读取 Herdr 的主屏历史，Page Up / Down 交给终端程序。文字、粘贴和特殊按键按顺序等待 socket API 确认，特殊按键由 Herdr 按实际程序模式编码；协议 22 的鼠标通道没有处理确认，鼠标与键盘跨通道的严格排序仍不保证。关闭详情只释放连接，不停止 agent。断线后手动重连，输入不会自动重发；其他客户端占用时可以显式接管。
 - **队列预览**。任务台仍通过 `herdr agent read --source recent-unwrapped` 读取最近输出；交互终端打开期间停止该 pane 的预览读取和排队消息投递，其他任务状态变化不会抢走选中会话。
 - **标签与目录**。读取 `state_labels`、`name` 和 `foreground_cwd`，优先用前台目录作为项目名。标签会显示在详情里，也参与搜索。
 - **消息发送**。任务台通过 `herdr agent prompt` 提交；运行中的 agent 可以排队一条消息，本轮结束且未打开交互终端时自动投递，排队项可以取消；发送失败后保留正文并暂停，先检查终端，再在任务台手动重试。详情终端中的输入则按你实际键入的内容发送，不追加 Enter。
@@ -62,7 +62,7 @@ blocked 需要人亲自处理。可以直接在详情的交互终端中阅读、
 ## 环境
 
 - macOS 14 或更新版本
-- Herdr 0.9.5 或更新版本（交互终端需要 `terminal session control`）。默认二进制路径 `~/.local/bin/herdr`，socket 路径 `~/.config/herdr/herdr.sock`
+- Herdr 0.9.5（交互终端当前适配单 pane 二进制协议 22；其他协议版本会明确提示不兼容）。默认二进制路径 `~/.local/bin/herdr`，socket 路径 `~/.config/herdr/herdr.sock`
 - Ghostty。精确跳转需要它；没有 Ghostty 时仍会聚焦 Herdr pane
 - Automation 权限。首次 Jump 时 macOS 会询问是否可以控制 Ghostty
 - Screen Recording 权限。窗口锁定功能需要它在发送时截图；授权后可能需要重启 app
@@ -163,6 +163,10 @@ swift test
 ```
 
 核心测试使用固定时钟和 fixture，不需要运行 Herdr。
+
+单任务“实时终端”的实际交互验证与尚未实现的能力见 [终端验证记录](docs/terminal-verification-2026-11-10.md)。
+
+终端标题栏不显示列数和行数；仅在查看历史输出时显示“回到底部 ↓”，返回底部后自动隐藏。
 
 性能基准默认跳过，可按需运行：
 

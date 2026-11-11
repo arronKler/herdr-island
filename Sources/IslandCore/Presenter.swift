@@ -22,7 +22,10 @@ public enum IslandPresenter {
                 progress: agent.progress,
                 turn: agent.turn,
                 isQueued: state.queued[agent.id] != nil,
-                queuedText: state.queued[agent.id]?.text,
+                queuedText: state.queued[agent.id].map { entry in
+                    entry.delivery?.task ?? entry.text
+                },
+                queuedDetail: state.queued[agent.id]?.delivery?.queueDetail,
                 labels: agent.labels.keys.sorted(),
                 name: agent.name
             )
@@ -200,29 +203,44 @@ public enum IslandPresenter {
         return min(max(natural, IslandGeometry.deckMinHeight), IslandGeometry.deckMaxHeight)
     }
 
+    /// The lock panel is the composer card plus a gutter that also holds its
+    /// shadow: 16 above the card and 28 below.
     private static func windowTaskHeight(_ state: IslandState) -> CGFloat {
-        var height = IslandGeometry.windowTaskSize.height
-        if state.agents.values.contains(where: { $0.status == .blocked }) { height += 44 }
-        if windowTaskRefusal(state) != nil { height += 42 }
-        if state.screenCaptureAuthorized == false { height += 44 }
-        if state.windowTask?.error != nil { height += 42 }
-        if state.windowTask?.creation != nil { height += 64 }
-        if state.windowTask?.lastDelivery != nil { height += 28 }
-        return height
+        guard let composer = makeComposerPresentation(state, surface: .lock) else {
+            return IslandGeometry.windowTaskSize.height
+        }
+        var height: CGFloat = 44 + 24
+        height += 28
+        height += 8 + inputHeight(composer.text)
+        if !composer.attachments.isEmpty {
+            let rows = attachmentRows(composer.attachments)
+            height += 8 + CGFloat(rows) * 28 + CGFloat(rows - 1) * 4
+        }
+        height += CGFloat(composer.notices.count) * (8 + 42)
+        if composer.showNewAgentSettings { height += 8 + 28 }
+        if composer.outcome != nil { height += 8 + 40 }
+        if composer.creation != nil, composer.outcome == nil {
+            height += 8 + (composer.error == nil ? 72 : 104)
+        } else if composer.error != nil {
+            height += 8 + 40
+        }
+        height += 8 + 32
+        return max(300, height)
     }
 
-    private static func windowTaskRefusal(_ state: IslandState) -> String? {
-        guard let task = state.windowTask else { return nil }
-        if let pane = task.destinationAgent {
-            if let agent = state.agents[pane] {
-                return MessagePolicy.refusal(for: agent)
-            }
-            return "那个 agent 不在了。"
+    /// The field reserves two lines (lineLimit 2...4) before any text exists,
+    /// so the floor is two lines, not one.
+    private static func inputHeight(_ text: String) -> CGFloat {
+        // CJK glyphs are roughly twice as wide as Latin ones at the same size.
+        let units = text.unicodeScalars.reduce(0) {
+            $0 + ($1.value >= 0x2E80 ? 2 : 1)
         }
-        if task.cwd.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            return "给新 agent 选一个目录。"
-        }
-        return nil
+        let lines = min(4, max(2, Int(ceil(Double(units) / 36))))
+        return 20 + CGFloat(lines) * 16
+    }
+
+    private static func attachmentRows(_ attachments: [DeliveryAttachment]) -> Int {
+        max(1, Int(ceil(Double(attachments.count) / 2)))
     }
 
     private static func makeGroups(_ state: IslandState, rows: [AgentRow]) -> [DeckGroup] {
@@ -281,33 +299,258 @@ public enum IslandPresenter {
 
     private static func makeWindowTask(_ state: IslandState) -> WindowTaskPresentation? {
         guard let lock = state.windowLock,
-              let task = state.windowTask,
+              let composer = makeComposerPresentation(state, surface: .lock),
               !state.windowTaskHidden else { return nil }
-
-        let refusal = windowTaskRefusal(state)
-
-        let canSubmit = task.phase == .editing
-            && task.creation?.canRetry != false
-            && !task.trimmedDraft.isEmpty
-            && refusal == nil
-            && state.screenCaptureAuthorized != false
-
-        var presentation = WindowTaskPresentation(
+        return WindowTaskPresentation(
             lock: WindowLockPresentation(target: lock),
-            draft: task.draft,
-            destinationAgent: task.destinationAgent,
-            kind: task.kind,
-            cwd: task.cwd,
-            phase: task.phase,
-            error: task.error,
-            lastScreenshotPath: task.lastScreenshotPath,
-            lastDelivery: task.lastDelivery,
-            canSubmit: canSubmit,
-            destinationRefusal: refusal,
+            composer: composer,
             screenCaptureAuthorized: state.screenCaptureAuthorized
         )
-        presentation.creation = task.creation
-        return presentation
+    }
+
+    /// One composer body for both hosts. The recipient resolution, notice and
+    /// send title all come from the same policy the reducer submits with.
+    private static func makeComposerPresentation(
+        _ state: IslandState,
+        surface: DeliverySurface
+    ) -> DeliveryComposerPresentation? {
+        let draft: DeliveryDraft
+        let phaseBusy: Bool
+        let hasWindow: Bool
+        switch surface {
+        case .lock:
+            guard let task = state.windowTask else { return nil }
+            draft = task.delivery
+            phaseBusy = task.phase != .editing
+            hasWindow = state.windowLock != nil
+        case .drop:
+            guard let task = state.drop else { return nil }
+            draft = task.delivery
+            phaseBusy = task.phase != .composing
+            hasWindow = task.window != nil
+        }
+
+        let recipient = DeliveryPolicy.resolve(
+            draft: draft,
+            main: state.mainAgent,
+            agents: state.agents
+        )
+        // Every live agent can become the main, including a busy one (queue)
+        // and a blocked one (the notice offers the terminal instead of sending).
+        let recipients = state.orderedAgents
+            .map { agent in
+                DeliveryRecipientOption(
+                    pane: agent.pane,
+                    kind: agent.kind,
+                    name: agentDisplayName(agent),
+                    project: agent.project,
+                    status: agent.status
+                )
+            }
+
+        let hasQueued = recipient.pane.map { state.queued[$0] != nil } ?? false
+        let decision = DeliveryPolicy.evaluate(
+            draft: draft,
+            main: state.mainAgent,
+            agents: state.agents,
+            hasQueued: hasQueued
+        )
+        let refusal: String?
+        let isQueue: Bool
+        let decisionAllowsSend: Bool
+        switch decision {
+        case .send:
+            refusal = nil
+            isQueue = false
+            decisionAllowsSend = true
+        case .queue:
+            refusal = nil
+            isQueue = true
+            decisionAllowsSend = true
+        case .refuse(let message):
+            refusal = message
+            isQueue = false
+            decisionAllowsSend = false
+        case .incomplete:
+            refusal = nil
+            isQueue = false
+            decisionAllowsSend = false
+        }
+
+        // A blocked main still has to explain itself before the user types:
+        // the empty draft makes the policy answer "incomplete", not "refuse".
+        let blockedRefusal: String?
+        if case .agent(let pane, .blocked) = recipient, let agent = state.agents[pane] {
+            blockedRefusal = MessagePolicy.refusal(for: agent) ?? "这个 agent 暂时不能接收消息。"
+        } else {
+            blockedRefusal = nil
+        }
+        let noticeRefusal = refusal ?? blockedRefusal
+        let captureDenied = hasWindow && state.screenCaptureAuthorized == false
+        let creation = surface == .lock ? state.windowTask?.creation : state.drop?.creation
+
+        var notices: [DeliveryNotice] = []
+        // An outcome or a creation progress row replaces the pre-send warnings.
+        // Once the card says "已排队", "已发送", or is building the new agent,
+        // the reason the next send would queue or need attention is noise.
+        if draft.outcome == nil, creation == nil {
+            if let noticeRefusal {
+                if case .agent(let pane, .blocked) = recipient,
+                   let agent = state.agents[pane] {
+                    notices.append(DeliveryNotice(
+                        kind: .blocked,
+                        text: "\(agentDisplayName(agent)) 需要你处理",
+                        action: .jump(pane),
+                        secondary: .switchRecipient
+                    ))
+                } else {
+                    notices.append(DeliveryNotice(
+                        kind: .warning,
+                        text: noticeRefusal,
+                        action: .switchRecipient
+                    ))
+                }
+            } else {
+                switch recipient {
+                case .agent(_, let availability):
+                    switch availability {
+                    case .busy:
+                        notices.append(DeliveryNotice(kind: .info, text: "本轮结束后自动发送"))
+                    case .ready, .blocked:
+                        break
+                    }
+                case .new(let reason):
+                    switch reason {
+                    case .mainMissing:
+                        notices.append(DeliveryNotice(
+                            kind: .warning,
+                            text: "主 Agent 已退出，这次将新建",
+                            action: .switchRecipient
+                        ))
+                    case .noMain:
+                        if recipients.isEmpty {
+                            notices.append(DeliveryNotice(kind: .info, text: "还没有运行中的 agent"))
+                        }
+                    case .chosen:
+                        break
+                    }
+                }
+                if captureDenied {
+                    notices.append(DeliveryNotice(
+                        kind: .muted,
+                        text: "截图未授权 · 只发文字和文件",
+                        action: .openScreenRecording
+                    ))
+                }
+            }
+        }
+
+        // Only this surface's creation gates its own send: a drop stuck on an
+        // unknown workspace outcome must not disable the locked window card.
+        let retryable = creation?.canRetry != false
+        let canSubmit = decisionAllowsSend && draft.isEditable && !phaseBusy && retryable
+
+        let title: String
+        if let outcome = draft.outcome {
+            switch outcome {
+            case .queued: title = "已排队"
+            case .sent: title = "已发送"
+            case .created: title = "已创建"
+            }
+        } else if phaseBusy {
+            if surface == .drop, state.drop?.phase == .creating {
+                title = "创建中"
+            } else if surface == .drop, state.drop?.phase == .sending {
+                title = "发送中"
+            } else if surface == .lock, state.windowTask?.phase == .sending {
+                title = "发送中"
+            } else if hasWindow {
+                title = "截取中"
+            } else {
+                title = "准备中"
+            }
+        } else if noticeRefusal != nil {
+            title = "需处理"
+        } else if isQueue {
+            title = "排队"
+        } else if recipient.isNew {
+            title = "创建"
+        } else {
+            title = "发送"
+        }
+
+        let recipientPresentation: DeliveryRecipientPresentation
+        switch recipient {
+        case .agent(let pane, _):
+            let agent = state.agents[pane]
+            recipientPresentation = DeliveryRecipientPresentation(
+                mode: draft.recipient,
+                pane: pane,
+                kind: agent?.kind ?? draft.kind.rawValue,
+                name: agent.map(agentDisplayName) ?? "agent",
+                project: agent?.project,
+                status: agent?.status,
+                isMain: draft.recipient == .main && state.mainAgent?.pane == pane
+            )
+        case .new(let reason):
+            recipientPresentation = DeliveryRecipientPresentation(
+                mode: .new,
+                kind: draft.kind.rawValue,
+                name: "新建 agent",
+                isMain: false,
+                reason: reason
+            )
+        }
+
+        let placeholder: String
+        if case .agent(let pane, _) = recipient {
+            placeholder = hasWindow
+                ? "让 \(state.agents[pane].map(agentDisplayName) ?? "它") 看这个窗口做什么…"
+                : "给 \(state.agents[pane].map(agentDisplayName) ?? "它") 发消息…"
+        } else {
+            placeholder = hasWindow
+                ? "让 \(draft.kind.displayName) 看这个窗口做什么…"
+                : "给 \(draft.kind.displayName) 一个任务…"
+        }
+
+        let directoryOptions = state.dropHerdrCwds
+        return DeliveryComposerPresentation(
+            surface: surface,
+            text: draft.text,
+            placeholder: placeholder,
+            recipient: recipientPresentation,
+            recipients: recipients,
+            notices: notices,
+            attachmentWarning: draft.attachmentWarning,
+            showNewAgentSettings: recipient.isNew,
+            kind: draft.kind,
+            cwd: draft.cwd,
+            directoryOptions: directoryOptions,
+            defaultCwd: state.dropDefaultCwd,
+            showWorktree: surface == .drop,
+            useWorktree: state.drop?.useWorktree ?? false,
+            worktreeBranch: state.drop?.branch ?? "",
+            attachments: draft.attachments,
+            outcome: draft.outcome,
+            creation: creation,
+            error: draft.error,
+            send: DeliverySendPresentation(
+                title: title,
+                canSubmit: canSubmit,
+                isQueue: isQueue,
+                isBusy: phaseBusy,
+                refusal: noticeRefusal
+            ),
+            isLocked: surface == .lock,
+            isEditable: draft.isEditable && !phaseBusy,
+            phaseLabel: nil,
+            hasWindow: hasWindow
+        )
+    }
+
+    private static func agentDisplayName(_ agent: Agent) -> String {
+        let name = agent.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return name.isEmpty ? agent.title : name
     }
 
     private static func makeQuickTask(_ state: IslandState) -> QuickTaskPresentation? {
@@ -324,25 +567,20 @@ public enum IslandPresenter {
     }
 
     private static func makeDrop(_ state: IslandState) -> DropTaskPresentation? {
-        guard let task = state.drop else { return nil }
-        var presentation = DropTaskPresentation(
-            draft: task.draft,
-            kind: task.kind,
-            cwd: task.cwd,
-            herdrCwds: state.dropHerdrCwds,
-            defaultCwd: state.dropDefaultCwd,
-            useWorktree: task.useWorktree,
-            branch: task.branch,
+        guard let task = state.drop,
+              let composer = makeComposerPresentation(state, surface: .drop) else { return nil }
+        return DropTaskPresentation(
+            composer: composer,
             window: task.window.map(WindowLockPresentation.init),
-            isCapturing: task.isCapturing,
-            isCreating: task.isCreating && !task.didCreate,
+            isPreparing: task.phase == .preparing,
+            isSending: task.phase == .sending,
+            isCreating: task.phase == .creating && !task.didCreate,
             didCreate: task.didCreate,
+            didSend: task.didSend,
             screenCaptureAuthorized: state.screenCaptureAuthorized,
-            error: task.error,
-            canSubmit: task.canSubmit
+            creation: task.creation,
+            error: task.error
         )
-        presentation.creation = task.creation
-        return presentation
     }
 
     private static func health(_ state: IslandState, now: Date) -> BackendHealth {
@@ -466,7 +704,7 @@ public enum IslandPresenter {
             refusal: refusal,
             isSending: isSending,
             isQueue: isQueue,
-            queuedText: queued?.text
+            queuedText: queued.map { $0.delivery?.task ?? $0.text }
         )
         presentation.queuedFailure = queued?.failure
         return presentation

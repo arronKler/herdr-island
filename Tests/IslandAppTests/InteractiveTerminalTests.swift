@@ -7,6 +7,138 @@ import XCTest
 
 @MainActor
 final class InteractiveTerminalTests: XCTestCase {
+    func testTrackpadRetainsFractionalMotionAndDirection() {
+        var wheel = TerminalWheelAccumulator()
+        XCTAssertEqual(wheel.lines(delta: 8, precise: true, lineHeight: 20), 0)
+        XCTAssertEqual(wheel.lines(delta: 8, precise: true, lineHeight: 20), 0)
+        XCTAssertEqual(wheel.lines(delta: 8, precise: true, lineHeight: 20), 1)
+        XCTAssertEqual(wheel.lines(delta: 16, precise: true, lineHeight: 20), 1)
+        XCTAssertEqual(wheel.lines(delta: -10, precise: true, lineHeight: 20), 0)
+        XCTAssertEqual(wheel.lines(delta: -10, precise: true, lineHeight: 20), -1)
+        XCTAssertEqual(wheel.lines(delta: 0, precise: false, lineHeight: 20), 0)
+        XCTAssertEqual(wheel.lines(delta: -0.2, precise: false, lineHeight: 20), -1)
+    }
+
+    func testLiveWheelScrollsHistoryAndMouseReportingApplication() async throws {
+        let variables = ProcessInfo.processInfo.environment
+        guard let socket = variables["ISLAND_TERMINAL_TEST_SOCKET"],
+              socket.contains("/sessions/island-terminal-qa-"),
+              let pane = variables["ISLAND_TERMINAL_TEST_PANE"] else {
+            throw XCTSkip("Set an isolated island-terminal-qa-* socket and disposable shell pane")
+        }
+        let runID = String(UUID().uuidString.prefix(8))
+        _ = NSApplication.shared
+        let environment = HerdrEnvironment(binary: try HerdrLocator.resolve().binary, socket: URL(fileURLWithPath: socket))
+        let controller = TerminalController(environment: environment, pane: PaneID(pane))
+        let view = IslandTerminalNSView(frame: CGRect(x: 0, y: 0, width: 640, height: 400),
+            font: .monospacedSystemFont(ofSize: 12, weight: .regular), options: TerminalOptions(scrollback: 0))
+        view.controller = controller
+        view.terminalDelegate = controller
+        controller.view = view
+        let window = NSWindow(contentRect: view.bounds, styleMask: [.titled], backing: .buffered, defer: false)
+        window.contentView = view
+        window.makeFirstResponder(view)
+        view.installInputMonitor()
+        defer { view.removeInputMonitor(); controller.disconnect(); window.orderOut(nil) }
+        controller.sizeChanged(source: view, newCols: view.getTerminal().cols, newRows: view.getTerminal().rows)
+        controller.connect()
+        try await wait { controller.connected }
+        view.insertText("printf '\(runID)_WHEEL_HISTORY_%s\\n' {1..100}", replacementRange: NSRange(location: NSNotFound, length: 0))
+        key(view, code: 36, characters: "\r")
+        try await wait { self.hasLine(view, "\(runID)_WHEEL_HISTORY_100") }
+        XCTAssertFalse(hasLine(view, "\(runID)_WHEEL_HISTORY_70"))
+        page(view, code: 116)
+        try await wait { self.hasLine(view, "\(runID)_WHEEL_HISTORY_70") }
+        try await wait { controller.isViewingHistory }
+        page(view, code: 121)
+        try await wait { self.hasLine(view, "\(runID)_WHEEL_HISTORY_100") && !self.hasLine(view, "\(runID)_WHEEL_HISTORY_70") }
+        try await wait { !controller.isViewingHistory }
+        wheel(view, lines: 30)
+        try await wait { self.hasLine(view, "\(runID)_WHEEL_HISTORY_70") }
+        // New input must leave the controller's paused viewport, not just the
+        // separate pane viewport used by the Herdr TUI.
+        view.insertText("echo \(runID)_WHEEL_LIVE_AGAIN", replacementRange: NSRange(location: NSNotFound, length: 0))
+        key(view, code: 36, characters: "\r")
+        try await wait { self.hasLine(view, "\(runID)_WHEEL_LIVE_AGAIN") }
+        try await wait { !controller.isViewingHistory }
+
+        let script = FileManager.default.temporaryDirectory.appendingPathComponent("island-wheel-\(UUID()).py")
+        try """
+        import sys,os,termios,tty,re
+        fd=sys.stdin.fileno()
+        saved=termios.tcgetattr(fd)
+        start=80
+        def draw():
+            sys.stdout.write('\\x1b[H\\x1b[2J'+'\\r\\n'.join('\(runID)_APP_HISTORY_%s'%i for i in range(start,start+10)))
+            sys.stdout.flush()
+        try:
+            tty.setraw(fd)
+            sys.stdout.write('\\x1b[?1049h\\x1b[?1000h\\x1b[?1006h')
+            draw()
+            data=b''
+            while True:
+                char=os.read(fd,1)
+                if char==b'q': break
+                data+=char
+                if char in (b'M',b'm'):
+                    match=re.search(rb'\\x1b\\[<(64|65);[0-9]+;[0-9]+M',data)
+                    if match:
+                        start=max(0,min(100,start+(-1 if match[1]==b'64' else 1)))
+                        draw()
+                    data=b''
+        finally:
+            sys.stdout.write('\\x1b[?1006l\\x1b[?1000l\\x1b[?1049l')
+            sys.stdout.flush()
+            termios.tcsetattr(fd,termios.TCSADRAIN,saved)
+        print('\(runID)_APP_SCROLL_EXITED',flush=True)
+        """.write(to: script, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: script) }
+        view.insertText("python3 \(script.path)", replacementRange: NSRange(location: NSNotFound, length: 0))
+        key(view, code: 36, characters: "\r")
+        try await wait { self.hasLine(view, "\(runID)_APP_HISTORY_80") }
+        for first in (75..<80).reversed() {
+            wheel(view, lines: 1)
+            try await wait { self.hasLine(view, "\(runID)_APP_HISTORY_\(first)") }
+        }
+        for first in 76...80 {
+            wheel(view, lines: -1)
+            try await wait { !self.hasLine(view, "\(runID)_APP_HISTORY_\(first - 1)") && self.hasLine(view, "\(runID)_APP_HISTORY_\(first)") }
+        }
+        try await wait { !self.hasLine(view, "\(runID)_APP_HISTORY_75") && self.hasLine(view, "\(runID)_APP_HISTORY_80") }
+        XCTAssertFalse(controller.isViewingHistory, "Application scrolling must not show the host history button")
+        view.insertText("q", replacementRange: NSRange(location: NSNotFound, length: 0))
+        try await wait { self.hasLine(view, "\(runID)_APP_SCROLL_EXITED") }
+        controller.disconnect()
+        try await Task.sleep(for: .milliseconds(250))
+        controller.connect()
+        try await wait { controller.connected }
+        view.insertText("echo \(runID)_WHEEL_RECONNECTED", replacementRange: NSRange(location: NSNotFound, length: 0))
+        key(view, code: 36, characters: "\r")
+        try await wait { self.hasLine(view, "\(runID)_WHEEL_RECONNECTED") }
+        wheel(view, lines: 30)
+        try await wait { !self.hasLine(view, "\(runID)_WHEEL_RECONNECTED") }
+        try await wait { controller.isViewingHistory }
+        controller.session.resumeLiveOutput()
+        try await wait { self.hasLine(view, "\(runID)_WHEEL_RECONNECTED") }
+        try await wait { !controller.isViewingHistory }
+        wheel(view, lines: 30)
+        try await wait { !self.hasLine(view, "\(runID)_WHEEL_RECONNECTED") }
+        view.insertText("echo \(runID)_WHEEL_DONE", replacementRange: NSRange(location: NSNotFound, length: 0))
+        key(view, code: 36, characters: "\r")
+        try await wait { self.hasLine(view, "\(runID)_WHEEL_DONE") }
+    }
+
+    private func wheel(_ view: IslandTerminalNSView, lines: Int32) {
+        let event = CGEvent(scrollWheelEvent2Source: nil, units: .line, wheelCount: 1, wheel1: lines, wheel2: 0, wheel3: 0)!
+        view.handleScrollWheel(NSEvent(cgEvent: event)!)
+    }
+
+    private func page(_ view: IslandTerminalNSView, code: UInt16) {
+        let event = NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: .shift,
+            timestamp: 0, windowNumber: view.window?.windowNumber ?? 0, context: nil,
+            characters: "", charactersIgnoringModifiers: "", isARepeat: false, keyCode: code)!
+        XCTAssertTrue(view.handlePageScroll(event))
+    }
     func testIMEOverlayIsOwnedByTerminalKeyboardRouting() {
         let terminal = IslandTerminalNSView(frame: CGRect(x: 0, y: 0, width: 640, height: 400))
         let editor = NSTextView()

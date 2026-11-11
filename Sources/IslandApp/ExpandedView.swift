@@ -54,8 +54,7 @@ struct ExpandedView: View {
                     QuickTaskView(quickTask: quickTask, actions: actions)
                 } else if let windowTask = presentation.windowTask {
                     WindowTaskView(
-                        presentation: presentation,
-                        windowTask: windowTask,
+                        composer: windowTask.composer,
                         actions: actions
                     )
                 }

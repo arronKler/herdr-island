@@ -41,12 +41,16 @@ final class TaskCreationTests: XCTestCase {
         var state = IslandState()
         _ = IslandReducer.reduce(&state, .beginDrop(cwd: "/tmp", kind: .codex, branch: "island/test"), now: now)
         _ = IslandReducer.reduce(&state, .setDropDraft("hello"), now: now)
-        _ = IslandReducer.reduce(&state, .submitDropTask(name: "island-test"), now: now)
+        let effects = IslandReducer.reduce(&state, .submitDropTask(name: "island-test"), now: now)
+        guard case .sendDelivery(let payload, _) = effects.first else {
+            return XCTFail("expected sendDelivery, got \(effects)")
+        }
         _ = IslandReducer.reduce(&state, .openDropComposer, now: now)
         XCTAssertEqual(state.drop?.phase, .creating)
         XCTAssertTrue(IslandReducer.reduce(&state, .submitDropTask(name: "duplicate"), now: now).isEmpty)
-        _ = IslandReducer.reduce(&state, .dropTaskProgress(TaskCreationProgress(stage: .submission, startedAt: now, pane: pane)), now: now)
-        _ = IslandReducer.reduce(&state, .dropTaskResult(.failure(BackendFailure(.timeout, "not confirmed"))), now: now)
+
+        _ = IslandReducer.reduce(&state, .deliveryProgress(token: payload.token, progress: TaskCreationProgress(stage: .submission, startedAt: now, pane: pane)), now: now)
+        _ = IslandReducer.reduce(&state, .deliveryFailed(token: payload.token, failure: BackendFailure(.timeout, "not confirmed")), now: now)
         XCTAssertFalse(IslandPresenter.present(state, now: now).drop!.canSubmit)
         XCTAssertTrue(IslandReducer.reduce(&state, .submitDropTask(name: "duplicate"), now: now).isEmpty)
     }

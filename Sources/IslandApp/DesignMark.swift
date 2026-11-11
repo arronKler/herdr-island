@@ -11,17 +11,24 @@ enum DesignMark {
         let fill: CGColor?
     }
 
-    private static var cache: [AgentKindOption: [PaintedPart]] = [:]
+    private static var cache: [String: [PaintedPart]] = [:]
 
     static func parts(for kind: AgentKindOption) -> [PaintedPart] {
-        if let cached = cache[kind] { return cached }
-        guard let source = DesignMarkData.all[kind.rawValue] else { return [] }
+        parts(named: kind.rawValue)
+    }
+
+    /// Accepts live sample kinds too, so an unknown or `terminal` pane still
+    /// paints a real mark instead of falling back to a font glyph.
+    static func parts(named rawName: String) -> [PaintedPart] {
+        let name = AgentMark(kind: rawName).rawValue
+        if let cached = cache[name] { return cached }
+        guard let source = DesignMarkData.all[name] else { return [] }
         let parts = source.map { part in
             let path = CGMutablePath()
             path.addPath(SVGPathParser.parse(part.path), transform: part.transform)
-            return PaintedPart(path: path, fill: part.fill.flatMap(color(hex:)))
+            return PaintedPart(path: path, fill: part.fill.flatMap { color(hex: $0) })
         }
-        cache[kind] = parts
+        cache[name] = parts
         return parts
     }
 

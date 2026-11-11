@@ -540,9 +540,9 @@ struct DeckView: View {
         } else if let selected, let queued = presentation.composer?.queuedText {
             VStack(spacing: 0) {
                 Hairline()
-                    .padding(.top, 10)
+                    .padding(.top, 8)
                 queuedRow(selected, text: queued)
-                    .padding(.top, 10)
+                    .padding(.top, 8)
             }
         } else if selected == nil {
             VStack(spacing: 0) {
@@ -702,6 +702,13 @@ struct DeckView: View {
                 .font(Theme.sans(Theme.TypeSize.caption))
                 .foregroundStyle(Theme.textSecondary)
                 .lineLimit(1)
+            if let detail = row.queuedDetail {
+                Text("· \(detail)")
+                    .font(Theme.code(8.5))
+                    .foregroundStyle(Theme.textTertiary)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
             Spacer(minLength: 4)
             if presentation.composer?.queuedFailure != nil {
                 Button("重试") { actions.retryQueued(row.id) }
@@ -720,9 +727,9 @@ struct DeckView: View {
             .help("取消排队")
             .accessibilityLabel("取消排队消息")
         }
-        .padding(.horizontal, 10)
-        .frame(height: 26)
-        .background(RoundedRectangle(cornerRadius: 7).fill(Theme.blueWash))
+        .padding(.horizontal, 8)
+        .frame(height: 28)
+        .background(RoundedRectangle(cornerRadius: 8).fill(Theme.blueWash))
     }
 
     private var idleFooter: some View {

@@ -16,6 +16,11 @@ final class IslandPanel: NSPanel {
         )
 
         backgroundColor = .clear
+        // The island is a dark-only surface. Pin the panel's appearance so
+        // AppKit-drawn controls inside it (borderless Menu titles, caret,
+        // scroll indicators) resolve dark-mode colors instead of following
+        // the system appearance.
+        appearance = NSAppearance(named: .darkAqua)
         isOpaque = false
         hasShadow = false
         hidesOnDeactivate = false
@@ -160,6 +165,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             surface: presentation.surface,
             dropActive: presentation.isDropActive,
             deckHeight: lockedDeckHeight ?? presentation.deckHeight,
+            windowTask: presentation.windowTask != nil,
             dropScreenFrame: nil
         )
         let notch = Self.notchChrome(for: presentation, placement: placement)
@@ -338,6 +344,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             surface: presentation.surface,
             dropActive: presentation.isDropActive,
             deckHeight: effectiveDeckHeight,
+            windowTask: presentation.windowTask != nil,
             quickTaskScreen: quickTaskScreenFrame,
             dropScreenFrame: dropScreenFrame
         )
@@ -368,6 +375,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
         surface: IslandSurface,
         dropActive: Bool,
         deckHeight: CGFloat,
+        windowTask: Bool = false,
         quickTaskScreen: CGRect? = nil,
         dropScreenFrame: CGRect? = nil
     ) -> CGRect {
@@ -379,6 +387,7 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
             surface: surface,
             dropActive: dropActive,
             deckHeight: deckHeight,
+            windowTask: windowTask,
             dropScreenFrame: dropScreenFrame,
             quickTaskScreen: quickTaskScreen
         )
@@ -675,7 +684,9 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
                 return nil
             }
             if stroke.key == .return, stroke.modifiers.contains(.command) {
-                actions.submitDropTask()
+                if presentation.drop?.composer.send.canSubmit == true {
+                    actions.submitDelivery(.drop)
+                }
                 return nil
             }
             return event
@@ -699,7 +710,9 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
                 return nil
             }
             if stroke.key == .return, stroke.modifiers.contains(.command) {
-                actions.submitWindowTask()
+                if presentation.windowTask?.composer.send.canSubmit == true {
+                    actions.submitDelivery(.lock)
+                }
                 return nil
             }
             return event

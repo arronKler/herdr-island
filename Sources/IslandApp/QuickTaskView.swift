@@ -116,8 +116,12 @@ struct QuickTaskView: View {
         }
     }
 
+    private var moreSelected: Bool {
+        AgentKindOption.more.contains(quickTask.kind)
+    }
+
     private var controls: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: 5) {
             ForEach(AgentKindOption.primary) { kind in
                 kindChip(kind)
             }
@@ -130,39 +134,55 @@ struct QuickTaskView: View {
                     }
                 }
             } label: {
-                HStack(spacing: 4) {
-                    if AgentKindOption.more.contains(quickTask.kind) {
-                        AgentMarkView(kind: quickTask.kind.rawValue, size: 18)
-                    } else {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 10, weight: .semibold))
-                    }
-                    Text(AgentKindOption.more.contains(quickTask.kind) ? quickTask.kind.displayName : "更多")
-                        .font(Theme.sans(10.5))
-                        .lineLimit(1)
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 8, weight: .semibold))
-                }
-                .foregroundStyle(AgentKindOption.more.contains(quickTask.kind) ? Theme.amber : Theme.textTertiary)
-                .padding(.horizontal, 9)
-                .frame(maxWidth: 104)
-                .frame(height: 30)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(AgentKindOption.more.contains(quickTask.kind)
-                            ? Theme.amber.opacity(0.07)
-                            : Color.white.opacity(0.03))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(AgentKindOption.more.contains(quickTask.kind)
-                                    ? Theme.amberLine
-                                    : Theme.hairline, lineWidth: 0.6)
-                        )
-                )
+                // A borderless Menu label renders only its first image and
+                // text; the mark, chrome and chevron live outside it, exactly
+                // like the drop composer's directory chip. AppKit draws the
+                // title with the control's tint, not foregroundStyle.
+                Text(moreSelected ? quickTask.kind.displayName : "更多")
+                    .font(Theme.sans(10.5, weight: moreSelected ? .semibold : .regular))
+                    .lineLimit(1)
             }
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
+            .tint(moreSelected ? Theme.amber : Theme.menuTitleTertiary)
             .fixedSize()
+            .padding(.leading, moreSelected ? 27 : 22)
+            .padding(.trailing, 14)
+            .frame(height: 30)
+            .overlay(alignment: .leading) {
+                Group {
+                    if moreSelected {
+                        AgentMarkView(kind: quickTask.kind.rawValue, size: 18)
+                            .frame(width: 18, height: 18)
+                    } else {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(Theme.textTertiary)
+                    }
+                }
+                .padding(.leading, 6)
+                .allowsHitTesting(false)
+            }
+            .overlay(alignment: .trailing) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 8, weight: .semibold))
+                    .foregroundStyle(moreSelected ? Theme.amber : Theme.textTertiary)
+                    .padding(.trailing, 6)
+                    .allowsHitTesting(false)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(moreSelected
+                        ? Theme.amber.opacity(0.07)
+                        : Color.white.opacity(0.03))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(moreSelected
+                                ? Theme.amberLine
+                                : Theme.hairline, lineWidth: 0.6)
+                    )
+            )
+            .contentShape(Rectangle())
             .disabled(quickTask.isCreating)
 
             Button(action: actions.chooseQuickTaskCwd) {
@@ -200,9 +220,11 @@ struct QuickTaskView: View {
                 AgentMarkView(kind: kind.rawValue, size: 18)
                 Text(kind.displayName)
                     .font(Theme.sans(10.5, weight: selected ? .semibold : .regular))
+                    .lineLimit(1)
             }
             .foregroundStyle(selected ? Theme.textPrimary : Theme.textTertiary)
-            .padding(.horizontal, 8)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 7)
             .frame(height: 30)
             .background(
                 RoundedRectangle(cornerRadius: 8)

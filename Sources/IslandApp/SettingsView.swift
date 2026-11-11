@@ -311,6 +311,17 @@ struct SettingsView: View {
                     actionTitle: "打开设置",
                     action: onOpenScreenRecording
                 )
+                SettingsRowDivider()
+                permissionRow(
+                    icon: "text.cursor",
+                    tint: Theme.blue,
+                    title: "辅助功能",
+                    subtitle: "发送时自动带上选中文本、网页地址和文档路径。未授权时只发送文字和文件。",
+                    status: WindowContextService.isTrusted ? "已允许" : "按需",
+                    statusColor: WindowContextService.isTrusted ? Theme.mint : Theme.textSecondary,
+                    actionTitle: "打开设置",
+                    action: SettingsWindowController.openAccessibilitySettings
+                )
             }
 
             safetyCard
@@ -968,6 +979,13 @@ final class SettingsWindowController {
     static func openScreenRecordingSettings() {
         guard let url = URL(
             string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"
+        ) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    static func openAccessibilitySettings() {
+        guard let url = URL(
+            string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
         ) else { return }
         NSWorkspace.shared.open(url)
     }

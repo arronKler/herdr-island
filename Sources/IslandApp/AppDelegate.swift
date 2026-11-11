@@ -314,12 +314,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         actions.unlockWindow = { [weak store] in store?.unlockWindow() }
         actions.windowTaskDraft = { [weak store] text in store?.setWindowTaskDraft(text) }
-        actions.windowTaskDestination = { [weak store] pane in
-            store?.setWindowTaskDestination(pane)
-        }
         actions.windowTaskKind = { [weak store] kind in store?.setWindowTaskKind(kind) }
+        actions.setWindowTaskCwd = { [weak store] path in store?.setWindowTaskCwd(path) }
         actions.chooseWindowTaskCwd = { [weak self] in self?.chooseWindowTaskCwd() }
-        actions.submitWindowTask = { [weak store] in store?.submitWindowTask() }
+        actions.setMainAgent = { [weak store] pane in store?.setMainAgent(pane) }
+        actions.deliveryRecipient = { [weak store] surface, mode in
+            store?.setDeliveryRecipient(surface, mode)
+        }
+        actions.addDeliveryAttachments = { [weak store] surface, paths in
+            store?.addDeliveryAttachments(surface, paths)
+        }
+        actions.removeDeliveryAttachment = { [weak store] surface, path in
+            store?.removeDeliveryAttachment(surface, path)
+        }
+        actions.clearDeliveryOutcome = { [weak store] surface in
+            store?.clearDeliveryOutcome(surface)
+        }
+        actions.chooseDeliveryAttachments = { [weak self] surface in
+            self?.chooseDeliveryAttachments(surface)
+        }
+        actions.submitDelivery = { [weak store] surface in
+            store?.submitDelivery(surface)
+        }
         actions.openScreenRecordingSettings = {
             SettingsWindowController.openScreenRecordingSettings()
         }
@@ -351,13 +367,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.directoryURL = URL(
-            fileURLWithPath: store.presentation.windowTask?.cwd ?? NSHomeDirectory()
+            fileURLWithPath: store.presentation.windowTask?.composer.cwd ?? NSHomeDirectory()
         )
         panelController?.beginPicker()
         panel.begin { [weak self] response in
             defer { self?.panelController?.endPicker() }
             guard response == .OK, let url = panel.url else { return }
             store.setWindowTaskCwd(url.path)
+        }
+    }
+
+    private func chooseDeliveryAttachments(_ surface: DeliverySurface) {
+        guard let store else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = true
+        panelController?.beginPicker()
+        panel.begin { [weak self] response in
+            defer { self?.panelController?.endPicker() }
+            guard response == .OK else { return }
+            store.addDeliveryAttachments(surface, panel.urls.map(\.path))
         }
     }
 
@@ -385,7 +415,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.directoryURL = URL(
-            fileURLWithPath: store.presentation.drop?.cwd ?? NSHomeDirectory()
+            fileURLWithPath: store.presentation.drop?.composer.cwd ?? NSHomeDirectory()
         )
         panelController?.beginPicker()
         panel.begin { [weak self] response in

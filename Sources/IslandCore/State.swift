@@ -47,7 +47,7 @@ public struct QuickTaskDraftRecovery: Sendable, Equatable {
 public struct IslandState: Sendable, Equatable {
     var isCreatingTask: Bool {
         quickTask?.phase == .creating || (drop?.isBusy ?? false)
-            || windowTask?.phase == .sending || windowTask?.phase == .capturing
+            || windowTask?.phase == .preparing || windowTask?.phase == .sending
     }
 
     public var rules: IslandRules
@@ -114,6 +114,7 @@ public struct IslandState: Sendable, Equatable {
     public internal(set) var quickTaskDraftRecovery: QuickTaskDraftRecovery?
     public internal(set) var windowLock: WindowTarget?
     public internal(set) var windowTask: WindowTaskState?
+    public internal(set) var mainAgent: MainAgentIdentity?
     /// UI visibility only. The lock and tether stay until unlock or window close.
     public internal(set) var windowTaskHidden: Bool
     public internal(set) var windowDragActive: Bool
@@ -130,7 +131,11 @@ public struct IslandState: Sendable, Equatable {
     public internal(set) var dropDefaultCwd: String? = nil
     public internal(set) var agentWorktrees: [PaneID: String]
 
-    public init(rules: IslandRules = .default, supportsInteractiveTerminal: Bool = false) {
+    public init(
+        rules: IslandRules = .default,
+        supportsInteractiveTerminal: Bool = false,
+        mainAgent: MainAgentIdentity? = nil
+    ) {
         self.supportsInteractiveTerminal = supportsInteractiveTerminal
         self.rules = rules
         self.agents = [:]
@@ -158,6 +163,7 @@ public struct IslandState: Sendable, Equatable {
         self.quickTaskDraftRecovery = nil
         self.windowLock = nil
         self.windowTask = nil
+        self.mainAgent = mainAgent
         self.windowTaskHidden = false
         self.windowDragActive = false
         self.screenCaptureAuthorized = nil
@@ -205,8 +211,10 @@ public struct IslandState: Sendable, Equatable {
 
     public var hasDraft: Bool {
         drafts.values.contains { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            || !(windowTask?.trimmedDraft.isEmpty ?? true)
-            || !(drop?.trimmedDraft.isEmpty ?? true)
+            || !(windowTask?.delivery.trimmedText.isEmpty ?? true)
+            || !(drop?.delivery.trimmedText.isEmpty ?? true)
+            || !(windowTask?.delivery.attachments.isEmpty ?? true)
+            || !(drop?.delivery.attachments.isEmpty ?? true)
     }
 
     public var canAutoCollapse: Bool {

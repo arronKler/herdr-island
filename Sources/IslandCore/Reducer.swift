@@ -182,7 +182,11 @@ public enum IslandReducer {
         case .queueMessage:
             return queueOrSend(&state, now: now)
         case .cancelQueued(let pane):
+            let cancelled = state.queued[pane]
             state.queued[pane] = nil
+            if cancelled?.delivery != nil {
+                clearQueuedOutcome(&state)
+            }
             return []
         case .retryQueued(let pane):
             guard state.queued[pane]?.failure != nil,
@@ -344,24 +348,6 @@ public enum IslandReducer {
             guard state.quickTask?.phase == .creating else { return [] }
             state.quickTask?.creation = progress
             return []
-        case .dropTaskProgress(let progress):
-            guard state.drop?.phase == .creating || state.drop?.phase == .capturing else { return [] }
-            // The first progress event lands after the screenshot exists.
-            state.drop?.phase = .creating
-            state.drop?.creation = progress
-            return []
-        case .windowTaskCreated(let token, let launch):
-            guard state.windowTask?.pendingToken == token, state.windowTask?.phase == .sending else { return [] }
-            if let agent = launch.agent { state.agents[agent.id] = agent }
-            state.windowTask?.destinationAgent = launch.pane
-            let effects = finishWindowTask(&state, token: token, result: .success(launch.name))
-            guard launch.agent?.status == .blocked else { return effects }
-            state.pendingAlertCues.blocked.insert(launch.pane)
-            return [.playCue(.blocked)] + effects
-        case .windowTaskProgress(let token, let progress):
-            guard state.windowTask?.pendingToken == token, state.windowTask?.phase == .sending else { return [] }
-            state.windowTask?.creation = progress
-            return []
         case .quickTaskResult(let result):
             switch result {
             case .success(let launch):
@@ -387,15 +373,19 @@ public enum IslandReducer {
             guard !state.isCreatingTask else { return [] }
             saveQuickTaskDraftRecovery(&state)
             state.quickTask = nil
+            bootstrapMainAgentIfNeeded(&state)
             if state.drop == nil {
-                var drop = DropTaskState(kind: kind, cwd: cwd, branch: branch)
+                var drop = DropTaskState(
+                    delivery: DeliveryDraft(kind: kind, cwd: cwd),
+                    branch: branch
+                )
                 if let recovery = state.dropDraftRecovery {
-                    drop.draft = recovery.draft
-                    drop.kind = recovery.kind
-                    drop.cwd = recovery.cwd
+                    drop.delivery.text = recovery.draft
+                    drop.delivery.kind = recovery.kind
+                    drop.delivery.cwd = recovery.cwd
                     drop.useWorktree = recovery.useWorktree
                     drop.creation = recovery.creation
-                    drop.error = recovery.error
+                    drop.delivery.error = recovery.error
                     state.dropDraftRecovery = nil
                 }
                 state.drop = drop
@@ -417,7 +407,7 @@ public enum IslandReducer {
             return []
         case .closeDropComposer:
             guard state.drop?.isBusy != true else { return [] }
-            let created = state.drop?.didCreate == true
+            let created = state.drop?.didCreate == true || state.drop?.didSend == true
             saveDropDraftRecovery(&state)
             state.drop = nil
             state.dropActive = false
@@ -429,6 +419,16 @@ public enum IslandReducer {
         case .setDropDraft(let text):
             guard state.drop?.isBusy != true else { return [] }
             state.drop?.draft = text
+            if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                // Typing after a finished or failed creation starts a new
+                // message. Drop the old progress so it cannot reappear as a
+                // spinner or keep the send button disabled.
+                if state.drop?.delivery.outcome != nil || state.drop?.delivery.error != nil {
+                    state.drop?.creation = nil
+                }
+                state.drop?.delivery.outcome = nil
+                state.drop?.delivery.error = nil
+            }
             return []
         case .setDropKind(let kind):
             guard state.drop?.isBusy != true else { return [] }
@@ -439,9 +439,18 @@ public enum IslandReducer {
             state.drop?.cwd = path
             return []
         case .setDropWindow(let target):
-            guard state.drop?.isBusy != true else { return [] }
+            guard state.drop?.isBusy != true, state.drop != nil else { return [] }
             state.drop?.window = target
-            return []
+            let token = UUID()
+            state.drop?.delivery.contextToken = token
+            state.drop?.delivery.context = .empty
+            if state.drop?.delivery.outcome != nil || state.drop?.delivery.error != nil {
+                state.drop?.creation = nil
+            }
+            state.drop?.delivery.outcome = nil
+            state.drop?.delivery.error = nil
+            guard let target else { return [] }
+            return [.readWindowContext(token, target)]
         case .setDropHerdrCwds(let paths):
             state.dropHerdrCwds = paths
             return []
@@ -453,9 +462,7 @@ public enum IslandReducer {
             state.drop?.useWorktree = enabled
             return []
         case .submitDropTask(let name):
-            return submitDropTask(&state, name: name, now: now)
-        case .dropTaskResult(let result):
-            return finishDropTask(&state, result: result, now: now)
+            return submitDelivery(&state, surface: .drop, name: name, now: now)
         case .lockWindow(let target, let kind, let cwd):
             guard !state.isCreatingTask else {
                 state.banner = Banner(
@@ -486,6 +493,8 @@ public enum IslandReducer {
         case .dropWindowClosed:
             guard state.drop?.window != nil else { return [] }
             state.drop?.window = nil
+            state.drop?.delivery.context = .empty
+            state.drop?.delivery.contextToken = nil
             state.drop?.error = "目标窗口已关闭，已改为不带截图的任务。"
             return []
         case .beginWindowDrag:
@@ -496,10 +505,15 @@ public enum IslandReducer {
             return []
         case .setWindowTaskDraft(let text):
             state.windowTask?.draft = text
-            return []
-        case .setWindowTaskDestination(let pane):
-            if let pane, state.agents[pane] == nil { return [] }
-            state.windowTask?.destinationAgent = pane
+            if !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                // Same rule as the drop card: typing dismisses a finished or
+                // failed creation instead of leaving a stale progress row.
+                if state.windowTask?.delivery.outcome != nil || state.windowTask?.error != nil {
+                    state.windowTask?.creation = nil
+                }
+                state.windowTask?.delivery.outcome = nil
+                state.windowTask?.error = nil
+            }
             return []
         case .setWindowTaskKind(let kind):
             state.windowTask?.kind = kind
@@ -508,26 +522,55 @@ public enum IslandReducer {
             state.windowTask?.cwd = path
             return []
         case .submitWindowTask(let name):
-            return submitWindowTask(&state, name: name)
+            return submitDelivery(&state, surface: .lock, name: name, now: now)
         case .windowCapturePermission(let granted):
             state.screenCaptureAuthorized = granted
             if granted {
                 if state.banner?.action == .openScreenRecordingSettings {
                     state.banner = nil
                 }
-            } else {
-                state.banner = Banner(
-                    text: "屏幕录制未开启。开启后才能附截图。",
-                    isError: true,
-                    source: .send,
-                    action: .openScreenRecordingSettings
-                )
             }
             return []
-        case .windowCaptureResult(let request, let result):
-            return finishWindowCapture(&state, request: request, result: result)
-        case .windowTaskResult(let token, let result):
-            return finishWindowTask(&state, token: token, result: result)
+        case .setMainAgent(let pane):
+            guard let pane, let agent = state.agents[pane] else { return [] }
+            state.mainAgent = MainAgentIdentity(agent)
+            setRecipient(&state, .main, for: .lock)
+            setRecipient(&state, .main, for: .drop)
+            return []
+        case .setDeliveryRecipient(let surface, let mode):
+            setRecipient(&state, mode, for: surface)
+            return []
+        case .addDeliveryAttachments(let surface, let paths):
+            addAttachments(&state, surface: surface, paths: paths)
+            return []
+        case .removeDeliveryAttachment(let surface, let path):
+            updateDelivery(&state, surface: surface) { draft in
+                draft.attachments = DeliveryAttachmentPolicy.remove(path, from: draft.attachments)
+                draft.attachmentWarning = nil
+            }
+            return []
+        case .clearDeliveryOutcome(let surface):
+            updateDelivery(&state, surface: surface) { draft in
+                draft.outcome = nil
+                draft.error = nil
+                draft.attachmentWarning = nil
+            }
+            return []
+        case .windowContextRead(let token, let context):
+            applyWindowContext(&state, token: token, context: context)
+            return []
+        case .submitDelivery(let surface, let name):
+            return submitDelivery(&state, surface: surface, name: name, now: now)
+        case .deliveryPrepared(let token, let payload):
+            return finishDeliveryPreparation(&state, token: token, payload: payload, now: now)
+        case .deliveryFailed(let token, let failure):
+            return finishDeliveryFailure(&state, token: token, failure: failure)
+        case .deliveryProgress(let token, let progress):
+            return applyDeliveryProgress(&state, token: token, progress: progress)
+        case .deliveryCreated(let token, let launch):
+            return finishDeliveryCreated(&state, token: token, launch: launch, now: now)
+        case .deliveryResult(let token, let result):
+            return finishDeliveryResult(&state, token: token, result: result)
         case .resetTaskCreation:
             guard !state.isCreatingTask else { return [] }
             if state.drop?.error != nil {
@@ -579,19 +622,19 @@ public enum IslandReducer {
         saveQuickTaskDraftRecovery(&state)
         state.drop = nil
         state.dropActive = false
+        bootstrapMainAgentIfNeeded(&state)
         state.windowLock = target
-        state.windowTask = WindowTaskState(
-            destinationAgent: defaultWindowTaskAgent(state),
-            kind: kind,
-            cwd: cwd
-        )
+        let token = UUID()
+        var delivery = DeliveryDraft(kind: kind, cwd: cwd)
+        delivery.contextToken = token
+        state.windowTask = WindowTaskState(delivery: delivery)
         state.windowTaskHidden = false
         state.quickTask = nil
         state.manualOpen = true
         state.hoverOpen = false
         state.composerFocused = false
         state.banner = nil
-        return [.requestScreenCapturePermission]
+        return [.requestScreenCapturePermission, .readWindowContext(token, target)]
     }
 
     private static func clearWindowLock(_ state: inout IslandState) {
@@ -614,7 +657,7 @@ public enum IslandReducer {
     }
 
     private static func saveDropDraftRecovery(_ state: inout IslandState) {
-        guard let drop = state.drop, !drop.isBusy, !drop.didCreate,
+        guard let drop = state.drop, !drop.isBusy, !drop.didCreate, !drop.didSend,
               !drop.trimmedDraft.isEmpty else { return }
         state.dropDraftRecovery = DropDraftRecovery(
             draft: drop.draft,
@@ -642,146 +685,599 @@ public enum IslandReducer {
         state.hoverOpen = false
     }
 
-    private static func defaultWindowTaskAgent(_ state: IslandState) -> PaneID? {
-        if let selection = state.selection, state.agents[selection]?.acceptsPrompt == true {
-            return selection
+    /// First delivery open adopts the current selection, then the first
+    /// promptable agent, matching the old lock default.
+    private static func bootstrapMainAgentIfNeeded(_ state: inout IslandState) {
+        guard state.mainAgent == nil else { return }
+        if let selection = state.selection,
+           let agent = state.agents[selection],
+           agent.acceptsPrompt {
+            state.mainAgent = MainAgentIdentity(agent)
+            return
         }
-        return state.orderedAgents.first { $0.acceptsPrompt }?.id
+        if let agent = state.orderedAgents.first(where: { $0.acceptsPrompt }) {
+            state.mainAgent = MainAgentIdentity(agent)
+        }
     }
 
-    private static func submitWindowTask(
+    private static func setRecipient(
         _ state: inout IslandState,
-        name: String
-    ) -> [IslandEffect] {
-        guard let lock = state.windowLock, var task = state.windowTask, task.phase == .editing,
-              task.creation?.canRetry != false else {
-            return []
+        _ mode: DeliveryRecipientMode,
+        for surface: DeliverySurface
+    ) {
+        // Switching recipients abandons the previous creation's outcome. Its
+        // progress row must not survive to gate the next send.
+        let abandonsCreation = deliveryDraft(state, surface: surface).map {
+            $0.outcome != nil || $0.error != nil
+        } ?? false
+        updateDelivery(&state, surface: surface) { draft in
+            draft.recipient = mode
+            draft.outcome = nil
+            draft.error = nil
         }
-        let text = task.trimmedDraft
-        guard !text.isEmpty else { return [] }
+        if abandonsCreation {
+            setCreation(&state, surface: surface, creation: nil)
+        }
+    }
 
-        if state.screenCaptureAuthorized == false {
-            task.error = "需要开启屏幕录制才能截取窗口。"
+    private static func updateDelivery(
+        _ state: inout IslandState,
+        surface: DeliverySurface,
+        _ body: (inout DeliveryDraft) -> Void
+    ) {
+        switch surface {
+        case .lock:
+            guard var task = state.windowTask else { return }
+            body(&task.delivery)
             state.windowTask = task
-            state.banner = Banner(
-                text: task.error ?? "需要开启屏幕录制。",
-                isError: true,
-                source: .send,
-                action: .openScreenRecordingSettings
-            )
-            return []
+        case .drop:
+            guard var drop = state.drop else { return }
+            body(&drop.delivery)
+            state.drop = drop
         }
+    }
 
-        let destination: WindowTaskDestination
-        if let pane = task.destinationAgent {
+    private static func deliveryDraft(
+        _ state: IslandState,
+        surface: DeliverySurface
+    ) -> DeliveryDraft? {
+        switch surface {
+        case .lock: state.windowTask?.delivery
+        case .drop: state.drop?.delivery
+        }
+    }
+
+    private static func addAttachments(
+        _ state: inout IslandState,
+        surface: DeliverySurface,
+        paths: [String]
+    ) {
+        // A failed creation owns the card until it is reset or the user types.
+        // Attaching a file must not clear its error and leave a spinner behind.
+        let creationBlocked = creation(state, surface: surface)?.canRetry == false
+        updateDelivery(&state, surface: surface) { draft in
+            let merge = DeliveryAttachmentPolicy.merge(
+                existing: draft.attachments,
+                adding: paths
+            )
+            draft.attachments = merge.attachments
+            draft.attachmentWarning = merge.warning
+            if !creationBlocked {
+                draft.error = nil
+            }
+        }
+    }
+
+    private static func applyWindowContext(
+        _ state: inout IslandState,
+        token: UUID,
+        context: WindowContext
+    ) {
+        if state.windowTask?.delivery.contextToken == token {
+            let stored = state.windowTask?.delivery.context ?? .empty
+            state.windowTask?.delivery.context = ContextLimits.merged(stored: stored, fresh: context)
+            return
+        }
+        if state.drop?.delivery.contextToken == token {
+            let stored = state.drop?.delivery.context ?? .empty
+            state.drop?.delivery.context = ContextLimits.merged(stored: stored, fresh: context)
+        }
+    }
+
+    private static func submitDelivery(
+        _ state: inout IslandState,
+        surface: DeliverySurface,
+        name: String,
+        now: Date
+    ) -> [IslandEffect] {
+        guard var draft = deliveryDraft(state, surface: surface), draft.isEditable else { return [] }
+        let phaseIsEditable: Bool
+        switch surface {
+        case .lock: phaseIsEditable = state.windowTask?.phase == .editing
+        case .drop: phaseIsEditable = state.drop?.phase == .composing
+        }
+        guard phaseIsEditable else { return [] }
+        if creation(state, surface: surface)?.canRetry == false { return [] }
+
+        let hasQueued = draft.recipient == .main
+            && DeliveryPolicy.resolve(draft: draft, main: state.mainAgent, agents: state.agents).pane
+                .map { state.queued[$0] != nil } ?? false
+        let decision = DeliveryPolicy.evaluate(
+            draft: draft,
+            main: state.mainAgent,
+            agents: state.agents,
+            hasQueued: hasQueued
+        )
+
+        switch decision {
+        case .incomplete:
+            return []
+        case .refuse(let message):
+            draft.error = message
+            writeDelivery(&state, surface: surface, draft: draft)
+            state.banner = Banner(text: message, isError: true, source: .send)
+            return []
+        case .queue(let recipient):
+            guard let pane = recipient.pane else { return [] }
+            let target = windowTarget(state, surface: surface)
+            let needsPreparation = target != nil || !draft.attachments.isEmpty
+            let capturedAt = now
+            if needsPreparation {
+                let token = UUID()
+                draft.pendingToken = token
+                draft.error = nil
+                writeDelivery(&state, surface: surface, draft: draft)
+                setPhase(&state, surface: surface, phase: .preparing)
+                return [.prepareDelivery(DeliveryPlan(
+                    token: token,
+                    task: draft.trimmedText,
+                    target: target,
+                    attachments: draft.attachments,
+                    context: draft.context,
+                    capturedAt: capturedAt
+                ))]
+            }
+            let payload = inlinePayload(draft: draft, target: nil, token: UUID(), capturedAt: capturedAt)
+            enqueue(&state, pane: pane, payload: payload, now: now)
+            clearDelivery(&state, surface: surface)
+            setOutcome(&state, surface: surface, outcome: .queued)
+            setPhase(&state, surface: surface, phase: .editing)
+            state.banner = nil
+            return []
+        case .send(let recipient):
+            let target = windowTarget(state, surface: surface)
+            let needsPreparation = target != nil || !draft.attachments.isEmpty
+            let capturedAt = now
+            if needsPreparation {
+                let token = UUID()
+                draft.pendingToken = token
+                draft.error = nil
+                writeDelivery(&state, surface: surface, draft: draft)
+                setPhase(&state, surface: surface, phase: .preparing)
+                return [.prepareDelivery(DeliveryPlan(
+                    token: token,
+                    task: draft.trimmedText,
+                    target: target,
+                    attachments: draft.attachments,
+                    context: draft.context,
+                    capturedAt: capturedAt
+                ))]
+            }
+            let token = UUID()
+            let payload = inlinePayload(draft: draft, target: nil, token: token, capturedAt: capturedAt)
+            guard let destination = DeliveryPolicy.destination(
+                for: recipient,
+                draft: draft,
+                worktreeBranch: worktreeBranch(state, surface: surface)
+            ) else {
+                draft.error = "给新 agent 选一个目录。"
+                writeDelivery(&state, surface: surface, draft: draft)
+                return []
+            }
+            draft.pendingToken = token
+            draft.error = nil
+            writeDelivery(&state, surface: surface, draft: draft)
+            startSending(&state, surface: surface, destination: destination, now: now)
+            return [.sendDelivery(payload, destination)]
+        }
+    }
+
+    private static func finishDeliveryPreparation(
+        _ state: inout IslandState,
+        token: UUID,
+        payload: DeliveryPayload,
+        now: Date
+    ) -> [IslandEffect] {
+        guard let surface = surface(holding: token, in: state),
+              var draft = deliveryDraft(state, surface: surface),
+              draft.pendingToken == token else { return [] }
+
+        let recipient = DeliveryPolicy.resolve(
+            draft: draft,
+            main: state.mainAgent,
+            agents: state.agents
+        )
+        switch recipient {
+        case .agent(let pane, let availability):
             guard let agent = state.agents[pane] else {
-                task.error = "那个 agent 不在了。"
-                state.windowTask = task
-                return []
+                return restoreDeliveryEditing(
+                    &state,
+                    surface: surface,
+                    draft: &draft,
+                    error: "那个 agent 不在了。"
+                )
             }
-            if let refusal = MessagePolicy.refusal(for: agent) {
-                task.error = refusal
-                state.windowTask = task
+            switch availability {
+            case .blocked:
+                return restoreDeliveryEditing(
+                    &state,
+                    surface: surface,
+                    draft: &draft,
+                    error: MessagePolicy.refusal(for: agent) ?? "这个 agent 暂时不能接收消息。"
+                )
+            case .busy:
+                guard state.queued[pane] == nil else {
+                    return restoreDeliveryEditing(
+                        &state,
+                        surface: surface,
+                        draft: &draft,
+                        error: "这个 agent 已经有一条排队消息，等它结束再发。"
+                    )
+                }
+                state.queued[pane] = QueuedPrompt(
+                    label: payload.label,
+                    delivery: payload,
+                    createdAt: now
+                )
+                clearDelivery(&state, surface: surface)
+                setOutcome(&state, surface: surface, outcome: .queued)
+                setPhase(&state, surface: surface, phase: .editing)
+                state.banner = nil
                 return []
+            case .ready:
+                break
             }
-            destination = .agent(pane)
-        } else {
-            let cwd = task.cwd.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !cwd.isEmpty else {
-                task.error = "给新 agent 选一个目录。"
-                state.windowTask = task
-                return []
-            }
-            destination = .newTask(kind: task.kind, cwd: cwd)
+        case .new:
+            break
         }
 
-        let token = UUID()
-        task.phase = .capturing
-        task.error = nil
-        task.pendingToken = token
-        task.lastDelivery = nil
-        task.lastScreenshotPath = nil
-        state.windowTask = task
-        state.banner = nil
-        return [.captureWindow(WindowCaptureRequest(
-            token: token,
-            target: lock,
-            task: text,
-            destination: destination,
-            name: name
-        ))]
+        guard let destination = DeliveryPolicy.destination(
+            for: recipient,
+            draft: draft,
+            worktreeBranch: worktreeBranch(state, surface: surface)
+        ) else {
+            return restoreDeliveryEditing(
+                &state,
+                surface: surface,
+                draft: &draft,
+                error: "给新 agent 选一个目录。"
+            )
+        }
+        startSending(&state, surface: surface, destination: destination, now: now)
+        return [.sendDelivery(payload, destination)]
     }
 
-    private static func finishWindowCapture(
+    private static func finishDeliveryFailure(
         _ state: inout IslandState,
-        request: WindowCaptureRequest,
-        result: Result<String, BackendFailure>
+        token: UUID,
+        failure: BackendFailure
     ) -> [IslandEffect] {
-        guard var task = state.windowTask,
-              task.phase == .capturing,
-              task.pendingToken == request.token else { return [] }
+        guard let surface = surface(holding: token, in: state),
+              var draft = deliveryDraft(state, surface: surface),
+              draft.pendingToken == token else { return [] }
+        // A creation that already produced a pane, or whose workspace outcome is
+        // unknown, must keep that status: retrying would duplicate the task.
+        let keepCreation = failure.kind == .screenCapturePermission
+            || creation(state, surface: surface)?.canRetry == false
+        return restoreDeliveryEditing(
+            &state,
+            surface: surface,
+            draft: &draft,
+            error: failure.message,
+            action: failure.kind == .screenCapturePermission ? .openScreenRecordingSettings : nil,
+            keepCreation: keepCreation
+        )
+    }
 
-        switch result {
-        case .success(let path):
-            task.phase = .sending
-            task.lastScreenshotPath = path
+    private static func applyDeliveryProgress(
+        _ state: inout IslandState,
+        token: UUID,
+        progress: TaskCreationProgress
+    ) -> [IslandEffect] {
+        if state.windowTask?.delivery.pendingToken == token {
+            guard var task = state.windowTask else { return [] }
+            task.creation = progress
             state.windowTask = task
-            return [.deliverWindowTask(WindowDeliveryRequest(
-                token: request.token,
-                target: request.target,
-                screenshotPath: path,
-                task: request.task,
-                destination: request.destination,
-                name: request.name
-            ))]
-        case .failure(let failure):
+        } else if state.drop?.delivery.pendingToken == token {
+            guard var drop = state.drop, drop.phase != .composing else { return [] }
+            drop.creation = progress
+            drop.phase = .creating
+            state.drop = drop
+        }
+        return []
+    }
+
+    private static func finishDeliveryCreated(
+        _ state: inout IslandState,
+        token: UUID,
+        launch: TaskLaunchResult,
+        now: Date
+    ) -> [IslandEffect] {
+        if let agent = launch.agent { state.agents[agent.id] = agent }
+        if let branch = launch.worktree {
+            state.agentWorktrees[launch.pane] = branch
+        }
+
+        if state.windowTask?.delivery.pendingToken == token {
+            guard var task = state.windowTask else { return [] }
+            let prior = task.creation
+            task.creation = TaskCreationProgress(
+                stage: prior?.stage ?? .workspace,
+                startedAt: prior?.startedAt ?? now,
+                pane: launch.pane
+            )
+            task.delivery.pendingToken = nil
+            task.delivery.outcome = .created(launch.name, launch.pane)
+            task.delivery.text = ""
+            task.delivery.attachments = []
+            task.delivery.attachmentWarning = nil
+            task.delivery.error = nil
             task.phase = .editing
-            task.pendingToken = nil
-            task.error = failure.message
             state.windowTask = task
             state.banner = Banner(
-                text: failure.message,
-                isError: true,
-                source: .send,
-                action: failure.kind == .screenCapturePermission
-                    ? .openScreenRecordingSettings
-                    : nil
+                text: "已创建 \(launch.name)，正在跟踪。",
+                isError: false,
+                source: .send
             )
+        } else if state.drop?.delivery.pendingToken == token {
+            guard var drop = state.drop else { return [] }
+            let prior = drop.creation
+            drop.creation = TaskCreationProgress(
+                stage: prior?.stage ?? .workspace,
+                startedAt: prior?.startedAt ?? now,
+                pane: launch.pane
+            )
+            drop.delivery.pendingToken = nil
+            drop.delivery.outcome = .created(launch.name, launch.pane)
+            drop.delivery.text = ""
+            drop.delivery.attachments = []
+            drop.delivery.attachmentWarning = nil
+            drop.delivery.error = nil
+            drop.phase = .composing
+            drop.didCreate = true
+            drop.didSend = true
+            state.drop = drop
+            state.dropActive = true
+        } else {
             return []
         }
+
+        state.blockedAttention.remove(launch.pane)
+        state.completionExpiry[launch.pane] = nil
+        state.selection = launch.pane
+        state.manualOpen = true
+        state.filter = .all
+        state.isSearching = false
+        state.query = ""
+        if launch.agent?.status == .blocked {
+            state.pendingAlertCues.blocked.insert(launch.pane)
+            if state.rules.autoExpandOnBlocked {
+                state.blockedAttention.insert(launch.pane)
+            }
+            return [.playCue(.blocked), .sampleNow]
+        }
+        return [.sampleNow]
     }
 
-    private static func finishWindowTask(
+    private static func finishDeliveryResult(
         _ state: inout IslandState,
         token: UUID,
         result: Result<String, BackendFailure>
     ) -> [IslandEffect] {
-        guard var task = state.windowTask,
-              task.phase == .sending,
-              task.pendingToken == token else { return [] }
+        guard let surface = surface(holding: token, in: state),
+              var draft = deliveryDraft(state, surface: surface),
+              draft.pendingToken == token else { return [] }
 
-        task.pendingToken = nil
-        task.phase = .editing
+        draft.pendingToken = nil
         switch result {
         case .success(let description):
-            task.creation = nil
-            task.draft = ""
-            task.error = nil
-            task.lastDelivery = description
-            state.windowTask = task
+            draft.text = ""
+            draft.attachments = []
+            draft.attachmentWarning = nil
+            draft.error = nil
+            draft.outcome = .sent(description)
+            writeDelivery(&state, surface: surface, draft: draft)
+            setPhase(&state, surface: surface, phase: .editing)
+            if surface == .drop {
+                state.drop?.didSend = true
+            }
             state.banner = Banner(
-                text: "已发送给 \(description)，已附截图。",
+                text: "已发送给 \(description)。",
                 isError: false,
                 source: .send
             )
             return [.sampleNow]
         case .failure(let failure):
-            if task.creation?.canRetry != false { task.creation = nil }
-            task.error = failure.message
-            state.windowTask = task
+            if creation(state, surface: surface)?.canRetry != false {
+                setCreation(&state, surface: surface, creation: nil)
+            }
+            draft.error = failure.message
+            writeDelivery(&state, surface: surface, draft: draft)
+            setPhase(&state, surface: surface, phase: .editing)
             state.banner = Banner(text: failure.message, isError: true, source: .send)
             return [.sampleNow]
         }
+    }
+
+    private static func restoreDeliveryEditing(
+        _ state: inout IslandState,
+        surface: DeliverySurface,
+        draft: inout DeliveryDraft,
+        error: String,
+        action: Banner.Action? = nil,
+        keepCreation: Bool = false
+    ) -> [IslandEffect] {
+        draft.pendingToken = nil
+        draft.error = error
+        writeDelivery(&state, surface: surface, draft: draft)
+        if !keepCreation {
+            setCreation(&state, surface: surface, creation: nil)
+        }
+        setPhase(&state, surface: surface, phase: .editing)
+        state.banner = Banner(text: error, isError: true, source: .send, action: action)
+        return []
+    }
+
+    private static func enqueue(
+        _ state: inout IslandState,
+        pane: PaneID,
+        payload: DeliveryPayload,
+        now: Date
+    ) {
+        guard state.queued[pane] == nil else { return }
+        state.queued[pane] = QueuedPrompt(
+            label: payload.label,
+            delivery: payload,
+            createdAt: now
+        )
+    }
+
+    private static func inlinePayload(
+        draft: DeliveryDraft,
+        target: WindowTarget?,
+        token: UUID,
+        capturedAt: Date
+    ) -> DeliveryPayload {
+        DeliveryPayload(
+            token: token,
+            task: draft.trimmedText,
+            target: target,
+            screenshotPath: nil,
+            screenshotFailure: nil,
+            context: target == nil ? draft.context : .empty,
+            attachments: draft.attachments,
+            capturedAt: capturedAt
+        )
+    }
+
+    private static func windowTarget(
+        _ state: IslandState,
+        surface: DeliverySurface
+    ) -> WindowTarget? {
+        switch surface {
+        case .lock: state.windowLock
+        case .drop: state.drop?.window
+        }
+    }
+
+    private static func worktreeBranch(
+        _ state: IslandState,
+        surface: DeliverySurface
+    ) -> String? {
+        guard surface == .drop,
+              let drop = state.drop,
+              drop.useWorktree,
+              !drop.branch.isEmpty else { return nil }
+        return drop.branch
+    }
+
+    private static func writeDelivery(
+        _ state: inout IslandState,
+        surface: DeliverySurface,
+        draft: DeliveryDraft
+    ) {
+        switch surface {
+        case .lock: state.windowTask?.delivery = draft
+        case .drop: state.drop?.delivery = draft
+        }
+    }
+
+    private static func clearDelivery(
+        _ state: inout IslandState,
+        surface: DeliverySurface
+    ) {
+        updateDelivery(&state, surface: surface) { draft in
+            draft.text = ""
+            draft.attachments = []
+            draft.attachmentWarning = nil
+            draft.error = nil
+            draft.pendingToken = nil
+        }
+    }
+
+    private static func setOutcome(
+        _ state: inout IslandState,
+        surface: DeliverySurface,
+        outcome: DeliveryOutcome
+    ) {
+        updateDelivery(&state, surface: surface) { $0.outcome = outcome }
+    }
+
+    private static func setPhase(
+        _ state: inout IslandState,
+        surface: DeliverySurface,
+        phase: WindowTaskPhase
+    ) {
+        switch surface {
+        case .lock:
+            state.windowTask?.phase = phase
+        case .drop:
+            switch phase {
+            case .editing: state.drop?.phase = .composing
+            case .preparing: state.drop?.phase = .preparing
+            case .sending: state.drop?.phase = .sending
+            }
+        }
+    }
+
+    private static func startSending(
+        _ state: inout IslandState,
+        surface: DeliverySurface,
+        destination: WindowTaskDestination,
+        now: Date
+    ) {
+        switch surface {
+        case .lock:
+            state.windowTask?.phase = .sending
+        case .drop:
+            if case .newTask = destination {
+                state.drop?.phase = .creating
+                state.drop?.creation = TaskCreationProgress(startedAt: now)
+            } else {
+                state.drop?.phase = .sending
+                state.drop?.creation = nil
+            }
+        }
+    }
+
+    private static func creation(
+        _ state: IslandState,
+        surface: DeliverySurface
+    ) -> TaskCreationProgress? {
+        switch surface {
+        case .lock: state.windowTask?.creation
+        case .drop: state.drop?.creation
+        }
+    }
+
+    private static func setCreation(
+        _ state: inout IslandState,
+        surface: DeliverySurface,
+        creation: TaskCreationProgress?
+    ) {
+        switch surface {
+        case .lock: state.windowTask?.creation = creation
+        case .drop: state.drop?.creation = creation
+        }
+    }
+
+    private static func surface(
+        holding token: UUID,
+        in state: IslandState
+    ) -> DeliverySurface? {
+        if state.windowTask?.delivery.pendingToken == token { return .lock }
+        if state.drop?.delivery.pendingToken == token { return .drop }
+        return nil
     }
 
     private static func applySnapshot(
@@ -932,7 +1428,6 @@ public enum IslandReducer {
         if state.detailOpen, let selection = state.selection, newAgents[selection] == nil {
             state.detailOpen = false
         }
-        reconcileWindowTask(&state)
         loadSelectedPreviewIfNeeded(&state)
         let cue: [IslandEffect] = shouldCueBlocked
             ? [.playCue(.blocked)]
@@ -1013,19 +1508,22 @@ public enum IslandReducer {
             state.queued[pane] = nil
             state.queuedPromptsInFlight[pane] = queued
             state.sendsInFlight.insert(pane)
-            effects.append(.sendPrompt(pane, queued.text))
+            if let payload = queued.delivery {
+                effects.append(.sendQueuedDelivery(pane, payload))
+            } else {
+                effects.append(.sendPrompt(pane, queued.text))
+            }
         }
         return effects
     }
 
-    private static func reconcileWindowTask(_ state: inout IslandState) {
-        guard state.windowTask != nil else { return }
-        guard state.windowLock != nil else {
-            state.windowTask = nil
-            return
+    private static func clearQueuedOutcome(_ state: inout IslandState) {
+        if state.windowTask?.delivery.outcome == .queued {
+            state.windowTask?.delivery.outcome = nil
         }
-        // A busy or missing destination is a refusal, never permission to send
-        // the user's task and screenshot to a different agent.
+        if state.drop?.delivery.outcome == .queued {
+            state.drop?.delivery.outcome = nil
+        }
     }
 
     private static func applySampleFailure(
@@ -1259,48 +1757,6 @@ public enum IslandReducer {
         return pendingPreviewEffect(&state)
     }
 
-    private static func submitDropTask(
-        _ state: inout IslandState,
-        name: String,
-        now: Date
-    ) -> [IslandEffect] {
-        guard var task = state.drop, task.canSubmit else { return [] }
-        let text = task.trimmedDraft
-        let cwd = task.cwd.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !text.isEmpty, !cwd.isEmpty else { return [] }
-        let label = String(text.prefix(40)).replacingOccurrences(of: "\n", with: " ")
-        if let window = task.window {
-            task.phase = .capturing
-            task.creation = nil
-            task.error = nil
-            state.drop = task
-            state.dropActive = true
-            return [.captureDropWindow(DropWindowCaptureRequest(
-                token: UUID(),
-                target: window,
-                text: text,
-                kind: task.kind,
-                cwd: cwd,
-                name: name,
-                label: label,
-                worktreeBranch: task.useWorktree ? task.branch : nil
-            ))]
-        }
-        task.phase = .creating
-        task.creation = TaskCreationProgress(startedAt: now)
-        task.error = nil
-        state.drop = task
-        state.dropActive = true
-        return [.createDropTask(QuickTaskRequest(
-            name: name,
-            text: text,
-            kind: task.kind,
-            cwd: cwd,
-            label: label,
-            worktreeBranch: task.useWorktree ? task.branch : nil
-        ))]
-    }
-
     private static func followLaunchedTask(
         _ state: inout IslandState,
         _ launch: TaskLaunchResult,
@@ -1328,48 +1784,6 @@ public enum IslandReducer {
         return launch.agent?.status == .blocked ? .blocked : nil
     }
 
-    private static func finishDropTask(
-        _ state: inout IslandState,
-        result: Result<TaskLaunchResult, BackendFailure>,
-        now: Date
-    ) -> [IslandEffect] {
-        switch result {
-        case .success(let launch):
-            if let branch = launch.worktree {
-                state.agentWorktrees[launch.pane] = branch
-            }
-            // Keep the composer for one exit motion. The overlay sees
-            // didCreate, plays the send-home return, then closes the drop.
-            if var task = state.drop {
-                task.didCreate = true
-                let progress = task.creation
-                task.creation = TaskCreationProgress(
-                    stage: progress?.stage ?? .workspace,
-                    startedAt: progress?.startedAt ?? now,
-                    pane: progress?.pane ?? launch.pane
-                )
-                state.drop = task
-                state.dropActive = true
-            } else {
-                state.drop = nil
-                state.dropActive = false
-            }
-            let cues = followLaunchedTask(&state, launch, now: now)
-                .map { [IslandEffect.playCue($0)] } ?? []
-            return cues + [.sampleNow]
-        case .failure(let failure):
-            if var task = state.drop {
-                task.phase = .composing
-                if task.creation?.canRetry != false { task.creation = nil }
-                task.error = failure.message
-                state.drop = task
-                state.dropActive = true
-            }
-            state.banner = Banner(text: failure.message, isError: true, source: .send)
-            return [.sampleNow]
-        }
-    }
-
     private static func finishSend(
         _ state: inout IslandState,
         pane: PaneID,
@@ -1393,7 +1807,21 @@ public enum IslandReducer {
                 state.replyPane = nil
                 state.composerFocused = false
             }
-            state.banner = Banner(text: "已发送。", isError: false, source: .send)
+            if sentQueue?.delivery != nil {
+                let name = state.agents[pane].map { agent in
+                    let trimmed = agent.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                    return trimmed.isEmpty ? agent.title : trimmed
+                } ?? pane.rawValue
+                if state.windowTask?.delivery.outcome == .queued {
+                    state.windowTask?.delivery.outcome = .sent(name)
+                }
+                if state.drop?.delivery.outcome == .queued {
+                    state.drop?.delivery.outcome = .sent(name)
+                }
+                state.banner = Banner(text: "已发送给 \(name)。", isError: false, source: .send)
+            } else {
+                state.banner = Banner(text: "已发送。", isError: false, source: .send)
+            }
             return [.sampleNow]
         case .failure(let failure):
             if var queued = sentQueue {

@@ -116,141 +116,76 @@ public enum ScreenCoordinates {
 
 public enum WindowTaskPhase: Sendable, Equatable {
     case editing
-    case capturing
+    case preparing
     case sending
 }
 
 public enum WindowTaskDestination: Sendable, Equatable {
     case agent(PaneID)
-    case newTask(kind: AgentKindOption, cwd: String)
+    case newTask(kind: AgentKindOption, cwd: String, worktreeBranch: String?)
 }
 
 public struct WindowTaskState: Sendable, Equatable {
-    public var draft: String
-    /// nil means "start a new agent" using `kind` and `cwd`.
-    public var destinationAgent: PaneID?
-    public var kind: AgentKindOption
-    public var cwd: String
+    public var delivery: DeliveryDraft
     public var phase: WindowTaskPhase
     public var creation: TaskCreationProgress? = nil
-    public var error: String?
-    public var lastScreenshotPath: String?
-    public var lastDelivery: String?
-    public var pendingToken: UUID?
+
+    public init(
+        delivery: DeliveryDraft,
+        phase: WindowTaskPhase = .editing,
+        creation: TaskCreationProgress? = nil
+    ) {
+        self.delivery = delivery
+        self.phase = phase
+        self.creation = creation
+    }
 
     public init(
         draft: String = "",
-        destinationAgent: PaneID? = nil,
         kind: AgentKindOption = .claude,
         cwd: String,
-        phase: WindowTaskPhase = .editing,
-        error: String? = nil,
-        lastScreenshotPath: String? = nil,
-        lastDelivery: String? = nil,
-        pendingToken: UUID? = nil
+        phase: WindowTaskPhase = .editing
     ) {
-        self.draft = draft
-        self.destinationAgent = destinationAgent
-        self.kind = kind
-        self.cwd = cwd
-        self.phase = phase
-        self.error = error
-        self.lastScreenshotPath = lastScreenshotPath
-        self.lastDelivery = lastDelivery
-        self.pendingToken = pendingToken
+        self.init(
+            delivery: DeliveryDraft(text: draft, kind: kind, cwd: cwd),
+            phase: phase
+        )
     }
 
-    public var destination: WindowTaskDestination {
-        if let destinationAgent {
-            return .agent(destinationAgent)
-        }
-        return .newTask(kind: kind, cwd: cwd)
+    public var draft: String {
+        get { delivery.text }
+        set { delivery.text = newValue }
     }
 
-    public var trimmedDraft: String {
-        draft.trimmingCharacters(in: .whitespacesAndNewlines)
+    public var kind: AgentKindOption {
+        get { delivery.kind }
+        set { delivery.kind = newValue }
     }
-}
 
-public struct WindowCaptureRequest: Sendable, Equatable {
-    public let token: UUID
-    public let target: WindowTarget
-    public let task: String
-    public let destination: WindowTaskDestination
-    public let name: String
-
-    public init(
-        token: UUID,
-        target: WindowTarget,
-        task: String,
-        destination: WindowTaskDestination,
-        name: String
-    ) {
-        self.token = token
-        self.target = target
-        self.task = task
-        self.destination = destination
-        self.name = name
+    public var cwd: String {
+        get { delivery.cwd }
+        set { delivery.cwd = newValue }
     }
-}
 
-/// Captures the window a plain droplet drop landed on, then creates the task
-/// around that screenshot. Distinct from the lock flow: no persistent tether,
-/// and the task keeps living after the composer closes.
-public struct DropWindowCaptureRequest: Sendable, Equatable {
-    public let token: UUID
-    public let target: WindowTarget
-    public let text: String
-    public let kind: AgentKindOption
-    public let cwd: String
-    public let name: String
-    public let label: String
-    public let worktreeBranch: String?
-
-    public init(
-        token: UUID,
-        target: WindowTarget,
-        text: String,
-        kind: AgentKindOption,
-        cwd: String,
-        name: String,
-        label: String,
-        worktreeBranch: String?
-    ) {
-        self.token = token
-        self.target = target
-        self.text = text
-        self.kind = kind
-        self.cwd = cwd
-        self.name = name
-        self.label = label
-        self.worktreeBranch = worktreeBranch
+    public var error: String? {
+        get { delivery.error }
+        set { delivery.error = newValue }
     }
-}
 
-public struct WindowDeliveryRequest: Sendable, Equatable {
-    public let token: UUID
-    public let target: WindowTarget
-    public let screenshotPath: String
-    public let task: String
-    public let destination: WindowTaskDestination
-    public let name: String
-
-    public init(
-        token: UUID,
-        target: WindowTarget,
-        screenshotPath: String,
-        task: String,
-        destination: WindowTaskDestination,
-        name: String
-    ) {
-        self.token = token
-        self.target = target
-        self.screenshotPath = screenshotPath
-        self.task = task
-        self.destination = destination
-        self.name = name
+    public var outcome: DeliveryOutcome? {
+        get { delivery.outcome }
+        set { delivery.outcome = newValue }
     }
+
+    public var pendingToken: UUID? {
+        get { delivery.pendingToken }
+        set { delivery.pendingToken = newValue }
+    }
+
+    public var trimmedDraft: String { delivery.trimmedText }
+    public var isPreparing: Bool { phase == .preparing }
+    public var isSending: Bool { phase == .sending }
+    public var isBusy: Bool { phase != .editing }
 }
 
 public struct WindowLockPresentation: Sendable, Equatable {
@@ -278,48 +213,16 @@ public struct WindowLockPresentation: Sendable, Equatable {
 
 public struct WindowTaskPresentation: Sendable, Equatable {
     public let lock: WindowLockPresentation
-    public let draft: String
-    public let destinationAgent: PaneID?
-    public let kind: AgentKindOption
-    public let cwd: String
-    public let phase: WindowTaskPhase
-    public var creation: TaskCreationProgress? = nil
-    public let error: String?
-    public let lastScreenshotPath: String?
-    public let lastDelivery: String?
-    public let canSubmit: Bool
-    public let destinationRefusal: String?
+    public let composer: DeliveryComposerPresentation
     public let screenCaptureAuthorized: Bool?
 
     public init(
         lock: WindowLockPresentation,
-        draft: String,
-        destinationAgent: PaneID?,
-        kind: AgentKindOption,
-        cwd: String,
-        phase: WindowTaskPhase,
-        error: String?,
-        lastScreenshotPath: String?,
-        lastDelivery: String?,
-        canSubmit: Bool,
-        destinationRefusal: String?,
+        composer: DeliveryComposerPresentation,
         screenCaptureAuthorized: Bool?
     ) {
         self.lock = lock
-        self.draft = draft
-        self.destinationAgent = destinationAgent
-        self.kind = kind
-        self.cwd = cwd
-        self.phase = phase
-        self.error = error
-        self.lastScreenshotPath = lastScreenshotPath
-        self.lastDelivery = lastDelivery
-        self.canSubmit = canSubmit
-        self.destinationRefusal = destinationRefusal
+        self.composer = composer
         self.screenCaptureAuthorized = screenCaptureAuthorized
     }
-
-    public var isCapturing: Bool { phase == .capturing }
-    public var isSending: Bool { phase == .sending }
-    public var isBusy: Bool { phase != .editing }
 }

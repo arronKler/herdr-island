@@ -407,33 +407,38 @@ final class ReducerInteractionTests: XCTestCase {
 
         var p = presentation(of: state)
         XCTAssertTrue(p.isDropActive)
-        XCTAssertEqual(p.drop?.draft, "  Trace the flaky test  ")
+        XCTAssertEqual(p.drop?.composer.text, "  Trace the flaky test  ")
         XCTAssertEqual(p.drop?.kind, .codex)
-        XCTAssertEqual(p.drop?.cwd, "/tmp/other")
-        XCTAssertEqual(p.drop?.useWorktree, true)
+        XCTAssertEqual(p.drop?.composer.cwd, "/tmp/other")
+        XCTAssertEqual(p.drop?.composer.useWorktree, true)
         XCTAssertEqual(p.drop?.canSubmit, true)
+        XCTAssertEqual(p.drop?.composer.send.title, "创建")
 
         let effects = state.apply(.submitDropTask(name: "quiet-otter"))
         XCTAssertEqual(effects.count, 1)
-        let request = try XCTUnwrap({
-            if case .createDropTask(let request) = effects[0] { return request }
+        let payload = try XCTUnwrap({
+            if case .sendDelivery(let payload, let destination) = effects[0] {
+                XCTAssertEqual(destination, .newTask(
+                    kind: .codex,
+                    cwd: "/tmp/other",
+                    worktreeBranch: "island/quiet-otter"
+                ))
+                return payload
+            }
             return nil
         }())
-        XCTAssertEqual(request.text, "Trace the flaky test")
-        XCTAssertEqual(request.kind, .codex)
-        XCTAssertEqual(request.cwd, "/tmp/other")
-        XCTAssertEqual(request.worktreeBranch, "island/quiet-otter")
-        XCTAssertEqual(request.name, "quiet-otter")
+        XCTAssertEqual(payload.task, "Trace the flaky test")
+        XCTAssertTrue(payload.attachments.isEmpty)
 
         p = presentation(of: state)
         XCTAssertEqual(p.drop?.isCreating, true)
         XCTAssertEqual(p.drop?.canSubmit, false)
 
-        _ = state.apply(.dropTaskResult(.success(TaskLaunchResult(
+        _ = state.apply(.deliveryCreated(token: payload.token, launch: TaskLaunchResult(
             pane: PaneID("w1:p9"),
             name: "quiet-otter",
             worktree: "island/quiet-otter"
-        ))))
+        )))
         p = presentation(of: state)
         // The composer holds one exit motion so the droplet can fly home.
         XCTAssertEqual(p.drop?.didCreate, true)
@@ -442,16 +447,12 @@ final class ReducerInteractionTests: XCTestCase {
         XCTAssertEqual(p.drop?.canSubmit, false)
         XCTAssertEqual(p.drop?.creation?.pane, PaneID("w1:p9"))
         XCTAssertTrue(p.isDropActive)
-        XCTAssertEqual(p.banner?.isError, false)
-        XCTAssertEqual(p.banner?.text, "任务已提交，正在跟踪。")
 
-        // The overlay closes after the motion. Sent text is not a draft, and
-        // the success banner belongs to the deck that follows.
+        // The overlay closes after the motion. Sent text is not a draft.
         _ = state.apply(.closeDropComposer)
         p = presentation(of: state)
         XCTAssertNil(p.drop)
         XCTAssertFalse(p.isDropActive)
-        XCTAssertEqual(p.banner?.text, "任务已提交，正在跟踪。")
         XCTAssertNil(state.dropDraftRecovery)
     }
 
@@ -461,9 +462,9 @@ final class ReducerInteractionTests: XCTestCase {
         _ = state.apply(.setDropHerdrCwds(["/tmp/one", "/tmp/two"]))
         _ = state.apply(.setDropDefaultCwd("/tmp/two"))
 
-        let drop = presentation(of: state).drop
-        XCTAssertEqual(drop?.herdrCwds, ["/tmp/one", "/tmp/two"])
-        XCTAssertEqual(drop?.defaultCwd, "/tmp/two")
+        let composer = presentation(of: state).drop?.composer
+        XCTAssertEqual(composer?.directoryOptions, ["/tmp/one", "/tmp/two"])
+        XCTAssertEqual(composer?.defaultCwd, "/tmp/two")
     }
 
     func testClosingADropKeepsItsTextForTheNextDrop() {
@@ -479,13 +480,13 @@ final class ReducerInteractionTests: XCTestCase {
 
         _ = state.apply(.beginDrop(cwd: "/tmp/new", kind: .claude, branch: "island/still-fern"))
         let drop = presentation(of: state).drop
-        XCTAssertEqual(drop?.draft, "Trace the flaky test")
+        XCTAssertEqual(drop?.composer.text, "Trace the flaky test")
         XCTAssertEqual(drop?.kind, .codex)
-        XCTAssertEqual(drop?.cwd, "/tmp/other")
-        XCTAssertEqual(drop?.useWorktree, true)
+        XCTAssertEqual(drop?.composer.cwd, "/tmp/other")
+        XCTAssertEqual(drop?.composer.useWorktree, true)
     }
 
-    func testDropSubmitRequiresADraftAndRestoresComposingOnFailure() {
+    func testDropSubmitRequiresADraftAndRestoresComposingOnFailure() throws {
         var state = IslandState()
         _ = state.apply(.beginDrop(cwd: "/tmp/pairfob", kind: .claude, branch: "island/quiet-otter"))
         _ = state.apply(.openDropComposer)
@@ -496,26 +497,31 @@ final class ReducerInteractionTests: XCTestCase {
         _ = state.apply(.setDropDraft("Fix the flaky test"))
         let effects = state.apply(.submitDropTask(name: "quiet-otter"))
         XCTAssertEqual(effects.count, 1)
-        if case .createDropTask(let request) = effects[0] {
-            XCTAssertNil(request.worktreeBranch)
-        } else {
-            XCTFail("expected a createQuickTask effect")
-        }
+        let payload = try XCTUnwrap({
+            if case .sendDelivery(let payload, let destination) = effects[0] {
+                XCTAssertEqual(
+                    destination,
+                    .newTask(kind: .claude, cwd: "/tmp/pairfob", worktreeBranch: nil)
+                )
+                return payload
+            }
+            return nil
+        }())
 
         _ = state.apply(.closeDropComposer)
         XCTAssertEqual(presentation(of: state).drop?.isCreating, true)
 
         let failure = BackendFailure(.commandFailed, "herdr exited 8")
-        _ = state.apply(.dropTaskResult(.failure(failure)))
+        _ = state.apply(.deliveryFailed(token: payload.token, failure: failure))
         let p = presentation(of: state)
         XCTAssertEqual(p.drop?.isCreating, false)
         XCTAssertEqual(p.drop?.error, "herdr exited 8")
-        XCTAssertEqual(p.drop?.draft, "Fix the flaky test")
+        XCTAssertEqual(p.drop?.composer.text, "Fix the flaky test")
         XCTAssertEqual(p.drop?.canSubmit, true)
         XCTAssertTrue(p.isDropActive)
     }
 
-    func testDropOnWindowCapturesBeforeCreating() throws {
+    func testDropOnWindowPreparesTheScreenshotBeforeCreating() throws {
         var state = IslandState()
         let target = WindowTarget(
             windowID: 4242,
@@ -537,23 +543,20 @@ final class ReducerInteractionTests: XCTestCase {
         var p = presentation(of: state)
         XCTAssertEqual(p.drop?.window?.windowID, 4242)
         XCTAssertEqual(p.drop?.window?.displayTitle, "Q4 planning review")
-        XCTAssertEqual(p.drop?.isCapturing, false)
+        XCTAssertEqual(p.drop?.isPreparing, false)
         XCTAssertEqual(p.drop?.canSubmit, true)
 
         let effects = state.apply(.submitDropTask(name: "island-preview"))
-        let request = try XCTUnwrap({
-            if case .captureDropWindow(let request) = effects[0] { return request }
+        let plan = try XCTUnwrap({
+            if case .prepareDelivery(let plan) = effects.first { return plan }
             return nil
         }())
-        XCTAssertEqual(request.target.windowID, 4242)
-        XCTAssertEqual(request.text, "Summarize the decisions")
-        XCTAssertEqual(request.kind, .claude)
-        XCTAssertEqual(request.cwd, "/tmp/pairfob")
-        XCTAssertEqual(request.name, "island-preview")
-        XCTAssertNil(request.worktreeBranch)
+        XCTAssertEqual(plan.target?.windowID, 4242)
+        XCTAssertEqual(plan.task, "Summarize the decisions")
+        XCTAssertTrue(plan.attachments.isEmpty)
 
         p = presentation(of: state)
-        XCTAssertEqual(p.drop?.isCapturing, true)
+        XCTAssertEqual(p.drop?.isPreparing, true)
         XCTAssertEqual(p.drop?.isCreating, false)
         XCTAssertEqual(p.drop?.canSubmit, false)
         XCTAssertTrue(p.isDropActive)
@@ -564,36 +567,48 @@ final class ReducerInteractionTests: XCTestCase {
         _ = state.apply(.closeDropComposer)
         p = presentation(of: state)
         XCTAssertEqual(p.drop?.window?.windowID, 4242)
-        XCTAssertEqual(p.drop?.draft, "Summarize the decisions")
+        XCTAssertEqual(p.drop?.composer.text, "Summarize the decisions")
         XCTAssertTrue(p.isDropActive)
     }
 
-    func testDropWindowCaptureProgressMovesToCreation() {
+    func testPreparedDropMovesToCreation() {
         var state = windowDropState()
-        _ = state.apply(.submitDropTask(name: "island-preview"))
-        XCTAssertEqual(presentation(of: state).drop?.isCapturing, true)
+        let effects = state.apply(.submitDropTask(name: "island-preview"))
+        guard case .prepareDelivery(let plan) = effects.first else {
+            return XCTFail("expected prepareDelivery, got \(effects)")
+        }
+        XCTAssertEqual(presentation(of: state).drop?.isPreparing, true)
 
-        _ = state.apply(.dropTaskProgress(TaskCreationProgress(
+        let payload = DeliveryPayload(
+            token: plan.token,
+            task: plan.task,
+            target: plan.target,
+            screenshotPath: "/tmp/capture.png",
+            capturedAt: TestClock.start
+        )
+        _ = state.apply(.deliveryPrepared(token: plan.token, payload: payload))
+
+        _ = state.apply(.deliveryProgress(token: plan.token, progress: TaskCreationProgress(
             stage: .workspace,
             startedAt: TestClock.start
         )))
         let p = presentation(of: state)
-        XCTAssertEqual(p.drop?.isCapturing, false)
+        XCTAssertEqual(p.drop?.isPreparing, false)
         XCTAssertEqual(p.drop?.isCreating, true)
         XCTAssertEqual(p.drop?.window?.windowID, 4242)
     }
 
-    func testHotKeyKeepsDropWhileWindowCaptureIsRunning() {
+    func testHotKeyKeepsDropWhilePreparationIsRunning() {
         var state = windowDropState()
         _ = state.apply(.submitDropTask(name: "island-preview"))
-        XCTAssertEqual(state.drop?.phase, .capturing)
+        XCTAssertEqual(state.drop?.phase, .preparing)
 
         _ = state.apply(.hotKey)
-        XCTAssertEqual(state.drop?.phase, .capturing)
+        XCTAssertEqual(state.drop?.phase, .preparing)
         XCTAssertTrue(state.dropActive)
 
         _ = state.apply(.escape)
-        XCTAssertEqual(state.drop?.phase, .capturing)
+        XCTAssertEqual(state.drop?.phase, .preparing)
         XCTAssertTrue(state.dropActive)
     }
 
@@ -623,14 +638,14 @@ final class ReducerInteractionTests: XCTestCase {
         _ = state.apply(.dropWindowClosed)
 
         XCTAssertNil(state.drop?.window)
-        XCTAssertEqual(state.drop?.draft, "Review this window")
+        XCTAssertEqual(state.drop?.delivery.text, "Review this window")
         XCTAssertEqual(state.drop?.error, "目标窗口已关闭，已改为不带截图的任务。")
     }
 
     func testLockWindowDuringCreationShowsFeedback() {
         var state = windowDropState()
         _ = state.apply(.submitDropTask(name: "island-preview"))
-        XCTAssertEqual(state.drop?.phase, .capturing)
+        XCTAssertEqual(state.drop?.phase, .preparing)
 
         let effects = state.apply(.lockWindow(
             WindowTarget(
@@ -646,20 +661,23 @@ final class ReducerInteractionTests: XCTestCase {
         ))
 
         XCTAssertTrue(effects.isEmpty)
-        XCTAssertEqual(state.drop?.phase, .capturing)
+        XCTAssertEqual(state.drop?.phase, .preparing)
         XCTAssertEqual(state.banner?.text, "当前任务仍在创建，结束后再锁定窗口。")
     }
 
-    func testDropWindowCaptureFailureKeepsTheWindowContext() {
+    func testScreenCaptureDenialReturnsTheDropToComposing() {
         var state = windowDropState()
-        _ = state.apply(.submitDropTask(name: "island-preview"))
-        _ = state.apply(.dropTaskResult(.failure(BackendFailure(
+        let effects = state.apply(.submitDropTask(name: "island-preview"))
+        guard case .prepareDelivery(let plan) = effects.first else {
+            return XCTFail("expected prepareDelivery, got \(effects)")
+        }
+        _ = state.apply(.deliveryFailed(token: plan.token, failure: BackendFailure(
             .screenCapturePermission,
             "屏幕录制未开启"
-        ))))
+        )))
 
         let p = presentation(of: state)
-        XCTAssertEqual(p.drop?.isCapturing, false)
+        XCTAssertEqual(p.drop?.isPreparing, false)
         XCTAssertEqual(p.drop?.isCreating, false)
         XCTAssertEqual(p.drop?.canSubmit, true)
         XCTAssertEqual(p.drop?.window?.windowID, 4242)
@@ -674,7 +692,7 @@ final class ReducerInteractionTests: XCTestCase {
 
         let effects = state.apply(.submitDropTask(name: "island-preview"))
         XCTAssertEqual(effects.count, 1)
-        guard case .createDropTask = effects[0] else {
+        guard case .sendDelivery(_, .newTask) = effects[0] else {
             return XCTFail("expected a plain task without a window")
         }
     }

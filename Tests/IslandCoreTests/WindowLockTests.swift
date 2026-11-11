@@ -23,231 +23,302 @@ final class WindowLockTests: XCTestCase {
         return state
     }
 
-    func testLockOpensWindowTaskAndDefaultsToPromptableAgent() {
+    private func prepare(_ state: inout IslandState, _ text: String) -> DeliveryPlan {
+        _ = state.apply(.setWindowTaskDraft(text), at: t0)
+        let effects = state.apply(.submitDelivery(.lock, name: "island-abcd"), at: t0)
+        guard case .prepareDelivery(let plan) = effects.first else {
+            XCTFail("expected prepareDelivery, got \(effects)")
+            return DeliveryPlan(token: UUID(), task: text, capturedAt: t0)
+        }
+        return plan
+    }
+
+    private func payload(for plan: DeliveryPlan, screenshot: String? = nil) -> DeliveryPayload {
+        DeliveryPayload(
+            token: plan.token,
+            task: plan.task,
+            target: plan.target,
+            screenshotPath: screenshot,
+            context: .empty,
+            capturedAt: t0
+        )
+    }
+
+    func testLockAdoptsTheMainAgentAndOpensTheComposer() {
         let state = lockedState()
         let p = presentation(of: state, at: t0)
 
         XCTAssertTrue(p.isExpanded)
         XCTAssertEqual(p.windowLock?.appName, "Feishu")
         XCTAssertEqual(p.windowLock?.displayTitle, "Q4 planning review")
-        XCTAssertNotNil(p.windowTask)
-        XCTAssertEqual(p.windowTask?.destinationAgent, PaneID("w1:p1"))
-        XCTAssertEqual(p.windowTask?.phase, .editing)
-        XCTAssertFalse(p.windowTask?.canSubmit ?? true)
-        XCTAssertTrue(p.dropletVisible)
-        XCTAssertNil(p.windowTask?.destinationRefusal)
+        XCTAssertEqual(state.mainAgent?.pane, PaneID("w1:p1"))
+
+        let composer = p.windowTask?.composer
+        XCTAssertEqual(composer?.recipient.mode, .main)
+        XCTAssertEqual(composer?.recipient.name, "Alpha")
+        XCTAssertEqual(composer?.recipient.status, .idle)
+        XCTAssertEqual(composer?.recipient.isMain, true)
+        XCTAssertEqual(composer?.recipients.count, 2)
+        XCTAssertEqual(composer?.recipients.first { $0.pane == PaneID("w1:p1") }?.status, .idle)
+        XCTAssertEqual(composer?.recipients.first { $0.pane == PaneID("w1:p2") }?.status, .working)
+        XCTAssertEqual(composer?.send.title, "发送")
+        XCTAssertEqual(composer?.send.canSubmit, false)
+        XCTAssertEqual(composer?.isLocked, true)
+        XCTAssertEqual(composer?.hasWindow, true)
     }
 
-    func testLockDefaultsToNewAgentWhenNothingAcceptsPrompt() {
+    func testLockWithoutAPromptableAgentStartsInNewAgentMode() {
         let state = lockedState(agents: [
             makeAgent("w1:p1", .working, title: "Alpha"),
             makeAgent("w1:p2", .blocked, title: "Beta", stateChangeSeq: 3),
         ])
-        let p = presentation(of: state, at: t0)
-        XCTAssertNil(p.windowTask?.destinationAgent)
-        XCTAssertEqual(p.windowTask?.kind, .claude)
-        XCTAssertEqual(p.windowTask?.cwd, "/tmp/project")
+        let composer = presentation(of: state, at: t0).windowTask?.composer
+
+        XCTAssertNil(state.mainAgent)
+        XCTAssertEqual(composer?.recipient.mode, .new)
+        XCTAssertEqual(composer?.recipient.reason, .noMain)
+        XCTAssertEqual(composer?.recipient.name, "新建 agent")
+        XCTAssertEqual(composer?.showNewAgentSettings, true)
+        XCTAssertEqual(composer?.kind, .claude)
+        XCTAssertEqual(composer?.cwd, "/tmp/project")
     }
 
-    func testSubmitCapturesBeforeDelivering() {
+    func testSubmitPreparesTheWindowBeforeSending() {
+        var state = lockedState(agents: [makeAgent("w1:p1", .idle, title: "Alpha")])
+        let plan = prepare(&state, "  Summarize this window.  ")
+
+        XCTAssertEqual(plan.target, target)
+        XCTAssertEqual(plan.task, "Summarize this window.")
+        XCTAssertTrue(plan.attachments.isEmpty)
+
+        let composer = presentation(of: state, at: t0).windowTask?.composer
+        XCTAssertEqual(composer?.send.isBusy, true)
+        XCTAssertEqual(composer?.send.canSubmit, false)
+        XCTAssertEqual(composer?.isEditable, false)
+        XCTAssertEqual(composer?.send.title, "截取中")
+        XCTAssertTrue(state.apply(.submitDelivery(.lock, name: "again"), at: t0).isEmpty)
+    }
+
+    func testScreenshotFailureStillSendsTheText() {
         var state = lockedState()
-        _ = state.apply(.setWindowTaskDraft("  Summarize this window.  "), at: t0)
-        let effects = state.apply(.submitWindowTask(name: "island-abcd"), at: t0)
+        let plan = prepare(&state, "Make a checklist")
+        let prepared = DeliveryPayload(
+            token: plan.token,
+            task: plan.task,
+            target: plan.target,
+            screenshotFailure: "屏幕录制未授权，本次仅发送文字。",
+            context: .empty,
+            capturedAt: t0
+        )
 
-        guard case .captureWindow(let request) = effects.first else {
-            return XCTFail("expected captureWindow, got \(effects)")
-        }
-        XCTAssertEqual(request.target, target)
-        XCTAssertEqual(request.task, "Summarize this window.")
-        XCTAssertEqual(request.destination, .agent(PaneID("w1:p1")))
-        XCTAssertEqual(request.name, "island-abcd")
-        XCTAssertEqual(presentation(of: state, at: t0).windowTask?.phase, .capturing)
+        let effects = state.apply(
+            .deliveryPrepared(token: plan.token, payload: prepared),
+            at: t0
+        )
+        XCTAssertEqual(effects, [.sendDelivery(prepared, .agent(PaneID("w1:p1")))])
+        XCTAssertEqual(presentation(of: state, at: t0).windowTask?.composer.send.title, "发送中")
     }
 
-    func testSubmitWithoutScreenRecordingPermissionDoesNotCapture() {
+    func testDeniedScreenRecordingIsANoticeNotABlocker() {
         var state = lockedState()
         _ = state.apply(.windowCapturePermission(false), at: t0)
+
+        var p = presentation(of: state, at: t0)
+        let notice = p.windowTask?.composer.notices.first
+        XCTAssertEqual(notice?.kind, .muted)
+        XCTAssertEqual(notice?.text, "截图未授权 · 只发文字和文件")
+        XCTAssertEqual(notice?.action, .openScreenRecording)
+
         _ = state.apply(.setWindowTaskDraft("Look at this"), at: t0)
-
-        let effects = state.apply(.submitWindowTask(name: "island-abcd"), at: t0)
-        XCTAssertEqual(effects, [])
-
-        let p = presentation(of: state, at: t0)
-        XCTAssertEqual(p.windowTask?.phase, .editing)
-        XCTAssertNotNil(p.windowTask?.error)
-        XCTAssertEqual(p.banner?.action, .openScreenRecordingSettings)
-        XCTAssertEqual(p.windowTask?.canSubmit, false)
+        p = presentation(of: state, at: t0)
+        XCTAssertEqual(p.windowTask?.composer.send.canSubmit, true)
     }
 
-    func testCaptureSuccessEmitsDeliveryRequest() {
+    func testDeliverySuccessKeepsTheLockAndClearsTheDraft() {
         var state = lockedState()
-        _ = state.apply(.windowCapturePermission(true), at: t0)
-        _ = state.apply(.setWindowTaskDraft("Make a checklist"), at: t0)
-        let submitEffects = state.apply(.submitWindowTask(name: "island-abcd"), at: t0)
-        guard case .captureWindow(let request) = submitEffects.first else {
-            return XCTFail("expected captureWindow")
-        }
+        let plan = prepare(&state, "Make a checklist")
+        let prepared = payload(for: plan, screenshot: "/tmp/capture.png")
+        _ = state.apply(.deliveryPrepared(token: plan.token, payload: prepared), at: t0)
 
-        let resultEffects = state.apply(
-            .windowCaptureResult(request, .success("/tmp/capture.png")),
+        let effects = state.apply(
+            .deliveryResult(token: plan.token, result: .success("Alpha")),
             at: t0
         )
-        guard case .deliverWindowTask(let delivery) = resultEffects.first else {
-            return XCTFail("expected deliverWindowTask")
-        }
-        XCTAssertEqual(delivery.screenshotPath, "/tmp/capture.png")
-        XCTAssertEqual(delivery.task, "Make a checklist")
-        XCTAssertEqual(delivery.destination, .agent(PaneID("w1:p1")))
-        XCTAssertEqual(presentation(of: state, at: t0).windowTask?.phase, .sending)
-        XCTAssertEqual(
-            presentation(of: state, at: t0).windowTask?.lastScreenshotPath,
-            "/tmp/capture.png"
-        )
-    }
-
-    func testCaptureFailureReturnsToEditingAndShowsPermissionAction() {
-        var state = lockedState()
-        _ = state.apply(.windowCapturePermission(true), at: t0)
-        _ = state.apply(.setWindowTaskDraft("Do the thing"), at: t0)
-        let submitEffects = state.apply(.submitWindowTask(name: "island-abcd"), at: t0)
-        guard case .captureWindow(let request) = submitEffects.first else {
-            return XCTFail("expected captureWindow")
-        }
-
-        let failure = BackendFailure(.screenCapturePermission, "Screen Recording is required.")
-        let resultEffects = state.apply(
-            .windowCaptureResult(request, .failure(failure)),
-            at: t0
-        )
-        XCTAssertEqual(resultEffects, [])
-        let p = presentation(of: state, at: t0)
-        XCTAssertEqual(p.windowTask?.phase, .editing)
-        XCTAssertEqual(p.windowTask?.error, "Screen Recording is required.")
-        XCTAssertEqual(p.windowTask?.draft, "Do the thing")
-        XCTAssertEqual(p.banner?.action, .openScreenRecordingSettings)
-    }
-
-    func testDeliverySuccessKeepsLockAndClearsDraft() {
-        var state = lockedState()
-        _ = state.apply(.windowCapturePermission(true), at: t0)
-        _ = state.apply(.setWindowTaskDraft("Make a checklist"), at: t0)
-        let submitEffects = state.apply(.submitWindowTask(name: "island-abcd"), at: t0)
-        guard case .captureWindow(let request) = submitEffects.first else {
-            return XCTFail("expected captureWindow")
-        }
-        let captureEffects = state.apply(
-            .windowCaptureResult(request, .success("/tmp/capture.png")),
-            at: t0
-        )
-        guard case .deliverWindowTask(let delivery) = captureEffects.first else {
-            return XCTFail("expected deliverWindowTask")
-        }
-
-        let resultEffects = state.apply(
-            .windowTaskResult(token: delivery.token, result: .success("Alpha")),
-            at: t0
-        )
-        XCTAssertEqual(resultEffects, [.sampleNow])
+        XCTAssertEqual(effects, [.sampleNow])
 
         let p = presentation(of: state, at: t0)
-        XCTAssertEqual(p.windowTask?.phase, .editing)
-        XCTAssertEqual(p.windowTask?.draft, "")
-        XCTAssertEqual(p.windowTask?.lastDelivery, "Alpha")
-        XCTAssertEqual(p.banner?.text, "已发送给 Alpha，已附截图。")
+        XCTAssertEqual(p.windowTask?.composer.text, "")
+        XCTAssertEqual(p.windowTask?.composer.outcome, .sent("Alpha"))
+        XCTAssertEqual(p.windowTask?.composer.send.title, "已发送")
+        XCTAssertEqual(p.banner?.text, "已发送给 Alpha。")
         XCTAssertEqual(p.banner?.isError, false)
         XCTAssertNotNil(p.windowLock)
     }
 
-    func testDeliveryFailureKeepsDraftAndShowsError() {
+    func testDeliveryFailureRestoresTheDraftAndShowsTheError() {
         var state = lockedState()
-        _ = state.apply(.windowCapturePermission(true), at: t0)
-        _ = state.apply(.setWindowTaskDraft("Make a checklist"), at: t0)
-        let submitEffects = state.apply(.submitWindowTask(name: "island-abcd"), at: t0)
-        guard case .captureWindow(let request) = submitEffects.first else {
-            return XCTFail("expected captureWindow")
-        }
-        let captureEffects = state.apply(
-            .windowCaptureResult(request, .success("/tmp/capture.png")),
+        let plan = prepare(&state, "Make a checklist")
+        _ = state.apply(
+            .deliveryPrepared(token: plan.token, payload: payload(for: plan, screenshot: "/tmp/capture.png")),
             at: t0
         )
-        guard case .deliverWindowTask(let delivery) = captureEffects.first else {
-            return XCTFail("expected deliverWindowTask")
-        }
 
         let failure = BackendFailure(.commandFailed, "herdr exited 1")
-        _ = state.apply(
-            .windowTaskResult(token: delivery.token, result: .failure(failure)),
-            at: t0
-        )
+        _ = state.apply(.deliveryResult(token: plan.token, result: .failure(failure)), at: t0)
+
         let p = presentation(of: state, at: t0)
-        XCTAssertEqual(p.windowTask?.draft, "Make a checklist")
-        XCTAssertEqual(p.windowTask?.error, "herdr exited 1")
+        XCTAssertEqual(p.windowTask?.composer.text, "Make a checklist")
+        XCTAssertEqual(p.windowTask?.composer.error, "herdr exited 1")
+        XCTAssertEqual(p.windowTask?.composer.send.canSubmit, true)
         XCTAssertEqual(p.banner?.text, "herdr exited 1")
+        XCTAssertEqual(p.banner?.isError, true)
     }
 
-    func testNewWindowTaskProgressAndDestinationSurviveSnapshots() throws {
-        var state = lockedState(agents: [])
-        _ = state.apply(.setWindowTaskDraft("Check the document"), at: t0)
-        let effects = state.apply(.submitWindowTask(name: "island-abcd"), at: t0)
-        guard case .captureWindow(let request) = effects.first else { return XCTFail("expected capture") }
-        _ = state.apply(.windowCaptureResult(request, .success("/tmp/capture.png")), at: t0)
-        let pane = PaneID("w9:p1")
-        let progress = TaskCreationProgress(stage: .agent, startedAt: t0, pane: pane)
-        _ = state.apply(.windowTaskProgress(token: UUID(), progress: progress), at: t0)
-        XCTAssertNil(state.windowTask?.creation)
-        _ = state.apply(.windowTaskProgress(token: request.token, progress: progress), at: t0)
-        XCTAssertEqual(presentation(of: state, at: t0).windowTask?.creation, progress)
-        let agent = makeAgent("w9:p1", .working)
-        _ = state.apply(.windowTaskCreated(token: request.token, launch: TaskLaunchResult(pane: pane, name: "island-abcd", agent: agent)), at: t0)
-        XCTAssertEqual(state.windowTask?.draft, "")
-        XCTAssertNil(state.windowTask?.creation)
-        _ = state.apply(.snapshot(makeSnapshot(2, [agent, makeAgent("w1:p1", .idle)])), at: t0)
-        XCTAssertEqual(state.windowTask?.destinationAgent, pane, "follow-up must not silently target another agent")
+    func testBusyMainQueuesThePreparedPayloadAndRefusesASecond() {
+        var state = lockedState()
+        _ = state.apply(.setMainAgent(PaneID("w1:p2")), at: t0)
+        XCTAssertEqual(presentation(of: state, at: t0).windowTask?.composer.recipient.name, "Beta")
+
+        let plan = prepare(&state, "Queue this after the current review.")
+        let prepared = payload(for: plan, screenshot: "/tmp/capture.png")
+        XCTAssertTrue(
+            state.apply(.deliveryPrepared(token: plan.token, payload: prepared), at: t0).isEmpty
+        )
+
+        XCTAssertEqual(state.queued[PaneID("w1:p2")]?.delivery, prepared)
+        var p = presentation(of: state, at: t0)
+        XCTAssertEqual(p.windowTask?.composer.outcome, .queued)
+        XCTAssertEqual(p.windowTask?.composer.text, "")
+        XCTAssertEqual(p.windowTask?.composer.send.title, "已排队")
+
+        _ = state.apply(.setWindowTaskDraft("One more."), at: t0)
+        let refused = state.apply(.submitDelivery(.lock, name: "extra"), at: t0)
+        XCTAssertTrue(refused.isEmpty)
+        p = presentation(of: state, at: t0)
+        XCTAssertEqual(p.windowTask?.composer.send.canSubmit, false)
+        XCTAssertEqual(
+            p.windowTask?.composer.error,
+            "这个 agent 已经有一条排队消息，等它结束再发。"
+        )
     }
 
-    func testFailedWindowCreationCannotDuplicateItsWorkspace() {
-        var state = lockedState(agents: [])
-        _ = state.apply(.setWindowTaskDraft("Check the document"), at: t0)
-        let effects = state.apply(.submitWindowTask(name: "island-abcd"), at: t0)
-        guard case .captureWindow(let request) = effects.first else { return XCTFail("expected capture") }
-        _ = state.apply(.windowCaptureResult(request, .success("/tmp/capture.png")), at: t0)
-        _ = state.apply(.windowTaskProgress(token: request.token, progress: TaskCreationProgress(stage: .agent, startedAt: t0, pane: PaneID("w9:p1"))), at: t0)
-        _ = state.apply(.windowTaskResult(token: request.token, result: .failure(BackendFailure(.timeout, "startup timeout"))), at: t0)
-        XCTAssertFalse(presentation(of: state, at: t0).windowTask!.canSubmit)
-        XCTAssertTrue(state.apply(.submitWindowTask(name: "duplicate"), at: t0).isEmpty)
-        XCTAssertEqual(state.windowTask?.draft, "Check the document")
+    func testBlockedMainRefusesWithoutSendingAndOffersTheTerminal() {
+        var state = lockedState(agents: [
+            makeAgent("w1:p1", .blocked, title: "Alpha", stateChangeSeq: 4),
+            makeAgent("w1:p2", .idle, title: "Beta"),
+        ])
+        _ = state.apply(.setMainAgent(PaneID("w1:p1")), at: t0)
+        _ = state.apply(.setWindowTaskDraft("Approve please"), at: t0)
+
+        let effects = state.apply(.submitDelivery(.lock, name: "island-abcd"), at: t0)
+        XCTAssertTrue(effects.isEmpty)
+
+        let p = presentation(of: state, at: t0)
+        XCTAssertEqual(
+            p.windowTask?.composer.error,
+            "需要先在终端回答。岛不会代为批准或作答。"
+        )
+        XCTAssertEqual(p.windowTask?.composer.send.canSubmit, false)
+        XCTAssertEqual(p.windowTask?.composer.send.title, "需处理")
+
+        let notice = p.windowTask?.composer.notices.first
+        XCTAssertEqual(notice?.kind, .blocked)
+        XCTAssertEqual(notice?.text, "Alpha 需要你处理")
+        XCTAssertEqual(notice?.action, .jump(PaneID("w1:p1")))
+        XCTAssertEqual(notice?.secondary, .switchRecipient)
     }
 
-    func testNewAgentDestinationUsesCwdAndKind() {
+    func testMissingMainOpensNewAgentModeWithAWarning() {
+        var state = lockedState()
+        _ = state.apply(
+            .snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
+                makeAgent("w1:p2", .idle, title: "Beta"),
+            ])),
+            at: t0.addingTimeInterval(1)
+        )
+
+        let composer = presentation(of: state, at: t0.addingTimeInterval(1))
+            .windowTask?.composer
+        XCTAssertEqual(composer?.recipient.mode, .new)
+        XCTAssertEqual(composer?.recipient.reason, .mainMissing)
+        XCTAssertEqual(composer?.showNewAgentSettings, true)
+
+        let notice = composer?.notices.first
+        XCTAssertEqual(notice?.kind, .warning)
+        XCTAssertEqual(notice?.text, "主 Agent 已退出，这次将新建")
+        XCTAssertEqual(notice?.action, .switchRecipient)
+    }
+
+    func testExplicitNewAgentUsesTheChosenKindAndDirectory() {
         var state = lockedState(agents: [makeAgent("w1:p1", .working)])
+        _ = state.apply(.setDeliveryRecipient(.lock, .new), at: t0)
         _ = state.apply(.setWindowTaskKind(.codex), at: t0)
         _ = state.apply(.setWindowTaskCwd("/tmp/new-agent"), at: t0)
-        _ = state.apply(.setWindowTaskDraft("Check the document"), at: t0)
 
-        let effects = state.apply(.submitWindowTask(name: "island-abcd"), at: t0)
-        guard case .captureWindow(let request) = effects.first else {
-            return XCTFail("expected captureWindow")
+        let plan = prepare(&state, "Check the document")
+        let effects = state.apply(
+            .deliveryPrepared(token: plan.token, payload: payload(for: plan)),
+            at: t0
+        )
+        guard case .sendDelivery(_, let destination) = effects.first else {
+            return XCTFail("expected sendDelivery, got \(effects)")
         }
-        XCTAssertEqual(request.destination, .newTask(kind: .codex, cwd: "/tmp/new-agent"))
+        XCTAssertEqual(
+            destination,
+            .newTask(kind: .codex, cwd: "/tmp/new-agent", worktreeBranch: nil)
+        )
     }
 
-    func testSnapshotPreservesBusyDestinationInsteadOfSendingToAnotherAgent() {
+    func testSnapshotsKeepTheMainAgentAndShowItsNewStatus() {
         var state = lockedState()
-        XCTAssertEqual(
-            presentation(of: state, at: t0).windowTask?.destinationAgent,
-            PaneID("w1:p1")
+        _ = state.apply(
+            .snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
+                makeAgent("w1:p1", .working, title: "Alpha"),
+                makeAgent("w1:p2", .idle, title: "Beta"),
+            ])),
+            at: t0.addingTimeInterval(1)
         )
 
-        _ = state.apply(.snapshot(makeSnapshot(2, at: t0.addingTimeInterval(1), [
-            makeAgent("w1:p1", .working, title: "Alpha"),
-            makeAgent("w1:p2", .idle, title: "Beta"),
-        ])), at: t0.addingTimeInterval(1))
+        let p = presentation(of: state, at: t0.addingTimeInterval(1))
+        XCTAssertEqual(state.mainAgent?.pane, PaneID("w1:p1"))
+        XCTAssertEqual(p.windowTask?.composer.recipient.name, "Alpha")
+        XCTAssertEqual(p.windowTask?.composer.recipient.status, .working)
+        XCTAssertEqual(p.windowTask?.composer.notices.first?.text, "本轮结束后自动发送")
+    }
 
+    func testChoosingAMainAgentSwitchesBothSurfacesBackToMain() {
+        var state = lockedState()
+        _ = state.apply(.beginDrop(cwd: "/tmp", kind: .claude, branch: "island/x"), at: t0)
+        _ = state.apply(.setDeliveryRecipient(.lock, .new), at: t0)
+        _ = state.apply(.setDeliveryRecipient(.drop, .new), at: t0)
+
+        _ = state.apply(.setMainAgent(PaneID("w1:p2")), at: t0)
+
+        XCTAssertEqual(state.mainAgent?.pane, PaneID("w1:p2"))
+        XCTAssertEqual(state.windowTask?.delivery.recipient, .main)
+        XCTAssertEqual(state.drop?.delivery.recipient, .main)
+    }
+
+    func testAttachmentChipsDeduplicateRejectRelativePathsAndRemove() {
+        var state = lockedState()
+        _ = state.apply(.addDeliveryAttachments(.lock, [
+            "/tmp/one.md",
+            "/tmp/one.md",
+            "relative.md",
+            "/tmp/two.png",
+        ]), at: t0)
+
+        var composer = presentation(of: state, at: t0).windowTask?.composer
+        XCTAssertEqual(composer?.attachments.map(\.path), ["/tmp/one.md", "/tmp/two.png"])
         XCTAssertEqual(
-            presentation(of: state, at: t0.addingTimeInterval(1)).windowTask?.destinationAgent,
-            PaneID("w1:p1")
+            composer?.attachmentWarning,
+            "只支持绝对路径：relative.md 已忽略 1 个重复文件。"
         )
-        XCTAssertNotNil(presentation(of: state, at: t0).windowTask?.destinationRefusal)
+
+        _ = state.apply(.removeDeliveryAttachment(.lock, "/tmp/one.md"), at: t0)
+        composer = presentation(of: state, at: t0).windowTask?.composer
+        XCTAssertEqual(composer?.attachments.map(\.path), ["/tmp/two.png"])
+        XCTAssertNil(composer?.attachmentWarning)
     }
 
     func testUnlockAndWindowClosedClearTheLock() {

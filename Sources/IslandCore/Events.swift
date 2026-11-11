@@ -42,8 +42,6 @@ public enum IslandEvent: Sendable, Equatable {
     case setQuickTaskCwd(String)
     case submitQuickTask(name: String)
     case quickTaskProgress(TaskCreationProgress)
-    case dropTaskProgress(TaskCreationProgress)
-    case windowTaskProgress(token: UUID, progress: TaskCreationProgress)
     case quickTaskResult(Result<TaskLaunchResult, BackendFailure>)
     case beginDrop(cwd: String, kind: AgentKindOption, branch: String)
     case endDrop
@@ -57,7 +55,6 @@ public enum IslandEvent: Sendable, Equatable {
     case setDropDefaultCwd(String?)
     case setDropWorktree(Bool)
     case submitDropTask(name: String)
-    case dropTaskResult(Result<TaskLaunchResult, BackendFailure>)
     case lockWindow(WindowTarget, kind: AgentKindOption, cwd: String)
     case unlockWindow
     case windowTargetClosed
@@ -65,14 +62,22 @@ public enum IslandEvent: Sendable, Equatable {
     case beginWindowDrag
     case endWindowDrag
     case setWindowTaskDraft(String)
-    case setWindowTaskDestination(PaneID?)
     case setWindowTaskKind(AgentKindOption)
     case setWindowTaskCwd(String)
     case submitWindowTask(name: String)
     case windowCapturePermission(Bool)
-    case windowCaptureResult(WindowCaptureRequest, Result<String, BackendFailure>)
-    case windowTaskCreated(token: UUID, launch: TaskLaunchResult)
-    case windowTaskResult(token: UUID, result: Result<String, BackendFailure>)
+    case setMainAgent(PaneID?)
+    case setDeliveryRecipient(DeliverySurface, DeliveryRecipientMode)
+    case addDeliveryAttachments(DeliverySurface, [String])
+    case removeDeliveryAttachment(DeliverySurface, String)
+    case clearDeliveryOutcome(DeliverySurface)
+    case windowContextRead(UUID, WindowContext)
+    case submitDelivery(DeliverySurface, name: String)
+    case deliveryPrepared(token: UUID, payload: DeliveryPayload)
+    case deliveryFailed(token: UUID, failure: BackendFailure)
+    case deliveryProgress(token: UUID, progress: TaskCreationProgress)
+    case deliveryCreated(token: UUID, launch: TaskLaunchResult)
+    case deliveryResult(token: UUID, result: Result<String, BackendFailure>)
     case resetTaskCreation
 }
 
@@ -82,10 +87,10 @@ public enum IslandEffect: Sendable, Equatable {
     case focusPane(PaneID)
     case sendPrompt(PaneID, String)
     case createQuickTask(QuickTaskRequest)
-    case createDropTask(QuickTaskRequest)
-    case captureDropWindow(DropWindowCaptureRequest)
     case requestScreenCapturePermission
-    case captureWindow(WindowCaptureRequest)
-    case deliverWindowTask(WindowDeliveryRequest)
+    case readWindowContext(UUID, WindowTarget)
+    case prepareDelivery(DeliveryPlan)
+    case sendDelivery(DeliveryPayload, WindowTaskDestination)
+    case sendQueuedDelivery(PaneID, DeliveryPayload)
     case playCue(AlertCue)
 }

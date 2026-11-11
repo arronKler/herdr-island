@@ -108,7 +108,7 @@ final class InteractionRegressionTests: XCTestCase {
         XCTAssertEqual(p.surface, .deck)
         XCTAssertNotNil(p.windowTask)
         XCTAssertNotNil(p.windowLock)
-        XCTAssertEqual(p.deckHeight, IslandGeometry.windowTaskSize.height)
+        XCTAssertEqual(p.deckHeight, 300)
     }
 
     func testEscapeAndClosePanelHideTheWindowTaskWithoutUnlocking() {
@@ -133,7 +133,10 @@ final class InteractionRegressionTests: XCTestCase {
         var state = lockedState()
         _ = state.apply(.setWindowTaskDraft("Summarize this"), at: t0)
         XCTAssertEqual(state.apply(.submitWindowTask(name: "island-test"), at: t0).count, 1)
-        XCTAssertEqual(presentation(of: state, at: t0).windowTask?.phase, .capturing)
+        XCTAssertEqual(
+            presentation(of: state, at: t0).windowTask?.composer.send.title,
+            "截取中"
+        )
 
         _ = state.apply(.unlockWindow, at: t0)
         _ = state.apply(.escape, at: t0)
@@ -168,7 +171,7 @@ final class InteractionRegressionTests: XCTestCase {
             kind: .claude,
             branch: "island/still-fern"
         ), at: t0)
-        XCTAssertEqual(presentation(of: state, at: t0).drop?.draft, "Review this window")
+        XCTAssertEqual(presentation(of: state, at: t0).drop?.composer.text, "Review this window")
     }
 
     func testClosePanelClosesSearchAndTheDeck() {

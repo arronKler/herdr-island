@@ -1,4 +1,3 @@
-import AppKit
 import IslandCore
 import SwiftUI
 
@@ -26,7 +25,6 @@ struct LiquidDropOverlay: View {
     @State private var composerWasDetached = false
     @State private var isDragging = false
     @State private var optionDrag = false
-    @State private var moreKinds = false
     @State private var closeToken = UUID()
     /// When the composer is already open, dragging the droplet moves the card
     /// with it instead of closing and reopening it.
@@ -48,6 +46,10 @@ struct LiquidDropOverlay: View {
         presentation.surface == .drop
             && presentation.drop != nil
             && composerPoint != nil
+    }
+
+    private var dropFinished: Bool {
+        presentation.drop?.didCreate == true || presentation.drop?.didSend == true
     }
 
     private var dropKind: AgentKindOption {
@@ -169,7 +171,6 @@ struct LiquidDropOverlay: View {
                 if showComposer, let drop = presentation.drop {
                     DropComposerCard(
                         drop: drop,
-                        moreKinds: $moreKinds,
                         actions: actions,
                         onClose: closeAnimated
                     )
@@ -205,8 +206,8 @@ struct LiquidDropOverlay: View {
         .onReceive(NotificationCenter.default.publisher(for: .herdrDropEscape)) { _ in
             closeAnimated()
         }
-        .onChange(of: presentation.drop?.didCreate) { _, created in
-            guard created == true else { return }
+        .onChange(of: dropFinished) { _, finished in
+            guard finished else { return }
             closeAnimated()
         }
         .onChange(of: presentation.drop == nil) { _, closed in
@@ -214,7 +215,6 @@ struct LiquidDropOverlay: View {
                 composerPoint = nil
                 composerWasDetached = false
                 isDragging = false
-                moreKinds = false
                 measuredCardHeight = 0
                 actions.clearDropHover()
             }
@@ -223,11 +223,32 @@ struct LiquidDropOverlay: View {
 
     /// Seeds the first frame before the card has reported its measured height.
     private var estimatedComposerHeight: CGFloat {
-        var height: CGFloat = moreKinds ? 370 : 225
-        if presentation.drop?.window != nil { height += 50 }
-        if presentation.drop?.creation != nil { height += 88 }
-        if presentation.drop?.error != nil { height += 44 }
+        guard let drop = presentation.drop else { return 225 }
+        let composer = drop.composer
+        var height: CGFloat = 24 + 28
+        height += 8 + estimatedInputHeight(composer.text)
+        if !composer.attachments.isEmpty {
+            let rows = max(1, Int(ceil(Double(composer.attachments.count) / 2)))
+            height += 8 + CGFloat(rows) * 28 + CGFloat(rows - 1) * 4
+        }
+        height += 8 + 32
+        height += CGFloat(composer.notices.count) * (8 + 42)
+        if composer.showNewAgentSettings { height += 8 + 28 }
+        if composer.outcome != nil { height += 8 + 40 }
+        if composer.creation != nil, composer.outcome == nil {
+            height += 8 + (composer.error == nil ? 72 : 104)
+        } else if composer.error != nil {
+            height += 8 + 40
+        }
         return height
+    }
+
+    private func estimatedInputHeight(_ text: String) -> CGFloat {
+        let units = text.unicodeScalars.reduce(0) {
+            $0 + ($1.value >= 0x2E80 ? 2 : 1)
+        }
+        let lines = min(4, max(2, Int(ceil(Double(units) / 36))))
+        return 20 + CGFloat(lines) * 16
     }
 
     private var composerAnimation: Animation? {
@@ -352,71 +373,6 @@ private struct ComposerTransitionModifier: ViewModifier {
             .scaleEffect(scale, anchor: anchor)
             .offset(y: offsetY)
             .opacity(opacity)
-    }
-}
-
-// MARK: - Design marks in SwiftUI
-
-/// Draws the design's exact agent logo paths (24x24) at any size.
-private struct DesignMarkView: View {
-    let kind: AgentKindOption
-    let tint: Color
-
-    var body: some View {
-        let parts = DesignMark.parts(for: kind)
-        Canvas { context, size in
-            let scale = min(size.width, size.height) / 24
-            for part in parts {
-                let path = Path(part.path).applying(
-                    CGAffineTransform(scaleX: scale, y: scale)
-                )
-                let color = part.fill.map { Color(cgColor: $0) } ?? tint
-                context.fill(path, with: .color(color))
-            }
-        }
-    }
-}
-
-/// The four-square "more" glyph from the design's icon sprite.
-private struct MoreMarkView: View {
-    var color: Color
-
-    var body: some View {
-        Canvas { context, size in
-            let scale = min(size.width, size.height) / 24
-            for origin in [CGPoint(x: 7, y: 7), CGPoint(x: 13, y: 7),
-                           CGPoint(x: 7, y: 13), CGPoint(x: 13, y: 13)] {
-                let rect = CGRect(
-                    x: origin.x * scale,
-                    y: origin.y * scale,
-                    width: 4 * scale,
-                    height: 4 * scale
-                )
-                context.fill(Path(rect), with: .color(color))
-            }
-        }
-    }
-}
-
-private struct WindowAppIcon: View {
-    let ownerPID: Int32
-
-    var body: some View {
-        Group {
-            if let application = NSRunningApplication(processIdentifier: pid_t(ownerPID)),
-               let icon = application.icon {
-                Image(nsImage: icon)
-                    .resizable()
-                    .interpolation(.high)
-            } else {
-                Image(systemName: "macwindow")
-                    .font(.system(size: 10, weight: .medium))
-                    .foregroundStyle(Theme.textSecondary)
-            }
-        }
-        .frame(width: 20, height: 20)
-        .background(RoundedRectangle(cornerRadius: 5).fill(Theme.field))
-        .clipShape(RoundedRectangle(cornerRadius: 5))
     }
 }
 
@@ -553,530 +509,14 @@ private struct ComposerHeightKey: PreferenceKey {
 
 private struct DropComposerCard: View {
     let drop: DropTaskPresentation
-    @Binding var moreKinds: Bool
     let actions: IslandViewActions
     var onClose: () -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @FocusState private var inputFocused: Bool
-
-    @State private var gitAvailable = false
-
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            header
-                .padding(.bottom, 12)
-            if drop.window != nil {
-                windowRow
-                    .padding(.bottom, 10)
-            }
-            models
-                .padding(.bottom, 10)
-            if moreKinds {
-                kindGrid
-                    .padding(.bottom, 10)
-                    .transition(.opacity.combined(with: .move(edge: .top)))
-            }
-            inputRow
-            worktreeRow
-                .padding(.top, 10)
-            footer
-                .padding(.top, 10)
-            if drop.didCreate {
-                createdRow
-                    .padding(.top, 12)
-            } else if let creation = drop.creation {
-                TaskCreationStatusView(progress: creation, error: drop.error, openPane: actions.jump, reset: actions.resetTaskCreation)
-                    .padding(.top, 12)
-            }
-            if drop.creation == nil, let error = drop.error {
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(error)
-                        .font(Theme.sans(Theme.TypeSize.caption))
-                        .foregroundStyle(Theme.red)
-                        .lineLimit(2)
-                    if drop.screenCaptureAuthorized == false {
-                        Button("去开启") { actions.openScreenRecordingSettings() }
-                            .font(Theme.sans(Theme.TypeSize.caption, weight: .semibold))
-                            .foregroundStyle(Theme.blue)
-                            .buttonStyle(.plain)
-                            .fixedSize()
-                    }
-                }
-                .padding(.top, 8)
-            }
-        }
-        .task(id: drop.cwd) {
-            let cwd = drop.cwd
-            let available = await Task.detached(priority: .utility) { RepoCheck.isGitRepository(cwd) }.value
-            guard !Task.isCancelled else { return }
-            gitAvailable = available
-        }
-        .padding(.horizontal, 14)
-        .padding(.top, 14)
-        .padding(.bottom, 12)
-        // Intrinsic height. The overlay measures it and uses that number for
-        // the placement and the NSView hit rectangle instead of re-summing it.
-        .frame(maxWidth: .infinity, alignment: .topLeading)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Theme.surface)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Theme.hairlineHigh, lineWidth: 1)
-                )
-                .shadow(color: .black.opacity(0.6), radius: 35, x: 0, y: 24)
+        DeliveryComposerCard(
+            composer: drop.composer,
+            actions: actions,
+            onClose: onClose
         )
-        .onAppear {
-            DispatchQueue.main.async { inputFocused = true }
-        }
-    }
-
-    private var header: some View {
-        HStack(spacing: 8) {
-            Text("新任务")
-                .font(Theme.sans(Theme.TypeSize.lead, weight: .semibold))
-                .foregroundStyle(Theme.textPrimary)
-            Spacer(minLength: 4)
-            directoryChip
-            Button(action: onClose) {
-                Image(systemName: "xmark")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundStyle(Theme.textTertiary)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(drop.isBusy)
-            .help("关闭 (esc)")
-            .accessibilityLabel("关闭新任务输入框")
-        }
-        .frame(height: 28)
-    }
-
-    private var directoryChip: some View {
-        Menu {
-            if !drop.herdrCwds.isEmpty {
-                Section("Herdr 已打开") {
-                    ForEach(drop.herdrCwds, id: \.self) { path in
-                        directoryItem(path)
-                    }
-                }
-            }
-            if let defaultCwd = drop.defaultCwd {
-                Section("默认目录") {
-                    directoryItem(defaultCwd)
-                }
-            }
-            Divider()
-            Button("选择其他目录…") { actions.chooseDropCwd() }
-            Button("将当前目录设为默认") { actions.setDropDefaultCwd(drop.cwd) }
-                .disabled(drop.defaultCwd == drop.cwd)
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "folder")
-                    .font(.system(size: 9.5, weight: .medium))
-                Text(IslandFormat.folderName(drop.cwd))
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .frame(maxWidth: 92, alignment: .leading)
-            }
-            .font(Theme.sans(10.5))
-            .foregroundStyle(Theme.textSecondary)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        // A borderless Menu label renders only its first image and text, so the
-        // chrome and chevron live outside it.
-        .padding(.leading, 8)
-        .padding(.trailing, 22)
-        .frame(height: 24)
-        .background(
-            RoundedRectangle(cornerRadius: 7)
-                .stroke(Theme.hairline, lineWidth: 0.6)
-        )
-        .overlay(alignment: .trailing) {
-            Image(systemName: "chevron.down")
-                .font(.system(size: 7.5, weight: .semibold))
-                .foregroundStyle(Theme.textSecondary)
-                .padding(.trailing, 8)
-                .allowsHitTesting(false)
-        }
-        .contentShape(Rectangle())
-        .disabled(drop.isBusy)
-        .help(drop.cwd)
-        .accessibilityLabel("选择任务目录")
-    }
-
-    private func directoryItem(_ path: String) -> some View {
-        Button {
-            actions.selectDropCwd(path)
-        } label: {
-            Label(
-                "\(IslandFormat.folderName(path)) (\(path))",
-                systemImage: path == drop.cwd ? "checkmark" : "folder"
-            )
-        }
-    }
-
-    @ViewBuilder
-    private var windowRow: some View {
-        if let window = drop.window {
-            HStack(spacing: 8) {
-                WindowAppIcon(ownerPID: window.ownerPID)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(window.displayTitle)
-                        .font(Theme.sans(11.5, weight: .medium))
-                        .foregroundStyle(Theme.textPrimary)
-                        .lineLimit(1)
-                        .truncationMode(.middle)
-                    Text(windowSubtitle(window))
-                        .font(Theme.code(9.5))
-                        .foregroundStyle(Theme.textTertiary)
-                        .lineLimit(1)
-                }
-
-                Spacer(minLength: 4)
-
-                Button {
-                    actions.dropWindow(nil)
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(Theme.textTertiary)
-                        .frame(width: 22, height: 22)
-                        .background(Circle().fill(Color.white.opacity(0.05)))
-                }
-                .buttonStyle(.plain)
-                .disabled(drop.isBusy)
-                .help("移除此窗口，只创建普通任务")
-                .accessibilityLabel("移除窗口上下文")
-            }
-            .padding(.horizontal, 9)
-            .frame(height: 40)
-            .background(
-                RoundedRectangle(cornerRadius: 9)
-                    .fill(Theme.blue.opacity(0.06))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 9)
-                            .stroke(Theme.blue.opacity(0.20), lineWidth: 0.7)
-                    )
-            )
-        }
-    }
-
-    private func windowSubtitle(_ window: WindowLockPresentation) -> String {
-        let app = window.appName.trimmingCharacters(in: .whitespacesAndNewlines)
-        if app.isEmpty || app == window.displayTitle {
-            return "窗口截图随任务发送"
-        }
-        return "\(app) · 窗口截图随任务发送"
-    }
-
-    private var models: some View {
-        HStack(spacing: 6) {
-            ForEach(AgentKindOption.primary) { kind in
-                modelButton(kind)
-            }
-            Button {
-                withAnimation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.86)) {
-                    moreKinds.toggle()
-                }
-            } label: {
-                HStack(spacing: 4) {
-                    MoreMarkView(color: moreKinds ? Theme.amber : Theme.textSecondary)
-                        .frame(width: 12, height: 12)
-                    Text(moreKinds ? "收起" : "更多")
-                        .font(Theme.sans(10.5))
-                    Image(systemName: "chevron.down")
-                        .font(.system(size: 8, weight: .semibold))
-                        .rotationEffect(.degrees(moreKinds ? 180 : 0))
-                }
-                .foregroundStyle(moreKinds ? Theme.amber : Theme.textTertiary)
-                .frame(maxWidth: .infinity)
-                .frame(height: 34)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(moreKinds ? Theme.amber.opacity(0.06) : Color.white.opacity(0.03))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(moreKinds ? Theme.amberLine : Theme.hairline, lineWidth: 1)
-                        )
-                )
-            }
-            .buttonStyle(.plain)
-            .disabled(drop.isBusy)
-        }
-    }
-
-    private func modelButton(_ kind: AgentKindOption) -> some View {
-        let selected = drop.kind == kind
-        return Button {
-            actions.dropKind(kind)
-        } label: {
-            HStack(spacing: 5) {
-                DesignMarkView(
-                    kind: kind,
-                    tint: Color(nsColor: DropMarkRenderer.tint(for: kind))
-                )
-                .frame(width: 12, height: 12)
-                Text(kind.displayName)
-                    .font(Theme.sans(10.5))
-                    .lineLimit(1)
-            }
-            .foregroundStyle(selected ? Theme.textPrimary : Theme.textTertiary)
-            .frame(maxWidth: .infinity)
-            .frame(height: 34)
-            .background(
-                RoundedRectangle(cornerRadius: 8)
-                    .fill(selected ? Theme.amber.opacity(0.07) : Color.white.opacity(0.03))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(selected ? Theme.amberLine : Theme.hairline, lineWidth: 1)
-                    )
-            )
-        }
-        .buttonStyle(.plain)
-        .disabled(drop.isBusy)
-    }
-
-    private var kindGrid: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 6) {
-                Text("更多 agent")
-                Spacer(minLength: 6)
-                Text("\(AgentKindOption.allCases.count) kinds")
-            }
-            .font(Theme.code(9.5))
-            .foregroundStyle(Theme.textTertiary)
-
-            LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 3),
-                spacing: 6
-            ) {
-                ForEach(AgentKindOption.more) { kind in
-                    let selected = drop.kind == kind
-                    Button {
-                        actions.dropKind(kind)
-                    } label: {
-                        HStack(spacing: 5) {
-                            DesignMarkView(
-                                kind: kind,
-                                tint: Color(nsColor: DropMarkRenderer.tint(for: kind))
-                            )
-                            .frame(width: 11, height: 11)
-                            Text(kind.displayName)
-                                .font(Theme.sans(Theme.TypeSize.micro))
-                                .lineLimit(1)
-                        }
-                        .foregroundStyle(selected ? Theme.textPrimary : Theme.textTertiary)
-                        .padding(.horizontal, 7)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .frame(height: 32)
-                        .background(
-                            RoundedRectangle(cornerRadius: 7)
-                                .fill(selected ? Theme.amber.opacity(0.07) : Color.clear)
-                                .overlay(
-                                    RoundedRectangle(cornerRadius: 7)
-                                        .stroke(selected ? Theme.amberLine : Color.clear, lineWidth: 1)
-                                )
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .disabled(drop.isBusy)
-                }
-            }
-        }
-        .padding(.top, 9)
-        .overlay(alignment: .top) {
-            Rectangle()
-                .fill(Theme.hairline)
-                .frame(height: 1)
-        }
-    }
-
-    private var createdRow: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark.circle.fill")
-                .foregroundStyle(Theme.mint)
-            Text("任务已创建，正在打开")
-                .font(Theme.sans(11, weight: .medium))
-                .foregroundStyle(Theme.textPrimary)
-            Spacer(minLength: 4)
-            if let pane = drop.creation?.pane {
-                Button { actions.jump(pane) } label: {
-                    Label("查看终端", systemImage: "arrow.up.forward")
-                        .font(Theme.sans(11, weight: .medium))
-                        .foregroundStyle(Theme.amber)
-                }
-                .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private var inputRow: some View {
-        let placeholder = drop.window == nil
-            ? "给 \(drop.kind.displayName) 一个任务…"
-            : "让 \(drop.kind.displayName) 看这个窗口做什么…"
-        return HStack(spacing: 8) {
-            TextField("", text: draftBinding)
-                .textFieldStyle(.plain)
-                .font(Theme.sans(Theme.TypeSize.body))
-                .foregroundStyle(Theme.textPrimary)
-                .focused($inputFocused)
-                .disabled(drop.isBusy)
-                .onSubmit { submit() }
-                .padding(.horizontal, 11)
-                .frame(height: 38)
-                .fieldPlaceholder(
-                    placeholder,
-                    text: drop.draft,
-                    insets: EdgeInsets(top: 0, leading: 11, bottom: 0, trailing: 0)
-                )
-                .accessibilityLabel(placeholder)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Theme.field)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(inputFocused ? Theme.amberLine : Theme.hairline, lineWidth: 1)
-                        )
-                )
-            Button(action: submit) {
-                HStack(spacing: 4) {
-                    if drop.isBusy {
-                        TaskActivityMark(reduceMotion: reduceMotion)
-                    }
-                    Text(sendTitle)
-                        .font(Theme.sans(Theme.TypeSize.caption))
-                    if !drop.isBusy {
-                        Text("↵")
-                            .font(Theme.code(Theme.TypeSize.caption))
-                            .opacity(0.75)
-                    }
-                }
-                .foregroundStyle(Theme.amber)
-                .padding(.horizontal, 12)
-                .frame(height: 38)
-                .background(
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Theme.amber.opacity(0.12))
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 8)
-                                .stroke(Theme.amberLine, lineWidth: 1)
-                        )
-                )
-            }
-            .buttonStyle(.plain)
-            .disabled(!drop.canSubmit)
-            .opacity(drop.canSubmit || drop.isBusy ? 1 : 0.55)
-        }
-    }
-
-    private var worktreeRow: some View {
-        Button {
-            guard gitAvailable else { return }
-            actions.dropWorktree(!drop.useWorktree)
-        } label: {
-            HStack(spacing: 8) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 4)
-                        .fill(drop.useWorktree && gitAvailable
-                            ? Theme.amber
-                            : Color.clear)
-                    RoundedRectangle(cornerRadius: 4)
-                        .stroke(drop.useWorktree && gitAvailable
-                            ? Theme.amber
-                            : Theme.hairlineHigh, lineWidth: 1)
-                    if drop.useWorktree && gitAvailable {
-                        Image(systemName: "checkmark")
-                            .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(Color(red: 0.043, green: 0.047, blue: 0.059))
-                    }
-                }
-                .frame(width: 16, height: 16)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(gitAvailable ? "隔离 worktree" : "当前目录不是 git 仓库")
-                        .font(Theme.sans(10.5, weight: .medium))
-                        .foregroundStyle(gitAvailable ? Theme.textSecondary : Theme.textTertiary)
-                    if gitAvailable {
-                        Text(drop.branch)
-                            .font(Theme.code(9.5))
-                            .foregroundStyle(Theme.textTertiary)
-                            .lineLimit(1)
-                    }
-                }
-                Spacer(minLength: 4)
-                Text(gitAvailable ? "herdr worktree" : "不可用")
-                    .font(Theme.code(9.5))
-                    .foregroundStyle(Theme.textTertiary)
-            }
-            .padding(.horizontal, 9)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 9)
-                    .fill(drop.useWorktree && gitAvailable
-                        ? Theme.amber.opacity(0.05)
-                        : Color.white.opacity(0.025))
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 9)
-                            .stroke(drop.useWorktree && gitAvailable
-                                ? Theme.amberLine
-                                : Theme.hairline, lineWidth: 1)
-                    )
-            )
-            .opacity(gitAvailable ? 1 : 0.6)
-        }
-        .buttonStyle(.plain)
-        .disabled(drop.isBusy)
-    }
-
-    private var footer: some View {
-        HStack(spacing: 5) {
-            if drop.isCapturing {
-                Text("正在截取窗口…")
-                    .foregroundStyle(Theme.blue)
-            } else if drop.window != nil {
-                Text("截图仅随这条任务发送")
-                    .foregroundStyle(Theme.blue)
-                Text("·")
-                    .foregroundStyle(Theme.textTertiary)
-                Text("不批准 blocked")
-                    .foregroundStyle(Theme.amber)
-            } else {
-                Text("只创建新任务 · 不批准 blocked")
-                    .foregroundStyle(Theme.amber)
-            }
-
-            Spacer(minLength: 4)
-
-            Text(drop.didCreate ? "任务已创建" : (drop.isBusy ? (drop.isCapturing ? "正在截取" : "正在创建") : "esc 收起"))
-                .foregroundStyle(Theme.textTertiary)
-        }
-        .font(Theme.code(9.5))
-        .lineLimit(1)
-    }
-
-    private var draftBinding: Binding<String> {
-        Binding(
-            get: { drop.draft },
-            set: { actions.dropDraft($0) }
-        )
-    }
-
-    private var sendTitle: String {
-        if drop.didCreate { return "已创建" }
-        if drop.isCapturing { return "截取中" }
-        if drop.isCreating { return "创建中" }
-        if drop.creation?.pane != nil { return "已创建" }
-        return drop.window == nil ? "开始" : "截图并发送"
-    }
-
-    private func submit() {
-        guard drop.canSubmit else { return }
-        actions.submitDropTask()
     }
 }

@@ -57,10 +57,16 @@ struct IslandViewActions {
     var windowDragEnded: (CGPoint) -> Void = { _ in }
     var unlockWindow: () -> Void = {}
     var windowTaskDraft: (String) -> Void = { _ in }
-    var windowTaskDestination: (PaneID?) -> Void = { _ in }
     var windowTaskKind: (AgentKindOption) -> Void = { _ in }
+    var setWindowTaskCwd: (String) -> Void = { _ in }
     var chooseWindowTaskCwd: () -> Void = {}
-    var submitWindowTask: () -> Void = {}
+    var setMainAgent: (PaneID) -> Void = { _ in }
+    var deliveryRecipient: (DeliverySurface, DeliveryRecipientMode) -> Void = { _, _ in }
+    var addDeliveryAttachments: (DeliverySurface, [String]) -> Void = { _, _ in }
+    var removeDeliveryAttachment: (DeliverySurface, String) -> Void = { _, _ in }
+    var clearDeliveryOutcome: (DeliverySurface) -> Void = { _ in }
+    var chooseDeliveryAttachments: (DeliverySurface) -> Void = { _ in }
+    var submitDelivery: (DeliverySurface) -> Void = { _ in }
     var openScreenRecordingSettings: () -> Void = {}
 
     static let noop = IslandViewActions()

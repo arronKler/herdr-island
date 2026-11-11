@@ -210,75 +210,107 @@ public struct AgentFacts: Sendable, Equatable {
 
 public struct QueuedPrompt: Sendable, Equatable {
     public var text: String
+    public var label: String?
+    /// A delivery queue entry owns a prepared payload: the screenshot and
+    /// context are frozen at enqueue, so dispatch never captures again.
+    public var delivery: DeliveryPayload?
     public let createdAt: Date
     /// An uncertain or refused delivery requires an explicit retry.
     public var failure: String? = nil
 
-    public init(text: String, createdAt: Date) {
+    public init(
+        text: String = "",
+        label: String? = nil,
+        delivery: DeliveryPayload? = nil,
+        createdAt: Date,
+        failure: String? = nil
+    ) {
         self.text = text
+        self.label = label
+        self.delivery = delivery
         self.createdAt = createdAt
+        self.failure = failure
     }
 }
 
 public struct DropTaskState: Sendable, Equatable {
     public enum Phase: Sendable, Equatable {
         case composing
-        case capturing
+        case preparing
+        case sending
         case creating
     }
 
-    public var draft: String
-    public var kind: AgentKindOption
-    public var cwd: String
+    public var delivery: DeliveryDraft
     public var useWorktree: Bool
     public var branch: String
     /// The window the drop landed on. `nil` means a plain task.
     public var window: WindowTarget?
     public var phase: Phase
     public var creation: TaskCreationProgress? = nil
-    public var error: String?
     /// The task now exists in Herdr. The composer holds this state for one
     /// short exit motion so the drop can fly home before the panel collapses.
     public var didCreate: Bool
+    public var didSend: Bool
 
     public init(
-        draft: String = "",
-        kind: AgentKindOption = .claude,
-        cwd: String,
+        delivery: DeliveryDraft,
         useWorktree: Bool = false,
         branch: String,
         window: WindowTarget? = nil,
         phase: Phase = .composing,
-        error: String? = nil,
-        didCreate: Bool = false
+        creation: TaskCreationProgress? = nil,
+        didCreate: Bool = false,
+        didSend: Bool = false
     ) {
-        self.draft = draft
-        self.kind = kind
-        self.cwd = cwd
+        self.delivery = delivery
         self.useWorktree = useWorktree
         self.branch = branch
         self.window = window
         self.phase = phase
-        self.error = error
+        self.creation = creation
         self.didCreate = didCreate
+        self.didSend = didSend
     }
 
-    public var trimmedDraft: String {
-        draft.trimmingCharacters(in: .whitespacesAndNewlines)
+    public var draft: String {
+        get { delivery.text }
+        set { delivery.text = newValue }
     }
 
-    public var isCapturing: Bool { phase == .capturing }
+    public var kind: AgentKindOption {
+        get { delivery.kind }
+        set { delivery.kind = newValue }
+    }
+
+    public var cwd: String {
+        get { delivery.cwd }
+        set { delivery.cwd = newValue }
+    }
+
+    public var error: String? {
+        get { delivery.error }
+        set { delivery.error = newValue }
+    }
+
+    public var trimmedDraft: String { delivery.trimmedText }
+    public var isPreparing: Bool { phase == .preparing }
+    public var isSending: Bool { phase == .sending }
     public var isCreating: Bool { phase == .creating }
     /// A created task is no longer busy even though its phase still reads
     /// creating. The composer is only waiting for its exit motion.
-    public var isBusy: Bool { (phase == .capturing || phase == .creating) && !didCreate }
+    public var isBusy: Bool {
+        (phase == .preparing || phase == .sending || phase == .creating)
+            && !didCreate
+            && !didSend
+    }
 
     public var canSubmit: Bool {
         phase == .composing
             && !didCreate
+            && !didSend
             && creation?.canRetry != false
-            && !trimmedDraft.isEmpty
-            && !cwd.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && !delivery.trimmedText.isEmpty
     }
 }
 
@@ -359,6 +391,7 @@ public struct BackendFailure: Error, Sendable, Equatable {
         case promptStalled
         case screenCapturePermission
         case windowUnavailable
+        case attachmentMissing
         case other
     }
 
@@ -463,6 +496,7 @@ public struct AgentRow: Identifiable, Sendable, Equatable {
     public let turn: UInt32?
     public let isQueued: Bool
     public let queuedText: String?
+    public let queuedDetail: String?
     public let labels: [String]
     public let name: String?
 
@@ -485,6 +519,7 @@ public struct AgentRow: Identifiable, Sendable, Equatable {
         turn: UInt32? = nil,
         isQueued: Bool = false,
         queuedText: String? = nil,
+        queuedDetail: String? = nil,
         labels: [String] = [],
         name: String? = nil
     ) {
@@ -506,6 +541,7 @@ public struct AgentRow: Identifiable, Sendable, Equatable {
         self.turn = turn
         self.isQueued = isQueued
         self.queuedText = queuedText
+        self.queuedDetail = queuedDetail
         self.labels = labels
         self.name = name
     }
@@ -718,56 +754,45 @@ public struct QuickTaskPresentation: Sendable, Equatable {
 }
 
 public struct DropTaskPresentation: Sendable, Equatable {
-    public let draft: String
-    public let kind: AgentKindOption
-    public let cwd: String
-    public let herdrCwds: [String]
-    public let defaultCwd: String?
-    public let useWorktree: Bool
-    public let branch: String
+    public let composer: DeliveryComposerPresentation
     /// Present when the drop landed on an app window.
     public let window: WindowLockPresentation?
-    public let isCapturing: Bool
+    public let isPreparing: Bool
+    public let isSending: Bool
     public let isCreating: Bool
     public let didCreate: Bool
+    public let didSend: Bool
     public let screenCaptureAuthorized: Bool?
-    public var creation: TaskCreationProgress? = nil
+    public let creation: TaskCreationProgress?
     public let error: String?
-    public let canSubmit: Bool
 
     public init(
-        draft: String,
-        kind: AgentKindOption,
-        cwd: String,
-        herdrCwds: [String] = [],
-        defaultCwd: String? = nil,
-        useWorktree: Bool,
-        branch: String,
+        composer: DeliveryComposerPresentation,
         window: WindowLockPresentation? = nil,
-        isCapturing: Bool = false,
+        isPreparing: Bool = false,
+        isSending: Bool = false,
         isCreating: Bool,
         didCreate: Bool = false,
+        didSend: Bool = false,
         screenCaptureAuthorized: Bool? = nil,
-        error: String?,
-        canSubmit: Bool
+        creation: TaskCreationProgress? = nil,
+        error: String?
     ) {
-        self.draft = draft
-        self.kind = kind
-        self.cwd = cwd
-        self.herdrCwds = herdrCwds
-        self.defaultCwd = defaultCwd
-        self.useWorktree = useWorktree
-        self.branch = branch
+        self.composer = composer
         self.window = window
-        self.isCapturing = isCapturing
+        self.isPreparing = isPreparing
+        self.isSending = isSending
         self.isCreating = isCreating
         self.didCreate = didCreate
+        self.didSend = didSend
         self.screenCaptureAuthorized = screenCaptureAuthorized
+        self.creation = creation
         self.error = error
-        self.canSubmit = canSubmit
     }
 
-    public var isBusy: Bool { (isCapturing || isCreating) && !didCreate }
+    public var kind: AgentKindOption { composer.kind }
+    public var isBusy: Bool { (isPreparing || isSending || isCreating) && !didCreate && !didSend }
+    public var canSubmit: Bool { composer.send.canSubmit }
 }
 
 public struct IslandPresentation: Sendable, Equatable {

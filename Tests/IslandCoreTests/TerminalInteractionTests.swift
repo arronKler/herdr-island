@@ -4,6 +4,29 @@ import XCTest
 final class TerminalInteractionTests: XCTestCase {
     let pane = PaneID("w1:p1")
 
+    func testSingleTaskTerminalOnlyPausesItsOwnQueue() {
+        var state = IslandState(supportsInteractiveTerminal: true)
+        let other = PaneID("w2:p1")
+        state.apply(.snapshot(makeSnapshot(1, [makeAgent(pane.rawValue, .working), makeAgent(other.rawValue, .working)])))
+        for id in [pane, other] {
+            state.apply(.openDetail(id))
+            state.apply(.setDraft(id, "next"))
+            state.apply(.sendMessage)
+        }
+        state.apply(.backToDeck)
+        state.apply(.openDetail(pane))
+        let idle = [makeAgent(pane.rawValue, .idle), makeAgent(other.rawValue, .idle)]
+        let effects = state.apply(.snapshot(makeSnapshot(2, idle)))
+        XCTAssertFalse(effects.contains(.sendPrompt(pane, "next")))
+        XCTAssertTrue(effects.contains(.sendPrompt(other, "next")))
+        XCTAssertFalse(effects.contains(.loadPreview(pane)))
+        XCTAssertFalse(effects.contains(.loadPreview(other)))
+        state.apply(.backToDeck)
+        let resumed = state.apply(.snapshot(makeSnapshot(3, idle)))
+        XCTAssertTrue(resumed.contains(.sendPrompt(pane, "next")))
+        XCTAssertFalse(resumed.contains(.sendPrompt(other, "next")))
+    }
+
     func testOpeningLiveDetailProtectsPaneBeforeViewAppearsAndDoesNotReadPreview() {
         var state = IslandState(supportsInteractiveTerminal: true)
         state.apply(.snapshot(makeSnapshot(1, [makeAgent(pane.rawValue, .working)])))

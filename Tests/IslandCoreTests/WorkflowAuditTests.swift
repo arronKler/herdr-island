@@ -67,9 +67,12 @@ final class WorkflowAuditTests: XCTestCase {
         var state = IslandState()
         _ = state.apply(.beginDrop(cwd: "/tmp", kind: .claude, branch: "island/qa"), at: now)
         _ = state.apply(.setDropDraft("run once"), at: now)
-        _ = state.apply(.submitDropTask(name: "island-qa"), at: now)
-        _ = state.apply(.dropTaskProgress(TaskCreationProgress(stage: .submission, startedAt: now, pane: pane)), at: now)
-        _ = state.apply(.dropTaskResult(.failure(BackendFailure(.timeout, "check terminal"))), at: now)
+        let effects = state.apply(.submitDropTask(name: "island-qa"), at: now)
+        guard case .sendDelivery(let payload, _) = effects.first else {
+            return XCTFail("expected sendDelivery, got \(effects)")
+        }
+        _ = state.apply(.deliveryProgress(token: payload.token, progress: TaskCreationProgress(stage: .submission, startedAt: now, pane: pane)), at: now)
+        _ = state.apply(.deliveryFailed(token: payload.token, failure: BackendFailure(.timeout, "check terminal")), at: now)
         _ = state.apply(.closeDropComposer, at: now)
         _ = state.apply(.beginDrop(cwd: "/tmp", kind: .codex, branch: "island/other"), at: now)
         XCTAssertEqual(state.drop?.creation?.pane, pane)
@@ -136,20 +139,33 @@ final class WorkflowAuditTests: XCTestCase {
         var state = state()
         let window = WindowTarget(windowID: 1, ownerPID: 2, appName: "QA", bounds: .zero)
         _ = state.apply(.lockWindow(window, kind: .claude, cwd: "/tmp"), at: now)
-        _ = state.apply(.setWindowTaskDestination(nil), at: now)
+        _ = state.apply(.setDeliveryRecipient(.lock, .new), at: now)
         _ = state.apply(.snapshot(makeSnapshot(2, [makeAgent("w1:p1", .idle)])), at: now)
-        XCTAssertNil(state.windowTask?.destinationAgent)
+
+        let composer = IslandPresenter.present(state, now: now).windowTask?.composer
+        XCTAssertEqual(composer?.recipient.mode, .new)
+        XCTAssertEqual(composer?.recipient.reason, .chosen)
     }
 
-    func testWindowTaskKeepsMissingTargetAndExplainsRefusal() {
+    func testWindowTaskKeepsMissingMainAndExplainsTheSwitch() {
         var state = state()
         let window = WindowTarget(windowID: 1, ownerPID: 2, appName: "QA", bounds: .zero)
         _ = state.apply(.lockWindow(window, kind: .claude, cwd: "/tmp"), at: now)
         _ = state.apply(.setWindowTaskDraft("private screenshot"), at: now)
         _ = state.apply(.snapshot(makeSnapshot(2, [makeAgent("w1:p2", .idle)])), at: now)
-        XCTAssertEqual(state.windowTask?.destinationAgent, pane)
-        XCTAssertNotNil(IslandPresenter.present(state, now: now).windowTask?.destinationRefusal)
-        XCTAssertTrue(state.apply(.submitWindowTask(name: "island-qa"), at: now).isEmpty)
+
+        XCTAssertEqual(state.mainAgent?.pane, pane)
+        let composer = IslandPresenter.present(state, now: now).windowTask?.composer
+        XCTAssertEqual(composer?.recipient.mode, .new)
+        XCTAssertEqual(composer?.recipient.reason, .mainMissing)
+        XCTAssertEqual(composer?.notices.first?.text, "主 Agent 已退出，这次将新建")
+        XCTAssertEqual(composer?.send.canSubmit, true)
+
+        let effects = state.apply(.submitWindowTask(name: "island-qa"), at: now)
+        guard case .prepareDelivery(let plan) = effects.first else {
+            return XCTFail("expected prepareDelivery, got \(effects)")
+        }
+        XCTAssertEqual(plan.target?.windowID, 1)
     }
 
     func testUnknownWorkspaceOutcomeCannotBlindlyRetryButCanStartAnExplicitNewTask() {

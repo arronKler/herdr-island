@@ -87,6 +87,18 @@ enum RenderHarness {
             failures += 1
         }
 
+        if let scene = renderRecipientSwitcher(into: directoryURL) {
+            scenes.append(scene)
+        } else {
+            failures += 1
+        }
+
+        if let scene = renderAgentMarks(into: directoryURL) {
+            scenes.append(scene)
+        } else {
+            failures += 1
+        }
+
         let manifest: [String: Any] = [
             "generatedAt": ISO8601DateFormatter().string(from: Date()),
             "scenes": scenes,
@@ -221,6 +233,94 @@ enum RenderHarness {
         return succeeded
     }
 
+    /// The switcher opens as a popover, so a static scene renders the panel
+    /// itself. This catches a dropped row, logo, status or footer.
+    @MainActor
+    private static func renderRecipientSwitcher(into directoryURL: URL) -> [String: Any]? {
+        guard let composer = Fixtures.presentation(named: .mainAgentLock).windowTask?.composer else {
+            appLog("render: switcher fixture has no window composer")
+            return nil
+        }
+        let view = VStack(spacing: 0) {
+            RecipientSwitcher(composer: composer, actions: .noop, dismiss: {})
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .frame(width: 360, height: 460, alignment: .top)
+        .background(Theme.ink)
+        return rasterize(
+            view,
+            width: 360,
+            height: 460,
+            name: "recipient-switcher",
+            into: directoryURL
+        )
+    }
+
+    @MainActor
+    private static func renderAgentMarks(into directoryURL: URL) -> [String: Any]? {
+        rasterize(
+            AgentMarkGrid(),
+            width: 660,
+            height: 160,
+            name: "agent-marks",
+            into: directoryURL
+        )
+    }
+
+    @MainActor
+    private static func rasterize<V: View>(
+        _ view: V,
+        width: Int,
+        height: Int,
+        name: String,
+        into directoryURL: URL
+    ) -> [String: Any]? {
+        let hosting = NSHostingView(rootView: view)
+        hosting.frame = NSRect(x: 0, y: 0, width: width, height: height)
+        hosting.layoutSubtreeIfNeeded()
+
+        guard let rep = NSBitmapImageRep(
+            bitmapDataPlanes: nil,
+            pixelsWide: width,
+            pixelsHigh: height,
+            bitsPerSample: 8,
+            samplesPerPixel: 4,
+            hasAlpha: true,
+            isPlanar: false,
+            colorSpaceName: .deviceRGB,
+            bytesPerRow: 0,
+            bitsPerPixel: 0
+        ) else {
+            appLog("render: could not allocate a bitmap for \(name)")
+            return nil
+        }
+        rep.size = NSSize(width: width, height: height)
+        hosting.cacheDisplay(in: hosting.bounds, to: rep)
+
+        guard let png = rep.representation(using: .png, properties: [:]) else {
+            appLog("render: could not encode \(name).png")
+            return nil
+        }
+        let file = directoryURL.appendingPathComponent("\(name).png")
+        do {
+            try png.write(to: file)
+        } catch {
+            appLog("render: could not write \(file.path): \(error.localizedDescription)")
+            return nil
+        }
+        appLog("render: \(file.path) \(width)x\(height) bytes=\(png.count)")
+        return [
+            "name": name,
+            "file": file.lastPathComponent,
+            "width": width,
+            "height": height,
+            "bytes": png.count,
+            "expanded": true,
+            "headline": "component",
+        ]
+    }
+
     private static func headlineName(_ headline: IslandHeadline) -> String {
         switch headline {
         case .starting: "starting"
@@ -294,7 +394,10 @@ struct RenderScene: View {
         case .peek:
             return CGSize(width: IslandGeometry.peekSize.width, height: IslandGeometry.peekSize.height + notch)
         case .deck:
-            return CGSize(width: IslandGeometry.deckSize.width, height: presentation.deckHeight + notch)
+            let width = presentation.windowTask != nil
+                ? IslandGeometry.windowTaskSize.width
+                : IslandGeometry.deckSize.width
+            return CGSize(width: width, height: presentation.deckHeight + notch)
         case .detail:
             return CGSize(width: IslandGeometry.detailSize.width, height: IslandGeometry.detailSize.height + notch)
         case .drop:
@@ -449,5 +552,35 @@ struct MenuBarMock: View {
         }
         .frame(height: Self.barHeight)
         .frame(maxWidth: .infinity)
+    }
+}
+
+/// Every supported agent mark at the tile sizes the app uses. The chip uses
+/// 16 and the switcher rows use 20, so 16 catches a sprite that only holds up
+/// large.
+private struct AgentMarkGrid: View {
+    private let columns = Array(
+        repeating: GridItem(.fixed(96), spacing: 8, alignment: .leading),
+        count: 6
+    )
+
+    var body: some View {
+        LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
+            ForEach(AgentKindOption.allCases) { kind in
+                VStack(spacing: 4) {
+                    HStack(spacing: 6) {
+                        AgentMarkView(kind: kind.rawValue, size: 24)
+                        AgentMarkView(kind: kind.rawValue, size: 16)
+                    }
+                    Text(kind.displayName)
+                        .font(Theme.sans(9))
+                        .foregroundStyle(Theme.textSecondary)
+                }
+                .frame(width: 96, height: 42)
+            }
+        }
+        .padding(20)
+        .frame(width: 660, height: 160, alignment: .top)
+        .background(Theme.ink)
     }
 }

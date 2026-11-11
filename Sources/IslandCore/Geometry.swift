@@ -50,7 +50,7 @@ public enum IslandGeometry {
     /// harness. The notch form uses the full screen while a drop is live.
     public static let dropCanvasSize = CGSize(width: 720, height: 640)
     public static let quickTaskSize = CGSize(width: 420, height: 196)
-    public static let windowTaskSize = CGSize(width: 560, height: 510)
+    public static let windowTaskSize = CGSize(width: 380, height: 510)
     public static let notchEarWidth: CGFloat = 72
     /// The droplet hangs below the menu-bar band. The ambient window keeps a
     /// transparent lip so the drop is visible instead of hiding behind the
@@ -106,6 +106,7 @@ public enum IslandGeometry {
         surface: IslandSurface = .deck,
         dropActive: Bool = false,
         deckHeight: CGFloat = deckSize.height,
+        windowTask: Bool = false,
         dropScreenFrame: CGRect? = nil,
         quickTaskScreen: CGRect? = nil
     ) -> CGRect {
@@ -129,7 +130,11 @@ public enum IslandGeometry {
             case .peek: content = peekSize
             case .detail: content = detailSize
             case .ambient: content = deckSize
-            case .deck: content = CGSize(width: deckSize.width, height: deckHeight)
+            case .deck:
+                content = CGSize(
+                    width: windowTask ? windowTaskSize.width : deckSize.width,
+                    height: deckHeight
+                )
             case .drop: content = dropCanvasSize
             }
         }
@@ -260,8 +265,8 @@ public enum IslandGeometry {
         let bounds = screens.first { $0.contains(point) }
             ?? CGRect(origin: .zero, size: panelSize)
         let sideMargin: CGFloat = 12
-        let bottomMargin: CGFloat = 10
-        let topMargin: CGFloat = 38
+        let bottomMargin: CGFloat = 12
+        let topMargin: CGFloat = 40
         let gap: CGFloat = 8
 
         let left = min(

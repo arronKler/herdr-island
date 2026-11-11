@@ -10,6 +10,7 @@ final class IslandStore: ObservableObject {
     private(set) var state: IslandState
     private let source: AgentSource
     private let actions: AgentActions
+    private let mainAgentStore: MainAgentStore
 
     private var streamTask: Task<Void, Never>?
     private var tickTimer: Timer?
@@ -23,10 +24,22 @@ final class IslandStore: ObservableObject {
 
     var onPresentationChange: ((IslandPresentation) -> Void)?
 
-    init(source: AgentSource, actions: AgentActions, rules: IslandRules = .default, supportsInteractiveTerminal: Bool = false) {
+    init(
+        source: AgentSource,
+        actions: AgentActions,
+        rules: IslandRules = .default,
+        supportsInteractiveTerminal: Bool = false,
+        mainAgentStore: MainAgentStore = MainAgentStore()
+    ) {
         self.source = source
         self.actions = actions
-        self.state = IslandState(rules: rules, supportsInteractiveTerminal: supportsInteractiveTerminal)
+        self.mainAgentStore = mainAgentStore
+        let state = IslandState(
+            rules: rules,
+            supportsInteractiveTerminal: supportsInteractiveTerminal,
+            mainAgent: mainAgentStore.load()
+        )
+        self.state = state
         self.presentation = IslandPresenter.present(state, now: Date())
     }
 
@@ -62,11 +75,23 @@ final class IslandStore: ObservableObject {
 
     func handle(_ event: IslandEvent) {
         let previousWindow = state.drop?.window ?? state.windowLock
+        let previousMain = state.mainAgent
         let effects = IslandReducer.reduce(&state, event, now: Date())
+        if state.mainAgent != previousMain, let mainAgent = state.mainAgent {
+            mainAgentStore.save(mainAgent)
+        }
         publish()
         if let target = state.drop?.window ?? state.windowLock,
            target.windowID != previousWindow?.windowID || target.ownerPID != previousWindow?.ownerPID {
-            Task { await WindowCaptureService.prepare(target) }
+            Task { [weak self] in
+                await WindowCaptureService.prepare(target)
+                // A window drop never asks for Screen Recording itself, so the
+                // card would otherwise promise a screenshot it cannot take.
+                let authorized = WindowCaptureService.isAuthorized
+                await MainActor.run {
+                    self?.handle(.windowCapturePermission(authorized))
+                }
+            }
         }
         for effect in effects {
             run(effect)
@@ -221,12 +246,32 @@ final class IslandStore: ObservableObject {
     func setDropWorktree(_ enabled: Bool) { handle(.setDropWorktree(enabled)) }
     func setDropWindow(_ target: WindowTarget?) { handle(.setDropWindow(target)) }
 
-    func submitDropTask() {
+    func submitDropTask() { submitDelivery(.drop) }
+
+    func setMainAgent(_ pane: PaneID) { handle(.setMainAgent(pane)) }
+    func setDeliveryRecipient(_ surface: DeliverySurface, _ mode: DeliveryRecipientMode) {
+        handle(.setDeliveryRecipient(surface, mode))
+    }
+    func addDeliveryAttachments(_ surface: DeliverySurface, _ paths: [String]) {
+        handle(.addDeliveryAttachments(surface, paths))
+    }
+    func removeDeliveryAttachment(_ surface: DeliverySurface, _ path: String) {
+        handle(.removeDeliveryAttachment(surface, path))
+    }
+    func clearDeliveryOutcome(_ surface: DeliverySurface) {
+        handle(.clearDeliveryOutcome(surface))
+    }
+
+    func submitDelivery(_ surface: DeliverySurface) {
+        handle(.submitDelivery(surface, name: taskName()))
+    }
+
+    private func taskName() -> String {
         let suffix = UUID().uuidString
             .replacingOccurrences(of: "-", with: "")
             .prefix(6)
             .lowercased()
-        handle(.submitDropTask(name: "island-\(suffix)"))
+        return "island-\(suffix)"
     }
 
     private func nextBranch() -> String {
@@ -277,17 +322,10 @@ final class IslandStore: ObservableObject {
     func beginWindowDrag() { handle(.beginWindowDrag) }
     func endWindowDrag() { handle(.endWindowDrag) }
     func setWindowTaskDraft(_ text: String) { handle(.setWindowTaskDraft(text)) }
-    func setWindowTaskDestination(_ pane: PaneID?) { handle(.setWindowTaskDestination(pane)) }
     func setWindowTaskKind(_ kind: AgentKindOption) { handle(.setWindowTaskKind(kind)) }
     func setWindowTaskCwd(_ path: String) { handle(.setWindowTaskCwd(path)) }
 
-    func submitWindowTask() {
-        let suffix = UUID().uuidString
-            .replacingOccurrences(of: "-", with: "")
-            .prefix(6)
-            .lowercased()
-        handle(.submitWindowTask(name: "island-\(suffix)"))
-    }
+    func submitWindowTask() { submitDelivery(.lock) }
 
     func confirmJump() { handle(.confirmJump) }
     func jump(_ pane: PaneID) { handle(.jump(pane)) }
@@ -350,55 +388,71 @@ final class IslandStore: ObservableObject {
         }
     }
 
-    private func createDropTask(_ request: QuickTaskRequest) {
+    private func sendDelivery(_ payload: DeliveryPayload, destination: WindowTaskDestination) {
         let actions = self.actions
+        let label: String
+        switch destination {
+        case .agent(_): label = "Main agent drop"
+        case .newTask(_, _, _): label = "New task"
+        }
+        let prompt = DeliveryService.prompt(payload, label: label)
         Task { [weak self] in
-            let result = await actions.createTask(request) { [weak self] progress in
-                await self?.handle(.dropTaskProgress(progress))
-            }
-            await MainActor.run {
-                self?.handle(.dropTaskResult(result))
+            switch destination {
+            case .agent(let pane):
+                let result = await actions.sendPrompt(pane, prompt)
+                await MainActor.run {
+                    guard let self else { return }
+                    switch result {
+                    case .success:
+                        self.handle(.deliveryResult(
+                            token: payload.token,
+                            result: .success(self.agentDisplayName(pane))
+                        ))
+                    case .failure(let failure):
+                        self.handle(.deliveryResult(token: payload.token, result: .failure(failure)))
+                    }
+                }
+                self?.refreshNow()
+
+            case .newTask(let kind, let cwd, let worktreeBranch):
+                let request = QuickTaskRequest(
+                    name: self?.taskName() ?? "island-task",
+                    text: prompt,
+                    kind: kind,
+                    cwd: cwd,
+                    label: payload.label,
+                    worktreeBranch: worktreeBranch
+                )
+                let result = await actions.createTask(request) { [weak self] progress in
+                    await self?.handle(.deliveryProgress(token: payload.token, progress: progress))
+                }
+                await MainActor.run {
+                    switch result {
+                    case .success(let launch):
+                        self?.handle(.deliveryCreated(token: payload.token, launch: launch))
+                    case .failure(let failure):
+                        self?.handle(.deliveryFailed(token: payload.token, failure: failure))
+                    }
+                }
             }
         }
     }
 
-    /// The drop composer waits here while the window is captured, then hands
-    /// the same request to the normal task creation path with the screenshot
-    /// path folded into the prompt.
-    private func captureDropWindow(_ request: DropWindowCaptureRequest) {
+    private func sendQueuedDelivery(_ payload: DeliveryPayload, pane: PaneID) {
+        let actions = self.actions
+        let prompt = DeliveryService.prompt(DeliveryService.dispatchable(payload))
         Task { [weak self] in
-            guard let self else { return }
-            let granted = await WindowCaptureService.requestPermission()
-            handle(.windowCapturePermission(granted))
-            guard granted else {
-                handle(.dropTaskResult(.failure(BackendFailure(
-                    .screenCapturePermission,
-                    "屏幕录制未开启，无法截取窗口。请开启后重试。"
-                ))))
-                return
-            }
-
-            switch await WindowCaptureService.capture(request.target) {
-            case .success(let path):
-                let prompt = WindowPrompt.text(
-                    target: request.target,
-                    screenshotPath: path,
-                    task: request.text,
-                    label: "Window"
-                )
-                handle(.dropTaskProgress(TaskCreationProgress(startedAt: Date())))
-                createDropTask(QuickTaskRequest(
-                    name: request.name,
-                    text: prompt,
-                    kind: request.kind,
-                    cwd: request.cwd,
-                    label: request.label,
-                    worktreeBranch: request.worktreeBranch
-                ))
-            case .failure(let failure):
-                handle(.dropTaskResult(.failure(failure)))
+            let result = await actions.sendPrompt(pane, prompt)
+            await MainActor.run {
+                self?.handle(.sendResult(pane, result))
             }
         }
+    }
+
+    private func agentDisplayName(_ pane: PaneID) -> String {
+        guard let agent = state.agents[pane] else { return pane.rawValue }
+        let name = agent.name?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return name.isEmpty ? agent.title : name
     }
 
     private func run(_ effect: IslandEffect) {
@@ -445,65 +499,39 @@ final class IslandStore: ObservableObject {
         case .createQuickTask(let request):
             createQuickTask(request)
 
-        case .createDropTask(let request):
-            createDropTask(request)
-
-        case .captureDropWindow(let request):
-            captureDropWindow(request)
-
         case .requestScreenCapturePermission:
             Task { [weak self] in
                 let granted = await WindowCaptureService.requestPermission()
                 self?.handle(.windowCapturePermission(granted))
             }
 
-        case .captureWindow(let request):
+        case .readWindowContext(let token, let target):
             Task { [weak self] in
-                let result = await WindowCaptureService.capture(request.target)
-                self?.handle(.windowCaptureResult(request, result))
+                let context = await WindowContextService.read(target)
+                await MainActor.run {
+                    self?.handle(.windowContextRead(token, context))
+                }
             }
 
-        case .deliverWindowTask(let request):
-            let actions = self.actions
+        case .prepareDelivery(let plan):
             Task { [weak self] in
-                let prompt = WindowPrompt.text(
-                    target: request.target,
-                    screenshotPath: request.screenshotPath,
-                    task: request.task
-                )
-                let result: Result<String, BackendFailure>
-                switch request.destination {
-                case .agent(let pane):
-                    let outcome = await actions.sendPrompt(pane, prompt)
-                    switch outcome {
-                    case .success:
-                        let title = self?.state.agents[pane]?.title ?? pane.rawValue
-                        result = .success(title)
+                let result = await DeliveryService.prepare(plan)
+                await MainActor.run {
+                    guard let self else { return }
+                    switch result {
+                    case .success(let payload):
+                        self.handle(.deliveryPrepared(token: plan.token, payload: payload))
                     case .failure(let failure):
-                        result = .failure(failure)
-                    }
-                case .newTask(let kind, let cwd):
-                    let label = String(request.task.prefix(40))
-                        .replacingOccurrences(of: "\n", with: " ")
-                    let outcome = await actions.createTask(QuickTaskRequest(
-                        name: request.name,
-                        text: prompt,
-                        kind: kind,
-                        cwd: cwd,
-                        label: label
-                    )) { [weak self] progress in
-                        await self?.handle(.windowTaskProgress(token: request.token, progress: progress))
-                    }
-                    switch outcome {
-                    case .success(let launch):
-                        self?.handle(.windowTaskCreated(token: request.token, launch: launch))
-                        return
-                    case .failure(let failure):
-                        result = .failure(failure)
+                        self.handle(.deliveryFailed(token: plan.token, failure: failure))
                     }
                 }
-                self?.handle(.windowTaskResult(token: request.token, result: result))
             }
+
+        case .sendDelivery(let payload, let destination):
+            sendDelivery(payload, destination: destination)
+
+        case .sendQueuedDelivery(let pane, let payload):
+            sendQueuedDelivery(payload, pane: pane)
 
         case .playCue(let cue):
             AlertSoundPlayer.play(cue)

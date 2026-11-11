@@ -18,10 +18,32 @@ public enum FixtureName: String, CaseIterable, Sendable {
     case detail
     case drop
     case dropWindow
+    case mainAgentLock
+    case mainAgentFiles
+    case mainAgentQueued
+    case mainAgentMissing
+    case mainAgentBlocked
+    case mainAgentNew
+    case dropMainAgent
 }
 
 public enum Fixtures {
     public static let now = Date(timeIntervalSince1970: 1_760_000_000)
+
+    static let target = WindowTarget(
+        windowID: 4242,
+        ownerPID: 999,
+        appName: "Feishu",
+        bundleIdentifier: "com.bytedance.feishu",
+        title: "Q4 planning review",
+        bounds: CGRect(x: 420, y: 180, width: 900, height: 620)
+    )
+
+    static let samplePaths = [
+        "/Users/bytedance/projects/github/herdr-island/README.md",
+        "/Users/bytedance/projects/github/herdr-island/Package.swift",
+        "/Users/bytedance/projects/github/herdr-island/docs/terminal-verification-2026-11-10.md",
+    ]
 
     public static let blockedPreview = """
      RUN  v2.1.9 /Users/bytedance/projects/test/herdr-core
@@ -89,14 +111,6 @@ public enum Fixtures {
                 }
             }
         case .windowLocked:
-            let target = WindowTarget(
-                windowID: 4242,
-                ownerPID: 999,
-                appName: "Feishu",
-                bundleIdentifier: "com.bytedance.feishu",
-                title: "Q4 planning review",
-                bounds: CGRect(x: 420, y: 180, width: 900, height: 620)
-            )
             _ = IslandReducer.reduce(
                 &state,
                 .lockWindow(
@@ -110,6 +124,66 @@ public enum Fixtures {
             _ = IslandReducer.reduce(
                 &state,
                 .setWindowTaskDraft("Summarize the decisions and list the action items."),
+                now: now
+            )
+        case .mainAgentLock:
+            _ = IslandReducer.reduce(
+                &state,
+                .lockWindow(
+                    target,
+                    kind: .claude,
+                    cwd: "/Users/bytedance/projects/github/herdr-island"
+                ),
+                now: now
+            )
+            _ = IslandReducer.reduce(&state, .windowCapturePermission(true), now: now)
+            _ = IslandReducer.reduce(
+                &state,
+                .setWindowTaskDraft("Check the Q4 plan against the notes I attached."),
+                now: now
+            )
+            _ = IslandReducer.reduce(
+                &state,
+                .addDeliveryAttachments(.lock, samplePaths),
+                now: now
+            )
+        case .mainAgentBlocked:
+            _ = IslandReducer.reduce(&state, .setMainAgent(PaneID("w1:p1")), now: now)
+            _ = IslandReducer.reduce(
+                &state,
+                .lockWindow(
+                    target,
+                    kind: .claude,
+                    cwd: "/Users/bytedance/projects/github/herdr-island"
+                ),
+                now: now
+            )
+            _ = IslandReducer.reduce(&state, .windowCapturePermission(true), now: now)
+            _ = IslandReducer.reduce(
+                &state,
+                .setWindowTaskDraft("Summarize this window."),
+                now: now
+            )
+        case .mainAgentMissing:
+            _ = IslandReducer.reduce(&state, .setMainAgent(PaneID("w1:p3")), now: now)
+            _ = IslandReducer.reduce(
+                &state,
+                .snapshot(missingMainSnapshot()),
+                now: now
+            )
+            _ = IslandReducer.reduce(
+                &state,
+                .beginDrop(
+                    cwd: "/Users/bytedance/projects/github/herdr-island",
+                    kind: .claude,
+                    branch: "island/still-fern"
+                ),
+                now: now
+            )
+            _ = IslandReducer.reduce(&state, .openDropComposer, now: now)
+            _ = IslandReducer.reduce(
+                &state,
+                .setDropDraft("Pick up where the last agent stopped."),
                 now: now
             )
         case .deckRunning:
@@ -154,7 +228,11 @@ public enum Fixtures {
                     now: now
                 )
             }
-        case .drop, .dropCreating, .dropWindow:
+        case .drop, .dropCreating, .dropWindow, .mainAgentFiles,
+             .mainAgentNew, .dropMainAgent, .mainAgentQueued:
+            if name == .mainAgentQueued {
+                _ = IslandReducer.reduce(&state, .setMainAgent(PaneID("w1:p2")), now: now)
+            }
             _ = IslandReducer.reduce(
                 &state,
                 .beginDrop(
@@ -179,29 +257,66 @@ public enum Fixtures {
                 .setDropDefaultCwd("/Users/bytedance/projects/github/herdr-island"),
                 now: now
             )
-            _ = IslandReducer.reduce(
-                &state,
-                .setDropDraft("Trace the flaky geometry test and open a focused fix."),
-                now: now
-            )
+            switch name {
+            case .mainAgentFiles:
+                _ = IslandReducer.reduce(
+                    &state,
+                    .setDropDraft("Review the attached notes and list the open risks."),
+                    now: now
+                )
+                _ = IslandReducer.reduce(
+                    &state,
+                    .addDeliveryAttachments(.drop, samplePaths),
+                    now: now
+                )
+            case .mainAgentNew:
+                _ = IslandReducer.reduce(
+                    &state,
+                    .setDeliveryRecipient(.drop, .new),
+                    now: now
+                )
+                _ = IslandReducer.reduce(
+                    &state,
+                    .setDropDraft("Start a fresh pass on the attached brief."),
+                    now: now
+                )
+                _ = IslandReducer.reduce(
+                    &state,
+                    .addDeliveryAttachments(.drop, [samplePaths[0]]),
+                    now: now
+                )
+            case .dropMainAgent:
+                _ = IslandReducer.reduce(
+                    &state,
+                    .setDropDraft("Compare this window with the rollout plan."),
+                    now: now
+                )
+                _ = IslandReducer.reduce(&state, .setDropWindow(target), now: now)
+            case .mainAgentQueued:
+                _ = IslandReducer.reduce(
+                    &state,
+                    .setDropDraft("Queue this after the current review."),
+                    now: now
+                )
+            default:
+                _ = IslandReducer.reduce(
+                    &state,
+                    .setDropDraft("Trace the flaky geometry test and open a focused fix."),
+                    now: now
+                )
+            }
             _ = IslandReducer.reduce(&state, .setDropWorktree(true), now: now)
             if name == .dropWindow {
-                _ = IslandReducer.reduce(&state, .setDropWindow(WindowTarget(
-                    windowID: 4242,
-                    ownerPID: 999,
-                    appName: "Feishu",
-                    bundleIdentifier: "com.bytedance.feishu",
-                    title: "Q4 planning review",
-                    bounds: CGRect(x: 420, y: 180, width: 900, height: 620)
-                )), now: now)
+                _ = IslandReducer.reduce(&state, .setDropWindow(target), now: now)
+            }
+            if name == .mainAgentQueued {
+                _ = IslandReducer.reduce(&state, .submitDropTask(name: "island-preview"), now: now)
             }
         }
 
         if name == .dropCreating {
+            _ = IslandReducer.reduce(&state, .setDeliveryRecipient(.drop, .new), now: now)
             _ = IslandReducer.reduce(&state, .submitDropTask(name: "island-preview"), now: now)
-            _ = IslandReducer.reduce(&state, .dropTaskProgress(TaskCreationProgress(
-                stage: .submission, startedAt: Date().addingTimeInterval(-5), pane: PaneID("w9:p1")
-            )), now: now)
         }
         return IslandPresenter.present(state, now: now)
     }
@@ -250,7 +365,11 @@ public enum Fixtures {
             )
         case .quickTask, .quickTaskCreating, .quickTaskFailed, .dropCreating:
             return snapshot(for: .collapsed)
-        case .windowLocked:
+        case .windowLocked, .mainAgentLock:
+            return snapshot(for: .collapsed)
+        case .mainAgentBlocked:
+            return snapshot(for: .blocked)
+        case .mainAgentMissing:
             return snapshot(for: .collapsed)
         case .deckRunning:
             return snapshot(for: .blocked)
@@ -277,7 +396,7 @@ public enum Fixtures {
             )
         case .detail:
             return snapshot(for: .blocked)
-        case .drop, .dropWindow:
+        case .drop, .dropWindow, .mainAgentFiles, .mainAgentNew, .dropMainAgent, .mainAgentQueued:
             return snapshot(for: .collapsed)
         }
     }
@@ -290,6 +409,19 @@ public enum Fixtures {
                 agent("w1:p1", "claude", "Fix the flaky login test", "checkout", .idle, completionSeq: 11),
                 agent("w1:p2", "codex", "Audit the deploy script", "infra", .working),
                 agent("w1:p3", "claude", "Write the release notes", "herdr-core", .idle, completionSeq: 10),
+            ]
+        )
+    }
+
+    /// Generation 2 drops the pane the main agent identity pointed at, which
+    /// is the "agent exited" case the new-agent warning covers.
+    private static func missingMainSnapshot() -> AgentSnapshot {
+        AgentSnapshot(
+            generation: 2,
+            sampledAt: now.addingTimeInterval(1),
+            agents: [
+                agent("w1:p1", "claude", "Refactor the parser", "herdr-core", .working),
+                agent("w1:p2", "codex", "Audit the deploy script", "infra", .working),
             ]
         )
     }

@@ -38,6 +38,13 @@ enum Theme {
     static let textSecondary = textPrimary.opacity(0.62)
     static let textTertiary = textPrimary.opacity(0.36)
 
+    /// Borderless Menu titles are drawn by AppKit from the control's tint,
+    /// and a translucent tint resolves brighter than its composited value.
+    /// These are solid textSecondary/textTertiary equivalents over a menu
+    /// chip (3% white over panel), so menu titles match sibling labels.
+    static let menuTitleSecondary = Color(red: 0.630, green: 0.637, blue: 0.651)
+    static let menuTitleTertiary = Color(red: 0.408, green: 0.416, blue: 0.435)
+
     /// The readability scale shared by every island surface. Keep new text on
     /// these steps instead of inventing half-point sizes.
     enum TypeSize {

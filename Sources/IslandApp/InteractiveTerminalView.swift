@@ -21,16 +21,26 @@ struct InteractiveTerminalView: View {
                 Circle().fill(controller.connected ? Theme.mint : Theme.textTertiary).frame(width: 5, height: 5)
                 Text(controller.connected ? "实时终端" : controller.failure == nil ? "正在连接…" : "连接已断开")
                 Spacer()
-                Text("\(controller.columns) × \(controller.rows)")
+                if controller.connected && controller.isViewingHistory {
+                    Button("回到底部 ↓") { controller.session.resumeLiveOutput() }
+                        .buttonStyle(.plain)
+                        .help("查看最新输出")
+                }
             }
             .font(Theme.code(10))
             .foregroundStyle(Theme.textSecondary)
             .padding(.horizontal, 12)
             .frame(height: 30)
 
+            if let notice = controller.inputNotice {
+                Text(notice).font(Theme.sans(11)).foregroundStyle(Theme.textSecondary)
+                    .padding(.horizontal, 12).padding(.bottom, 6)
+            }
+
             ZStack {
                 NativeTerminal(controller: controller)
                     .padding(8)
+                    .help("滚轮查看历史；⇧Page Up / Down 翻页，输入时恢复实时输出")
                     .opacity(controller.failure == nil ? 1 : 0.25)
                 if !controller.connected, controller.failure == nil {
                     HStack(spacing: 10) {
@@ -86,6 +96,9 @@ final class TerminalController: NSObject, ObservableObject, @preconcurrency Term
     @Published private(set) var failure: String?
     @Published private(set) var columns = 80
     @Published private(set) var rows = 24
+    @Published private(set) var mouseCapture = false
+    @Published private(set) var isViewingHistory = false
+    @Published var inputNotice: String?
     let session = HerdrTerminalSession()
     let environment: HerdrEnvironment
     let pane: PaneID
@@ -101,8 +114,13 @@ final class TerminalController: NSObject, ObservableObject, @preconcurrency Term
     }
 
     func connect(takeover: Bool = false) {
+        TerminalPasteboard.cleanup()
         connected = false
         failure = nil
+        mouseCapture = false
+        isViewingHistory = false
+        inputNotice = nil
+        view?.resetMouseTracking()
         feeding = true
         view?.feed(text: "\u{1b}c")
         feeding = false
@@ -114,6 +132,9 @@ final class TerminalController: NSObject, ObservableObject, @preconcurrency Term
         resizeWork = nil
         session.stop()
         connected = false
+        mouseCapture = false
+        isViewingHistory = false
+        view?.resetMouseTracking()
     }
 
     private func receive(_ event: HerdrTerminalEvent) {
@@ -132,8 +153,15 @@ final class TerminalController: NSObject, ObservableObject, @preconcurrency Term
             if first, frame.columns != columns || frame.rows != rows {
                 session.resize(columns: columns, rows: rows)
             }
+        case .mouseCapture(let enabled):
+            mouseCapture = enabled
+            if enabled { view?.window?.acceptsMouseMovedEvents = true }
+        case .historyPosition(let viewingHistory):
+            isViewingHistory = viewingHistory
         case .closed(let reason):
             connected = false
+            mouseCapture = false
+            isViewingHistory = false
             failure = reason ?? "终端连接已结束。重新连接会回到同一会话。"
         }
     }
@@ -195,6 +223,7 @@ private struct NativeTerminal: NSViewRepresentable {
         let terminal = view.getTerminal()
         controller.sizeChanged(source: view, newCols: terminal.cols, newRows: terminal.rows)
         view.installInputMonitor()
+        view.registerForDraggedTypes([.fileURL, .png, .tiff, .string])
         return view
     }
     func updateNSView(_ view: IslandTerminalNSView, context: Context) {}
@@ -209,7 +238,9 @@ private struct NativeTerminal: NSViewRepresentable {
 final class IslandTerminalNSView: TerminalView {
     weak var controller: TerminalController?
     private var inputMonitor: Any?
-    private var wheelRemainder: CGFloat = 0
+    private var wheel = TerminalWheelAccumulator()
+    private var pressedButtons: Set<Int> = []
+    private var localSelectionButtons: Set<Int> = []
 
     static func containsResponder(_ responder: NSResponder?) -> Bool {
         var view = responder as? NSView
@@ -236,22 +267,22 @@ final class IslandTerminalNSView: TerminalView {
         // only the presentation buffer, so it cannot navigate this session.
         for scroller in subviews.compactMap({ $0 as? NSScroller }) { scroller.isHidden = true }
         setFrameSize(frame.size)
-        inputMonitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .keyDown]) { [weak self] event in
+        inputMonitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .keyDown,
+            .leftMouseDown, .leftMouseUp, .leftMouseDragged, .rightMouseDown, .rightMouseUp,
+            .rightMouseDragged, .otherMouseDown, .otherMouseUp, .otherMouseDragged, .mouseMoved]) { [weak self] event in
             guard let self, let window = self.window, event.window === window else { return event }
+            if self.handleApplicationMouse(event) { return nil }
             if event.type == .scrollWheel {
                 let point = self.convert(event.locationInWindow, from: nil)
                 guard self.bounds.contains(point) else { return event }
-                let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY / 12 : event.scrollingDeltaY
-                self.wheelRemainder += delta
-                let lines = Int(abs(self.wheelRemainder))
-                if lines > 0 {
-                    self.controller?.session.scroll(up: self.wheelRemainder > 0, lines: lines)
-                    self.wheelRemainder = 0
-                }
+                self.handleScrollWheel(event)
                 return nil
             }
-            guard window.firstResponder === self else { return event }
+            guard event.type == .keyDown, window.firstResponder === self else { return event }
+            // Keep the island's close action available while connecting.
+            if event.modifierFlags.contains(.command), event.charactersIgnoringModifiers?.lowercased() == "w" { return event }
             guard self.controller?.connected == true else { NSSound.beep(); return nil }
+            if self.handlePageScroll(event) { return nil }
             if event.modifierFlags.contains(.command) {
                 switch event.charactersIgnoringModifiers?.lowercased() {
                 case "c": self.copy(self); return nil
@@ -270,17 +301,131 @@ final class IslandTerminalNSView: TerminalView {
     func removeInputMonitor() {
         if let inputMonitor { NSEvent.removeMonitor(inputMonitor) }
         inputMonitor = nil
+        resetMouseTracking()
+    }
+
+    func resetMouseTracking() {
+        pressedButtons.removeAll()
+        localSelectionButtons.removeAll()
+    }
+
+    // SwiftTerm's wheel/key overrides are public rather than open. Route the
+    // native event monitor through these handlers instead of overriding them.
+    func handleScrollWheel(_ event: NSEvent) {
+        guard controller?.connected == true else { return }
+        let lineHeight = max(1, font.ascender - font.descender + font.leading)
+        let lines = wheel.lines(delta: event.scrollingDeltaY, precise: event.hasPreciseScrollingDeltas, lineHeight: lineHeight)
+        if lines != 0 { controller?.session.scroll(up: lines > 0, lines: abs(lines)) }
+    }
+
+    func handlePageScroll(_ event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection([.shift, .command, .control, .option])
+        guard !hasMarkedText(), modifiers == .shift, event.keyCode == 116 || event.keyCode == 121 else { return false }
+        guard let controller, controller.connected else { NSSound.beep(); return true }
+        controller.session.scroll(up: event.keyCode == 116, lines: max(1, controller.rows - 1), page: true)
+        return true
     }
 
     override func paste(_ sender: Any) {
         guard controller?.connected == true else { NSSound.beep(); return }
-        guard let text = NSPasteboard.general.string(forType: .string), !text.isEmpty else { return }
-        // Herdr encodes paste using the live PTY mode. No Enter is appended.
-        controller?.session.paste(text)
+        paste(from: .general)
+    }
+
+    @discardableResult
+    func paste(from pasteboard: NSPasteboard) -> Bool {
+        guard controller?.connected == true else { return false }
+        do {
+            guard let text = try TerminalPasteboard.text(from: pasteboard), !text.isEmpty else { return false }
+            controller?.inputNotice = nil
+            // Herdr encodes paste using the live PTY mode. No Enter is appended.
+            controller?.session.paste(text)
+            return true
+        } catch {
+            controller?.inputNotice = error.localizedDescription
+            NSSound.beep()
+            return false
+        }
+    }
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+        controller?.connected == true && sender.draggingPasteboard.availableType(from: [.fileURL, .png, .tiff, .string]) != nil ? .copy : []
+    }
+
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        window?.makeFirstResponder(self)
+        return paste(from: sender.draggingPasteboard)
+    }
+
+    /// True means the event belongs to the terminal program. Shift + drag
+    /// stays a local selection even if the modifier changes mid-gesture.
+    func handleApplicationMouse(_ event: NSEvent) -> Bool {
+        let action: HerdrTerminalMouse.Action
+        switch event.type {
+        case .leftMouseDown, .rightMouseDown, .otherMouseDown: action = .down
+        case .leftMouseUp, .rightMouseUp, .otherMouseUp: action = .up
+        case .leftMouseDragged, .rightMouseDragged, .otherMouseDragged: action = .drag
+        case .mouseMoved: action = .move
+        default: return false
+        }
+        let point = convert(event.locationInWindow, from: nil)
+        let button: Int
+        switch event.type {
+        case .leftMouseDown, .leftMouseUp, .leftMouseDragged: button = 0
+        case .rightMouseDown, .rightMouseUp, .rightMouseDragged: button = 1
+        default: button = event.buttonNumber
+        }
+        if action == .down {
+            guard bounds.contains(point) else { return false }
+            if event.modifierFlags.contains(.shift) || controller?.mouseCapture != true {
+                localSelectionButtons.insert(button)
+                return false
+            }
+        }
+        if localSelectionButtons.contains(button) {
+            if action == .up { localSelectionButtons.remove(button) }
+            return false
+        }
+        guard controller?.connected == true,
+              controller?.mouseCapture == true || pressedButtons.contains(button),
+              bounds.contains(point) || pressedButtons.contains(button) else { return false }
+        if action == .move, event.modifierFlags.contains(.shift) { return false }
+        if action == .down { pressedButtons.insert(button); window?.makeFirstResponder(self) }
+        if action == .up { pressedButtons.remove(button) }
+        let terminal = getTerminal(), grid = getOptimalFrameSize()
+        let cellWidth = max(1, grid.width / CGFloat(terminal.cols))
+        let cellHeight = max(1, grid.height / CGFloat(terminal.rows))
+        let column = max(0, min(terminal.cols - 1, Int(point.x / cellWidth)))
+        let row = max(0, min(terminal.rows - 1, Int((bounds.height - point.y) / cellHeight)))
+        let flags = event.modifierFlags
+        let modifiers: UInt8 = (flags.contains(.shift) ? 1 : 0) | (flags.contains(.control) ? 2 : 0)
+            | (flags.contains(.option) ? 4 : 0) | (flags.contains(.command) ? 8 : 0)
+        controller?.session.mouse(HerdrTerminalMouse(action: action,
+            button: button == 1 ? .right : button == 2 ? .middle : .left,
+            column: column, row: row, modifiers: modifiers))
+        return true
     }
 
     override func mouseDown(with event: NSEvent) {
         window?.makeFirstResponder(self)
         super.mouseDown(with: event)
+    }
+}
+
+/// Trackpads report pixels; wheel mice report lines. Keep sub-line motion so
+/// small gestures and changes of direction do not disappear or jump a page.
+struct TerminalWheelAccumulator {
+    private var remainder: CGFloat = 0
+    mutating func lines(delta: CGFloat, precise: Bool, lineHeight: CGFloat) -> Int {
+        guard delta.isFinite, lineHeight.isFinite, lineHeight > 0 else { return 0 }
+        if !precise {
+            remainder = 0
+            guard delta != 0 else { return 0 }
+            let rounded = Int(max(-65_535, min(65_535, delta.rounded())))
+            return rounded == 0 ? (delta > 0 ? 1 : -1) : rounded
+        }
+        remainder += delta
+        let lines = Int(max(-65_535, min(65_535, (remainder / lineHeight).rounded(.towardZero))))
+        remainder -= CGFloat(lines) * lineHeight
+        return lines
     }
 }

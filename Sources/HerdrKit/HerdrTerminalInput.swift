@@ -7,7 +7,10 @@ enum HerdrTerminalInput: Equatable {
     case text(String)
     case key(String)
     case paste(String)
-    case scroll(up: Bool, lines: Int)
+    case scroll(up: Bool, lines: Int, page: Bool)
+    case mouse(HerdrTerminalMouse)
+    case resize(columns: Int, rows: Int)
+    case resume
 
     static func decode(_ bytes: Data) -> Self? {
         guard let text = String(data: bytes, encoding: .utf8), !text.isEmpty else { return nil }
@@ -50,20 +53,23 @@ enum HerdrTerminalInput: Equatable {
         case .text: "pane.send_text"
         case .key: "pane.send_keys"
         case .paste: "pane.send_input"
-        case .scroll: "pane.get"
+        case .scroll: "terminal.scroll"
+        case .resume: "terminal.input"
+        case .mouse: "terminal.mouse"
+        case .resize: "terminal.resize"
         }
     }
     var parameters: [String: HerdrRPCValue] {
         switch self {
         case .text(let text), .paste(let text): ["text": .string(text)]
         case .key(let key): ["keys": .array([.string(key)])]
-        case .scroll: [:]
+        case .scroll, .resume, .mouse, .resize: [:]
         }
     }
     var size: Int {
         switch self {
         case .text(let text), .paste(let text), .key(let text): text.utf8.count
-        case .scroll: 1
+        case .scroll, .resume, .mouse, .resize: 1
         }
     }
 }

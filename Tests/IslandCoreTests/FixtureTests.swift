@@ -36,7 +36,32 @@ final class FixtureTests: XCTestCase {
         XCTAssertEqual(Fixtures.presentation(named: .deckRunning).deckHeight, IslandGeometry.deckMinHeight)
         XCTAssertTrue(Fixtures.presentation(named: .deckReplying).isReplying)
         XCTAssertEqual(Fixtures.presentation(named: .deckCrowded).deckHeight, IslandGeometry.deckMaxHeight)
-        XCTAssertEqual(Fixtures.presentation(named: .windowLocked).deckHeight, IslandGeometry.windowTaskSize.height)
+
+        let windowLocked = Fixtures.presentation(named: .windowLocked)
+        XCTAssertEqual(windowLocked.deckHeight, 300)
+        XCTAssertEqual(windowLocked.windowTask?.composer.recipient.isMain, true)
+        XCTAssertEqual(windowLocked.windowTask?.composer.hasWindow, true)
+
+        let mainAgentFiles = Fixtures.presentation(named: .mainAgentFiles)
+        XCTAssertEqual(mainAgentFiles.drop?.composer.attachments.count, 3)
+        XCTAssertEqual(mainAgentFiles.drop?.composer.send.canSubmit, true)
+        XCTAssertEqual(mainAgentFiles.drop?.composer.recipient.isMain, true)
+
+        let queued = Fixtures.presentation(named: .mainAgentQueued)
+        XCTAssertEqual(queued.drop?.composer.outcome, .queued)
+        XCTAssertEqual(queued.drop?.composer.text, "")
+
+        let missing = Fixtures.presentation(named: .mainAgentMissing)
+        XCTAssertEqual(missing.drop?.composer.recipient.reason, .mainMissing)
+        XCTAssertEqual(missing.drop?.composer.showNewAgentSettings, true)
+
+        let blockedMain = Fixtures.presentation(named: .mainAgentBlocked)
+        XCTAssertEqual(blockedMain.windowTask?.composer.send.canSubmit, false)
+        XCTAssertEqual(blockedMain.windowTask?.composer.notices.first?.kind, .blocked)
+
+        let newAgent = Fixtures.presentation(named: .mainAgentNew)
+        XCTAssertEqual(newAgent.drop?.composer.recipient.mode, .new)
+        XCTAssertEqual(newAgent.drop?.composer.showNewAgentSettings, true)
 
         XCTAssertNotEqual(collapsed, expanded)
         XCTAssertNotEqual(collapsed, blocked)
