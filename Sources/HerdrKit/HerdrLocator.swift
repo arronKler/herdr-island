@@ -1,17 +1,19 @@
 import Foundation
 import IslandCore
 
-public struct HerdrEnvironment: Sendable, Equatable {
-    public let binary: URL
-    public let socket: URL
-
-    public init(binary: URL, socket: URL) {
-        self.binary = binary
-        self.socket = socket
-    }
-}
-
 public enum HerdrLocator {
+    public static func defaultInstallDirectory(
+        home: URL = FileManager.default.homeDirectoryForCurrentUser
+    ) -> URL {
+        home.appendingPathComponent(".local/bin", isDirectory: true)
+    }
+
+    public static func defaultBinaryURL(
+        home: URL = FileManager.default.homeDirectoryForCurrentUser
+    ) -> URL {
+        defaultInstallDirectory(home: home).appendingPathComponent("herdr")
+    }
+
     public static func socketURL(
         environment: [String: String] = ProcessInfo.processInfo.environment,
         home: URL = FileManager.default.homeDirectoryForCurrentUser
@@ -35,7 +37,7 @@ public enum HerdrLocator {
         if let override, !override.isEmpty {
             paths.append((override as NSString).expandingTildeInPath)
         }
-        paths.append(home.appendingPathComponent(".local/bin/herdr").path)
+        paths.append(defaultBinaryURL(home: home).path)
         paths.append("/opt/homebrew/bin/herdr")
         paths.append("/usr/local/bin/herdr")
         if let searchPath = environment["PATH"] {
