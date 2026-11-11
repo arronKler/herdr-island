@@ -138,7 +138,7 @@ Herdr 能识别的 agent 都会出现在 Island 里。新任务可以启动以�
 
 ### 更新
 
-`0.1.0` 及更早版本没有更新器，第一个集成 Sparkle 的版本仍要手动安装一次。之后 Island 每天检查一次签名 appcast，发现新版本后在后台下载，并在退出或选择重启时安装。菜单栏的 **检查更新…** 可以随时手动触发。
+Island 每天检查一次签名 appcast，发现新版本后在后台下载，并在退出或选择重启时安装。菜单栏的 **检查更新…** 可以随时手动触发。
 
 appcast 和更新包都使用 EdDSA 签名。公钥在 `Resources/Info.plist`，私钥放在 GitHub Actions 的 `SPARKLE_ED_PRIVATE_KEY` secret。请备份私钥。ad-hoc 签名下它是唯一的更新信任链，丢失后现有安装无法再自动更新。
 
@@ -280,7 +280,7 @@ ISLAND_BENCHMARK_CREATE=1 swift test --filter TaskCreationPerformanceTests/testL
 - 应用界面目前只有简体中文，还没有 in-app 英文本地化。
 - 详情终端只支持 Herdr 0.9.5 的协议 22。其他版本会显示明确的不兼容错误，任务台和投递仍然可用。
 - 预编译版本只支持 Apple Silicon，且为 ad-hoc 签名、未公证。首次启动需要手动放行，更新后权限可能再次询问。
-- 自动更新从第一个集成 Sparkle 的版本开始。`0.1.0` 及更早版本没有更新器，需要手动替换一次。feed 使用 `releases/latest`，prerelease 不会被自动推送。
+- feed 使用 `releases/latest`，prerelease 不会被自动推送。
 - 窗口锁定只覆盖当前 Space 和当前屏幕。最小化、切换 Space 或重新打开窗口都会导致截图失败；受 DRM 保护的窗口可能只能截到黑屏。
 - 忙碌的 agent 只接受一条排队消息。blocked 或状态未知的 agent 不能接收自动消息。
 - 附件是绝对路径，最多 8 个，不会复制。缺失文件会在发送前被移除；粘贴图片限制为 16 MB / 4000 万像素，7 天后过期。

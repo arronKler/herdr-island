@@ -274,10 +274,10 @@
 
             <div class="issue">
               <div class="issue-head">
-                <h3>自动更新从第一个 Sparkle 版本开始</h3>
+                <h3>prerelease 需要手动下载</h3>
                 <span class="pill pill--limit">限制</span>
               </div>
-              <p><code>0.1.0</code> 及更早版本没有更新器，需要手动安装一次。从第一个集成 Sparkle 的版本开始，Island 每天检查一次签名 appcast，发现新版本后在后台下载，并在退出或选择重启时安装。feed 使用 <code>releases/latest</code>，prerelease 不会被自动推送。</p>
+              <p>稳定版本会自动更新。feed 使用 <code>releases/latest</code>，不包含 prerelease，所以 beta 版本需要手动下载。</p>
               <p>更新器只向 GitHub 请求 appcast 并下载签名更新包，不上传账号、标识、prompt 或使用数据。</p>
             </div>
           </section>

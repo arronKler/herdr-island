@@ -178,10 +178,9 @@ Apps built from source carry no quarantine flag and skip the Gatekeeper step.
 
 ### Updates
 
-`0.1.0` and earlier have no updater, so the first Sparkle-enabled release has to be installed by
-hand. After that, Island checks the signed appcast once a day, downloads a new version in the
-background, and installs it when you quit or choose to restart. **Check for Updates…** in the
-menu bar triggers a check at any time.
+Island checks the signed appcast once a day, downloads a new version in the background, and
+installs it when you quit or choose to restart. **Check for Updates…** in the menu bar triggers a
+check at any time.
 
 The appcast and archive are EdDSA-signed. The public key ships in `Resources/Info.plist`; the
 private key lives in the `SPARKLE_ED_PRIVATE_KEY` GitHub Actions secret. Back that key up. With
@@ -367,9 +366,7 @@ is in [Known issues](https://arronkler.github.io/herdr-island/known-issues.html)
   incompatibility error, while the deck and delivery continue to work.
 - Prebuilt releases are Apple Silicon only and ad-hoc signed, not notarized. Gatekeeper needs a
   manual approval, and permissions may be requested again after an update.
-- Automatic updates begin with the first Sparkle-enabled release. `0.1.0` and earlier have no
-  updater and must be replaced manually once. The feed uses `releases/latest`, so prereleases are
-  not offered automatically.
+- The update feed uses `releases/latest`, so prereleases are not offered automatically.
 - Window lock only covers the current Space and display. Minimizing, switching Spaces, or
   reopening a window breaks capture; DRM-protected windows may capture as black.
 - A busy agent accepts only one queued message. Blocked or unknown-state agents cannot receive

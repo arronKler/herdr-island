@@ -274,10 +274,10 @@
 
             <div class="issue">
               <div class="issue-head">
-                <h3>Auto-update starts with the first Sparkle release</h3>
+                <h3>Prereleases are manual downloads</h3>
                 <span class="pill pill--limit">Limit</span>
               </div>
-              <p><code>0.1.0</code> and earlier have no updater, so they need one manual install. From the first Sparkle-enabled release, Island checks a signed appcast daily, downloads in the background, and installs when you quit or choose to restart. The feed uses <code>releases/latest</code>, so prereleases are not offered automatically.</p>
+              <p>Stable releases update automatically. The feed uses <code>releases/latest</code>, which excludes prereleases, so beta builds must be downloaded by hand.</p>
               <p>The updater's only requests are the appcast fetch and the signed archive download from GitHub. It sends no account, identifier, prompt, or usage data.</p>
             </div>
           </section>
