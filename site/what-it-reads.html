@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="en" data-counterpart="zh/what-it-reads.html">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#08090C">
+<title>What it reads · Herdr Island</title>
+<meta name="description" content="Herdr Island's data inventory: what it reads from Herdr and macOS, what it writes to Herdr, what it keeps locally, and what leaves the machine.">
+<link rel="canonical" href="https://arronkler.github.io/herdr-island/what-it-reads.html">
+<link rel="alternate" hreflang="en" href="https://arronkler.github.io/herdr-island/what-it-reads.html">
+<link rel="alternate" hreflang="zh-Hans" href="https://arronkler.github.io/herdr-island/zh/what-it-reads.html">
+<link rel="alternate" hreflang="x-default" href="https://arronkler.github.io/herdr-island/what-it-reads.html">
+<link rel="icon" href="assets/brand/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="pages.css">
+<script src="lang.js"></script>
+</head>
+<body id="top">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <nav class="nav wrap" aria-label="Main navigation">
+    <a class="brand" href="index.html">
+      <img src="assets/brand/icon.svg" width="28" height="28" alt="">
+      <span class="brand-name">Herdr Island</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html#install">Install</a>
+      <a href="index.html#status">Status</a>
+      <a href="index.html#deck">Deck</a>
+      <a href="index.html#terminal">Terminal</a>
+      <a href="index.html#new-task">New task</a>
+      <a href="index.html#window">Window</a>
+      <a href="index.html#safety">Safety</a>
+      <a href="faq.html">Docs</a>
+    </div>
+    <div class="nav-actions">
+      <a class="lang-switch" href="zh/what-it-reads.html" data-language="zh" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+      <a class="btn btn-ghost nav-github" href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">
+        GitHub
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5h7v7M12.5 3.5 4 12"/></svg>
+      </a>
+      <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">Download</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main" class="page-main">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="index.html">Herdr Island</a><span>/</span><a href="faq.html">Docs</a><span>/</span><span>What it reads</span>
+    </nav>
+
+    <div class="page-hero">
+      <p class="eyebrow">Data · Auditable inventory</p>
+      <h1>What it reads.</h1>
+      <p class="lede">Island is a local tool: no account, telemetry, or network requests. Below is every piece of data it reads from Herdr and macOS, writes to Herdr, and keeps on this Mac. Last checked 2026-11-11 against Herdr 0.9.5 and single-pane protocol 22.</p>
+      <div class="meta-row">
+        <span class="meta"><b>Account</b> None</span>
+        <span class="meta"><b>Telemetry</b> None</span>
+        <span class="meta"><b>Network requests</b> None</span>
+        <span class="meta"><b>Uploads</b> None</span>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="layout">
+        <aside class="toc" aria-label="On this page">
+          <div class="toc-label">On this page</div>
+          <ol>
+            <li><a href="#summary">In one line</a></li>
+            <li><a href="#reads-herdr">Reads from Herdr</a></li>
+            <li><a href="#reads-macos">Reads from macOS</a></li>
+            <li><a href="#writes-herdr">Writes to Herdr</a></li>
+            <li><a href="#writes-local">Writes locally</a></li>
+            <li><a href="#permissions">Permission matrix</a></li>
+            <li><a href="#does-not">What it does not do</a></li>
+            <li><a href="#verify">Verify it yourself</a></li>
+            <li><a href="uninstall.html">Retention &amp; removal →</a></li>
+          </ol>
+        </aside>
+
+        <div class="content">
+          <section id="summary">
+            <h2><span class="idx">00 / In one line</span>Read Herdr, write Herdr, keep it local</h2>
+            <div class="card-grid">
+              <div class="card">
+                <div class="card-kicker">Read</div>
+                <h3>Herdr status and terminal</h3>
+                <p>Agent state, latest output, current directory, labels, worktree, and the terminal stream. Optionally the locked window's selected text, URL, document path, and one screenshot.</p>
+              </div>
+              <div class="card card--amber">
+                <div class="card-kicker">Write</div>
+                <h3>Only what you trigger</h3>
+                <p>Create a workspace / worktree, start an agent, submit a prompt, focus a pane, or type into the detail terminal. No background writes.</p>
+              </div>
+              <div class="card card--mint">
+                <div class="card-kicker">Keep</div>
+                <h3>Stays on this Mac</h3>
+                <p>Screenshots, pasted images, and preferences live in local directories. Prompts, code, attachment paths, and screenshots are not uploaded; there is no account or cloud sync.</p>
+              </div>
+            </div>
+            <div class="callout">
+              <span class="mark" aria-hidden="true"></span>
+              <p><strong>The only path off this Mac:</strong> there isn't one. Island makes no network requests. Herdr itself, the agents you use, and macOS may have their own network behavior; that is not Island reading or writing.</p>
+            </div>
+          </section>
+
+          <section id="reads-herdr">
+            <h2><span class="idx">01 / Reads from Herdr</span>State, previews, and terminal</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Data</th><th>Source</th><th>Purpose</th><th>Leaves Mac</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Agent list and metadata</strong><br>pane / workspace / tab, agent kind, state, title, cwd / foreground_cwd, completion_seq, state_change_seq, state_labels, name, focused, revision</td>
+                    <td>Unix socket <code>agent.list</code> and <code>pane.list</code>; sampled every 1.5 seconds, with immediate state events</td>
+                    <td>Deck, status, filters, search, main-agent resolution</td>
+                    <td>No</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Latest terminal output</strong><br>recent unwrapped preview</td>
+                    <td>Socket <code>agent.read</code>; falls back to <code>herdr agent read --source recent-unwrapped</code> when disconnected</td>
+                    <td>Latest line on a running row, detail preview</td>
+                    <td>No</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Terminal stream and size</strong><br>continuous ANSI frames, main-screen history, mouse mode, PTY size</td>
+                    <td>Single-pane binary socket, protocol 22; <code>TerminalAttach</code> / <code>pane.get</code></td>
+                    <td>Interactive terminal in the detail view</td>
+                    <td>No</td>
+                  </tr>
+                  <tr>
+                    <td><strong>State events</strong><br><code>pane_agent_status_changed</code> / <code>pane.agent_status_changed</code></td>
+                    <td>Herdr socket events</td>
+                    <td>Update status immediately instead of waiting for the next sample</td>
+                    <td>No</td>
+                  </tr>
+                  <tr>
+                    <td><strong>CLI fallback results</strong><br><code>herdr agent list</code>, <code>agent read</code>, <code>pane list</code>, and so on</td>
+                    <td>Local executable <code>~/.local/bin/herdr</code> or <code>herdr</code> on PATH</td>
+                    <td>Read-only fallback when the socket is incompatible or down; write operations are not retried automatically</td>
+                    <td>No</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="table-note">The socket defaults to <code>~/.config/herdr/herdr.sock</code> and can be overridden with <code>HERDR_SOCKET_PATH</code> or <code>HERDR_SOCKET</code>. Settings → Environment shows the actual path.</p>
+          </section>
+
+          <section id="reads-macos">
+            <h2><span class="idx">02 / Reads from macOS</span>Only when the matching action happens</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Data</th><th>When</th><th>Permission</th><th>Without permission</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Selected text, page URL, document path</strong><br>caps 4,000 / 2,048 / 1,024 characters</td>
+                    <td>When composing and sending from a locked window; a best-effort read of the target app</td>
+                    <td>Accessibility</td>
+                    <td>Fields are empty; everything else still sends</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Window screenshot</strong><br>one PNG of the target window</td>
+                    <td>Only when you press Send; no continuous recording, no whole-screen capture</td>
+                    <td>Screen Recording</td>
+                    <td>No screenshot; text, context, and files still send</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Ghostty terminal targeting</strong><br>finds the tty hosting Herdr via Apple Events</td>
+                    <td>When you click "Go to terminal" or a detail jump</td>
+                    <td>Automation</td>
+                    <td>Still focuses the Herdr pane, just not the exact Ghostty terminal</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Clipboard</strong><br>text, file URLs, PNG / TIFF images</td>
+                    <td>When you press ⌘V in the detail, paste from the menu, or drag files in</td>
+                    <td>No extra permission</td>
+                    <td>Nothing is pasted; there is no background clipboard history</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Files you choose</strong><br>absolute paths</td>
+                    <td>When you add an attachment or drag into the composer</td>
+                    <td>No extra permission</td>
+                    <td>No attachment is added</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <span class="mark" aria-hidden="true"></span>
+              <p>Island does not read the microphone, camera, calendar, contacts, location, Bluetooth, focus status, or the whole disk. Accessibility reads only a few text attributes from the window you locked; Screen Recording captures one target window only when you send.</p>
+            </div>
+          </section>
+
+          <section id="writes-herdr">
+            <h2><span class="idx">03 / Writes to Herdr</span>Only when you explicitly act</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Action</th><th>Herdr capability</th><th>Trigger</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><strong>Create a workspace</strong></td><td><code>workspace create --cwd … --label … --no-focus</code></td><td>New task / deliver to a new agent</td></tr>
+                  <tr><td><strong>Create an isolated worktree</strong></td><td><code>worktree create --cwd … --branch … --label … --no-focus</code></td><td>Worktree enabled in the composer</td></tr>
+                  <tr><td><strong>Start an agent</strong></td><td><code>agent start</code></td><td>New task / deliver to a new agent</td></tr>
+                  <tr><td><strong>Submit a prompt</strong></td><td><code>agent prompt</code> (with <code>--wait</code> when needed)</td><td>A send or queued delivery is committed</td></tr>
+                  <tr><td><strong>Focus a pane / workspace</strong></td><td><code>agent focus</code>, <code>workspace focus</code></td><td>"Go to terminal" / "Open in Herdr"</td></tr>
+                  <tr><td><strong>Terminal input</strong></td><td>Single-pane socket: keys, text, paste, scroll, resize, mouse reporting</td><td>What you actually type or do in the detail terminal</td></tr>
+                  <tr><td><strong>Wait for state</strong></td><td><code>agent wait</code></td><td>Confirm the state after a new task or send</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="table-note">Write operations such as create and submit are not retried automatically. A blocked agent is not accepted by <code>agent prompt</code>, and Island does not fall back to simulated keys.</p>
+          </section>
+
+          <section id="writes-local">
+            <h2><span class="idx">04 / Writes locally</span>Directories, retention, and deletion</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Location</th><th>Contents</th><th>Retention</th><th>How to delete</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>~/Library/Application Support/HerdrIsland/Captures/</code></td>
+                    <td>Window screenshot PNGs</td>
+                    <td>Newest 50; older images are pruned when a new one is written</td>
+                    <td>Delete the directory, or clean it during uninstall</td>
+                  </tr>
+                  <tr>
+                    <td><code>~/Library/Caches/HerdrIsland/TerminalImages/</code></td>
+                    <td>PNGs converted from ⌘V / dragged-in images</td>
+                    <td>Directory 0700, files 0600; older than 7 days is cleaned the next time the terminal opens or an image is pasted</td>
+                    <td>Delete the directory, or clean it during uninstall</td>
+                  </tr>
+                  <tr>
+                    <td>UserDefaults <code>local.herdr.island</code></td>
+                    <td>Main-agent identity (pane / kind / name / project / workspace), last model, last / default directory, auto-expand toggles, completion hold, two alert sounds</td>
+                    <td>Until the preference is deleted</td>
+                    <td><code>defaults delete local.herdr.island</code></td>
+                  </tr>
+                  <tr>
+                    <td>System clipboard</td>
+                    <td>Whatever you copy with "Copy command" or from the terminal</td>
+                    <td>Managed by macOS and your other apps</td>
+                    <td>Overwrite or clear it normally</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="table-note">Island installs no background service, registers no login item, writes no LaunchAgent, and creates no database outside Application Support.</p>
+          </section>
+
+          <section id="permissions">
+            <h2><span class="idx">05 / Permission matrix</span>All three are on demand</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>Permission</th><th>Purpose</th><th>Without it</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><strong>Automation</strong></td><td>Bring Herdr's pane to the front in Ghostty</td><td>Still focuses the Herdr pane; the exact jump is unavailable</td></tr>
+                  <tr><td><strong>Screen Recording</strong></td><td>Capture one locked window when sending</td><td>No screenshot; everything else is unaffected</td></tr>
+                  <tr><td><strong>Accessibility</strong></td><td>Read selected text, URL, and document path from the locked window</td><td>Context is empty; everything else is unaffected</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>Settings → Permissions shows the state and opens the matching system pane. macOS may require restarting Island after a permission change. Island has no microphone, camera, calendar, contacts, location, or Bluetooth permission.</p>
+          </section>
+
+          <section id="does-not">
+            <h2><span class="idx">06 / What it does not do</span>The explicit no-list</h2>
+            <ul class="checklist checklist--no">
+              <li>No account, cloud sync, telemetry, analytics, or crash upload.</li>
+              <li>No network requests; no update check and no background download.</li>
+              <li>No continuous recording while locked, no whole-screen capture, no reading of other windows.</li>
+              <li>No clipboard history and no background clipboard reads.</li>
+              <li>No copying attachments; the prompt contains absolute paths only.</li>
+              <li>No auto-approving blocked agents, no sending y / Enter, no simulated confirmation keys.</li>
+              <li>No uploading prompts, code, attachment paths, or screenshots anywhere.</li>
+              <li>No background service or login item; no Island process remains after quitting.</li>
+            </ul>
+            <div class="callout callout--mint">
+              <span class="mark" aria-hidden="true"></span>
+              <p><strong>What you can verify:</strong> every line above maps to a place in the source. The main files and self-check commands are below. If the inventory and the actual behavior disagree, that is a bug — please report it.</p>
+            </div>
+          </section>
+
+          <section id="verify">
+            <h2><span class="idx">07 / Verify it yourself</span>Source, paths, and network</h2>
+            <h3>Main source files</h3>
+            <ul>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/HerdrKit/HerdrWire.swift" target="_blank" rel="noreferrer">HerdrWire.swift</a>: the agent fields read from Herdr.</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/HerdrKit/HerdrCLI.swift" target="_blank" rel="noreferrer">HerdrCLI.swift</a>: socket / CLI read and write commands.</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/HerdrKit/HerdrTerminalSession.swift" target="_blank" rel="noreferrer">HerdrTerminalSession.swift</a>: the single-pane terminal protocol.</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/WindowContextService.swift" target="_blank" rel="noreferrer">WindowContextService.swift</a>: Accessibility reads.</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/WindowCaptureService.swift" target="_blank" rel="noreferrer">WindowCaptureService.swift</a>: ScreenCaptureKit capture and the 50-image cap.</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/TerminalPasteboard.swift" target="_blank" rel="noreferrer">TerminalPasteboard.swift</a>: pasted-image cache, 0700 / 0600, and 7-day cleanup.</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/MainAgentStore.swift" target="_blank" rel="noreferrer">MainAgentStore.swift</a>: the main agent stores identity only.</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/IslandSettings.swift" target="_blank" rel="noreferrer">IslandSettings.swift</a>: preferences and alert sounds.</li>
+            </ul>
+            <h3>Check on this Mac</h3>
+            <pre><code># Preferences (main agent, directories, sounds, and so on)
+defaults read local.herdr.island
+
+# Screenshots and pasted images
+ls -la ~/Library/Application\ Support/HerdrIsland/Captures/
+ls -la ~/Library/Caches/HerdrIsland/TerminalImages/
+
+# Signing and version
+codesign -dv /Applications/HerdrIsland.app
+defaults read /Applications/HerdrIsland.app/Contents/Info.plist CFBundleShortVersionString
+
+# Network: watch with Little Snitch / nettop, or search the source for network clients
+grep -rnE 'URLSession|URLRequest|NWConnection' Sources</code></pre>
+            <p>Without a development environment, watch Activity Monitor → Network or Little Snitch: Island should make no network connections while idle or while sending.</p>
+          </section>
+
+          <div class="page-end">
+            <span>Last checked: 2026-11-11 · Herdr 0.9.5 · Protocol 22</span>
+            <span><a href="uninstall.html">Next: Uninstall →</a></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="assets/brand/icon.svg" width="38" height="38" alt="">
+        <div>
+          <div class="name">Herdr Island</div>
+          <p>The graphical front end for Herdr. Herdr still executes the work.</p>
+        </div>
+      </div>
+      <nav class="footer-links" aria-label="Footer links">
+        <a href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">Releases</a>
+        <a href="https://github.com/arronKler/herdr-island#readme" target="_blank" rel="noreferrer">README</a>
+        <a href="faq.html">FAQ</a>
+        <a href="known-issues.html">Known issues</a>
+        <a href="what-it-reads.html">What it reads</a>
+        <a href="uninstall.html">Uninstall</a>
+        <a href="zh/what-it-reads.html" data-language="zh" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+        <a href="#top">Back to top</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span>macOS 14+ · Herdr 0.9.5+ · Apple Silicon · Version and sha256 in Releases</span>
+      <span>No account, telemetry, or upload. Screenshots and prompts stay on this Mac.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="zh-CN" data-counterpart="../uninstall.html">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#08090C">
+<title>卸载 · Herdr Island</title>
+<meta name="description" content="完整移除 Herdr Island：应用、截图、粘贴图片、偏好，以及自动化、屏幕录制和辅助功能授权。">
+<link rel="canonical" href="https://arronkler.github.io/herdr-island/zh/uninstall.html">
+<link rel="alternate" hreflang="en" href="https://arronkler.github.io/herdr-island/uninstall.html">
+<link rel="alternate" hreflang="zh-Hans" href="https://arronkler.github.io/herdr-island/zh/uninstall.html">
+<link rel="alternate" hreflang="x-default" href="https://arronkler.github.io/herdr-island/uninstall.html">
+<link rel="icon" href="../assets/brand/icon.svg" type="image/svg+xml">
+<link rel="icon" href="../assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../pages.css">
+<script src="../lang.js"></script>
+</head>
+<body id="top">
+<a class="skip" href="#main">跳到主要内容</a>
+
+<header class="site-header">
+  <nav class="nav wrap" aria-label="主导航">
+    <a class="brand" href="index.html">
+      <img src="../assets/brand/icon.svg" width="28" height="28" alt="">
+      <span class="brand-name">Herdr Island</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html#install">安装</a>
+      <a href="index.html#status">状态</a>
+      <a href="index.html#deck">任务台</a>
+      <a href="index.html#terminal">终端</a>
+      <a href="index.html#new-task">新任务</a>
+      <a href="index.html#window">窗口</a>
+      <a href="index.html#safety">安全</a>
+      <a href="faq.html">文档</a>
+    </div>
+    <div class="nav-actions">
+      <a class="lang-switch" href="../uninstall.html" data-language="en" hreflang="en" lang="en">EN</a>
+      <a class="btn btn-ghost nav-github" href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">
+        GitHub
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5h7v7M12.5 3.5 4 12"/></svg>
+      </a>
+      <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">下载</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main" class="page-main">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="面包屑">
+      <a href="index.html">Herdr Island</a><span>/</span><a href="faq.html">文档</a><span>/</span><span>卸载</span>
+    </nav>
+
+    <div class="page-hero">
+      <p class="eyebrow">移除 · 本机且完整</p>
+      <h1>把它删干净。</h1>
+      <p class="lede">Island 不安装后台服务、登录项，也没有云端账号，所以卸载主要是删除应用和两个本地目录。这份步骤也会清掉 macOS 另外保存的权限授权。</p>
+      <div class="meta-row">
+        <span class="meta"><b>后台服务</b> 无</span>
+        <span class="meta"><b>登录项</b> 无</span>
+        <span class="meta"><b>账号</b> 无</span>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="layout">
+        <aside class="toc" aria-label="目录">
+          <div class="toc-label">本页目录</div>
+          <ol>
+            <li><a href="#before">先决定保留什么</a></li>
+            <li><a href="#app">退出并删除应用</a></li>
+            <li><a href="#data">删除本地数据</a></li>
+            <li><a href="#permissions">移除权限</a></li>
+            <li><a href="#verify">核对</a></li>
+            <li><a href="#keeps">还会留下什么</a></li>
+            <li><a href="#reinstall">干净重装</a></li>
+            <li><a href="what-it-reads.html">← 它读了什么</a></li>
+          </ol>
+        </aside>
+
+        <div class="content">
+          <div class="callout callout--amber">
+            <span class="mark" aria-hidden="true"></span>
+            <p><strong>卸载 Island 不会动 Herdr。</strong>你的 workspace、worktree、agent 会话和终端历史都属于 Herdr；除非你在 Herdr 里停止它们，否则它们会继续运行。</p>
+          </div>
+
+          <section id="before">
+            <h2><span class="idx">01 / 先决定保留什么</span>清理到哪一步</h2>
+            <p>按需要选择：</p>
+            <ul>
+              <li><strong>只删应用。</strong>截图、粘贴图片、偏好和权限都会保留；重新安装后会接着使用。</li>
+              <li><strong>删应用和本地数据。</strong>移除截图、粘贴图片和偏好；系统设置里的权限可能仍然保留。</li>
+              <li><strong>全部删除。</strong>再移除自动化、屏幕录制和辅助功能授权。这就是下面这份完整流程。</li>
+            </ul>
+            <p>如果只是想修复一次损坏的安装，保留本地数据，只删应用和权限即可；见<a href="#reinstall">干净重装</a>。</p>
+          </section>
+
+          <section id="app">
+            <h2><span class="idx">02 / 退出并删除应用</span>应用本体</h2>
+            <ol>
+              <li>点菜单栏里的 Herdr Island，选择退出。菜单不可用时运行 <code>pkill -x HerdrIsland</code>。</li>
+              <li>打开 <code>/Applications</code>，把 <code>HerdrIsland.app</code> 移到废纸篓。</li>
+              <li>确认后清空废纸篓。应用包是 Island 安装的唯一可执行文件。</li>
+            </ol>
+            <pre><code># 确认进程已经退出
+pgrep -fl HerdrIsland || echo "not running"
+
+# 删除应用
+rm -rf /Applications/HerdrIsland.app</code></pre>
+          </section>
+
+          <section id="data">
+            <h2><span class="idx">03 / 删除本地数据</span>截图、图片、偏好</h2>
+            <p>Island 只写这几个位置。先删应用不影响它们，删除它们也不影响其他 app。</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>内容</th><th>位置</th><th>删除命令</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>窗口截图</strong><br>最新 50 张 PNG</td>
+                    <td><code>~/Library/Application Support/HerdrIsland/Captures/</code></td>
+                    <td><code>rm -rf ~/Library/Application\ Support/HerdrIsland</code></td>
+                  </tr>
+                  <tr>
+                    <td><strong>粘贴图片</strong><br>由剪贴板或拖入转换成的 PNG</td>
+                    <td><code>~/Library/Caches/HerdrIsland/TerminalImages/</code></td>
+                    <td><code>rm -rf ~/Library/Caches/HerdrIsland</code></td>
+                  </tr>
+                  <tr>
+                    <td><strong>偏好</strong><br>主 agent 身份、目录、声音、开关</td>
+                    <td>UserDefaults <code>local.herdr.island</code></td>
+                    <td><code>defaults delete local.herdr.island</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code>rm -rf ~/Library/Application\ Support/HerdrIsland
+rm -rf ~/Library/Caches/HerdrIsland
+defaults delete local.herdr.island 2>/dev/null || true</code></pre>
+            <p class="table-note">如果 <code>defaults delete</code> 提示 domain 不存在，说明偏好已经不在了，不需要再清理。</p>
+          </section>
+
+          <section id="permissions">
+            <h2><span class="idx">04 / 移除权限</span>macOS 会单独保存</h2>
+            <p>删除应用不一定删除隐私授权。打开系统设置 → 隐私与安全性，在每个出现 Herdr Island 的列表里移除它：</p>
+            <ul class="checklist">
+              <li><strong>自动化</strong>：允许 Herdr Island 控制 Ghostty。</li>
+              <li><strong>屏幕录制</strong>：只用于发送时截一张窗口图。</li>
+              <li><strong>辅助功能</strong>：只用于读取锁定窗口的选中文本、URL 和文档路径。</li>
+            </ul>
+            <p>也可以在终端重置授权。Bundle ID 是 <code>local.herdr.island</code>：</p>
+            <pre><code>tccutil reset AppleEvents local.herdr.island
+tccutil reset ScreenCapture local.herdr.island
+tccutil reset Accessibility local.herdr.island</code></pre>
+            <div class="callout">
+              <span class="mark" aria-hidden="true"></span>
+              <p>这些命令只重置 Island 的条目。如果 macOS 提示服务未知或没有重置任何内容，就在系统设置里手动移除。除非你确实想重置所有 app 的权限，不要运行 <code>tccutil reset All</code>。</p>
+            </div>
+          </section>
+
+          <section id="verify">
+            <h2><span class="idx">05 / 核对</span>没有进程、数据或授权</h2>
+            <pre><code># 没有 Island 进程
+pgrep -fl HerdrIsland || echo "no process"
+
+# 没有本地数据
+ls ~/Library/Application\ Support/HerdrIsland 2>/dev/null || echo "no app support"
+ls ~/Library/Caches/HerdrIsland 2>/dev/null || echo "no cache"
+
+# 没有偏好域
+defaults read local.herdr.island 2>/dev/null || echo "no preferences"
+
+# 没有登录项或 LaunchAgent
+launchctl list | grep -i herdr || echo "no launch agent"</code></pre>
+            <p>再看系统设置 → 隐私与安全性：自动化、屏幕录制和辅助功能里不应再出现 Herdr Island。顺便检查通用 → 登录项；Island 从不注册登录项，这一步只是确认没有别的东西替它添加。</p>
+          </section>
+
+          <section id="keeps">
+            <h2><span class="idx">06 / 还会留下什么</span>Herdr 和 agent</h2>
+            <p>Island 只是一个前端。删除它不会动这些：</p>
+            <ul>
+              <li>Herdr 本体，以及它的 socket、配置和 server。</li>
+              <li>Workspace、worktree、pane 和正在运行的 agent 进程。</li>
+              <li>Agent CLI 自己的凭据、会话和日志。</li>
+              <li>Ghostty 应用，以及它正在运行的内容。</li>
+              <li>macOS 统一日志里可能提到本应用的条目。它们由系统管理，不属于 Island 的本地数据。</li>
+            </ul>
+            <p>要停止 Herdr，用 Herdr 自己的命令或直接退出它。Island 没有安装任何让 Herdr 保持运行的守护进程。</p>
+          </section>
+
+          <section id="reinstall">
+            <h2><span class="idx">07 / 干净重装</span>从空白状态开始</h2>
+            <ol>
+              <li>退出 Island，删除 <code>/Applications/HerdrIsland.app</code>。</li>
+              <li>按上面的步骤删除两个数据目录和偏好域。</li>
+              <li>用上面的 <code>tccutil</code> 命令重置三项授权。</li>
+              <li>下载最新版本和 <code>.sha256</code>，校验、解压，把应用拖进 <code>/Applications</code>。</li>
+              <li>打开应用，放行 Gatekeeper，再按提示授予自动化、屏幕录制和辅助功能。</li>
+            </ol>
+            <p>包含 quarantine 命令的安装步骤在<a href="index.html#install">主页</a>。如果重装后权限仍然不出现，注销再登录或重启；macOS 会按 app 身份缓存隐私决定。</p>
+          </section>
+
+          <div class="page-end">
+            <span>最近核对：2026-11-11 · Herdr 0.9.5 · 协议 22</span>
+            <span><a href="what-it-reads.html">返回：它读了什么 →</a></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="../assets/brand/icon.svg" width="38" height="38" alt="">
+        <div>
+          <div class="name">Herdr Island</div>
+          <p>Herdr 的图形前端。Herdr 仍然是任务的执行者。</p>
+        </div>
+      </div>
+      <nav class="footer-links" aria-label="页脚链接">
+        <a href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">Releases</a>
+        <a href="https://github.com/arronKler/herdr-island#readme" target="_blank" rel="noreferrer">README</a>
+        <a href="faq.html">FAQ</a>
+        <a href="known-issues.html">已知问题</a>
+        <a href="what-it-reads.html">它读了什么</a>
+        <a href="uninstall.html">卸载</a>
+        <a href="../uninstall.html" data-language="en" lang="en">English</a>
+        <a href="#top">回到顶部</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span>macOS 14+ · Herdr 0.9.5+ · Apple Silicon · 版本与 sha256 见 Releases</span>
+      <span>没有账号、遥测或上传。截图和 prompt 留在本机。</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

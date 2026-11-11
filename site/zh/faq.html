@@ -1,0 +1,446 @@
+<!doctype html>
+<html lang="zh-CN" data-counterpart="../faq.html">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#08090C">
+<title>常见问题 · Herdr Island</title>
+<meta name="description" content="Herdr Island 常见问题：和 Herdr 的关系、支持的 agent、blocked 处理、终端能力、权限、隐私、安装升级和故障排查。">
+<link rel="canonical" href="https://arronkler.github.io/herdr-island/zh/faq.html">
+<link rel="alternate" hreflang="en" href="https://arronkler.github.io/herdr-island/faq.html">
+<link rel="alternate" hreflang="zh-Hans" href="https://arronkler.github.io/herdr-island/zh/faq.html">
+<link rel="alternate" hreflang="x-default" href="https://arronkler.github.io/herdr-island/faq.html">
+<link rel="icon" href="../assets/brand/icon.svg" type="image/svg+xml">
+<link rel="icon" href="../assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../pages.css">
+<script src="../lang.js"></script>
+</head>
+<body id="top">
+<a class="skip" href="#main">跳到主要内容</a>
+
+<header class="site-header">
+  <nav class="nav wrap" aria-label="主导航">
+    <a class="brand" href="index.html">
+      <img src="../assets/brand/icon.svg" width="28" height="28" alt="">
+      <span class="brand-name">Herdr Island</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html#install">安装</a>
+      <a href="index.html#status">状态</a>
+      <a href="index.html#deck">任务台</a>
+      <a href="index.html#terminal">终端</a>
+      <a href="index.html#new-task">新任务</a>
+      <a href="index.html#window">窗口</a>
+      <a href="index.html#safety">安全</a>
+      <a href="faq.html" aria-current="page">文档</a>
+    </div>
+    <div class="nav-actions">
+      <a class="lang-switch" href="../faq.html" data-language="en" hreflang="en" lang="en">EN</a>
+      <a class="btn btn-ghost nav-github" href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">
+        GitHub
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5h7v7M12.5 3.5 4 12"/></svg>
+      </a>
+      <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">下载</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main" class="page-main">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="面包屑">
+      <a href="index.html">Herdr Island</a><span>/</span><span>文档</span>
+    </nav>
+
+    <div class="page-hero">
+      <p class="eyebrow">FAQ · 先看这里</p>
+      <h1>常见问题。</h1>
+      <p class="lede">Island 是 Herdr 的 macOS 图形前端：Herdr 负责跑，Island 负责看和派。下面是安装、使用、权限和故障排查里最常被问到的部分；更细的边界在<a href="known-issues.html">已知问题</a>和<a href="what-it-reads.html">它读了什么</a>。</p>
+      <div class="meta-row">
+        <span class="meta"><b>最近核对</b> 2026-11-11</span>
+        <span class="meta"><b>Herdr</b> 0.9.5</span>
+        <span class="meta"><b>终端协议</b> 22</span>
+        <span class="meta"><b>系统</b> macOS 14+ · Apple Silicon</span>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="layout">
+        <aside class="toc" aria-label="目录">
+          <div class="toc-label">本页目录</div>
+          <ol>
+            <li><a href="#basics">基础</a></li>
+            <li><a href="#usage">使用</a></li>
+            <li><a href="#permissions">权限与隐私</a></li>
+            <li><a href="#install">安装与升级</a></li>
+            <li><a href="#troubleshooting">故障排查</a></li>
+            <li><a href="known-issues.html">已知问题 →</a></li>
+            <li><a href="what-it-reads.html">它读了什么 →</a></li>
+            <li><a href="uninstall.html">卸载 →</a></li>
+          </ol>
+        </aside>
+
+        <div class="content">
+          <div class="card-grid">
+            <div class="card card--mint">
+              <div class="card-kicker">关系</div>
+              <h3>Herdr 负责跑，Island 负责看和派</h3>
+              <p>Island 不替代 Herdr，也不接管 agent 进程；它把状态、任务台和终端放到刘海旁边。</p>
+            </div>
+            <div class="card card--amber">
+              <div class="card-kicker">边界</div>
+              <h3>blocked 不会自动批准</h3>
+              <p>岛不会代发 y、Enter 或任何确认键。需要你在详情终端或 Herdr 里亲自处理。</p>
+            </div>
+            <div class="card">
+              <div class="card-kicker">隐私</div>
+              <h3>没有账号、遥测或上传</h3>
+              <p>prompt、代码和截图留在本机；附件只传绝对路径，不复制文件。</p>
+            </div>
+          </div>
+
+          <section id="basics">
+            <h2><span class="idx">01 / 基础</span>它是什么，和 Herdr 什么关系？</h2>
+
+            <details class="qa" open>
+              <summary>Herdr Island 是什么？和 Herdr 是什么关系？</summary>
+              <div class="qa-body">
+                <p>Island 是 Herdr 的 macOS 图形前端。Herdr 仍然是执行者：创建 workspace、启动 agent、提交消息、运行终端。Island 把状态、任务台、终端和派发放在刘海旁边，不替代 Herdr，也不自己接 Claude Code / Codex。</p>
+                <p>这意味着 Island 能覆盖多少 agent，取决于 Herdr 识别和启动了多少 agent。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>一定要先装 Herdr 吗？</summary>
+              <div class="qa-body">
+                <p>是。需要 Herdr 0.9.5；详情里的交互终端适配单 pane 协议 22。默认二进制路径是 <code>~/.local/bin/herdr</code>，socket 是 <code>~/.config/herdr/herdr.sock</code>；也可以用 <code>HERDR_SOCKET_PATH</code> 或 <code>HERDR_SOCKET</code> 覆盖。</p>
+                <p>设置 → 运行环境里能看到 Island 实际发现的可执行文件和 socket。移动 Herdr 后重启 Island 即可刷新。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>支持哪些 agent？</summary>
+              <div class="qa-body">
+                <p>Herdr 识别到的 agent 都会出现在任务台。新建任务时可选 Claude、Codex、Cursor、Pi、Gemini、Copilot、OpenCode、Cline、Amp、Grok、Qwen、Kimi 共 12 种。</p>
+                <p>不同 agent 的首条任务和 blocked 弹窗处理方式不同：Claude、Cursor 的单行首条任务可以作为启动参数原生传入；Codex 和多行任务会先确认真实空输入框；Cursor 的工作区信任弹窗、Codex 的用量/模型选择弹窗必须由你亲自处理。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>Island 会自动批准 blocked 吗？</summary>
+              <div class="qa-body">
+                <p>不会。Island 不代发 <code>y</code>、<code>Enter</code> 或任何确认键；自动消息投递走的是会拒绝 blocked agent 的 <code>herdr agent prompt</code>。</p>
+                <p>你可以在详情的交互终端里阅读、选择并回答，也可以点「在 Herdr 打开」回到 Herdr 处理。设置页也把这条写成固定的安全说明：<strong>blocked 不会被自动批准</strong>。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>没有刘海能用吗？</summary>
+              <div class="qa-body">
+                <p>能。没有刘海时岛以菜单栏形态出现，<span class="kbd">⌃⌥H</span> 和 <span class="kbd">⌃⌥N</span>、任务台、详情和投递照常可用。</p>
+                <p>水滴只在有刘海的屏幕上常驻；没有刘海时窗口锁定暂不可用。状态和菜单栏图标仍然会更新。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>支持 Intel Mac 吗？</summary>
+              <div class="qa-body">
+                <p>预编译版本为 Apple Silicon 构建，要求 macOS 14 或更新版本。源码没有针对 Intel 做完整验证；如果你自己构建，需要确认 SwiftTerm、ScreenCaptureKit 和辅助功能读取在你的机器上行为一致。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>和直接开 Herdr / Ghostty 比，Island 多什么？</summary>
+              <div class="qa-body">
+                <p>一眼看到所有 agent、blocked 和完成；在刘海下排队或发送；详情里直接接当前 pane 的终端；把窗口截图、选中文本、网页地址、文档路径和附件一起投递给主 agent。</p>
+                <p>Herdr 的完整工作区、标签、分屏和菜单仍然用 Herdr；Island 只做单 pane 终端。</p>
+              </div>
+            </details>
+          </section>
+
+          <section id="usage">
+            <h2><span class="idx">02 / 使用</span>任务、终端和投递</h2>
+
+            <details class="qa">
+              <summary>任务台的行显示什么？</summary>
+              <div class="qa-body">
+                <p>agent 图标和状态点、标题、项目、agent 类型、运行时长、最近一行终端输出、进度、排队状态和 worktree 标记。blocked 行会显示原因和等待时长。</p>
+                <p>顶部有「待处理 / 运行中 / 已完成 / 全部」四个筛选；按 <span class="kbd">/</span> 进入搜索，标签和项目名也参与搜索。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>运行中的 agent 可以发消息吗？</summary>
+              <div class="qa-body">
+                <p>可以排队一条。本轮结束且没有打开该 pane 的交互终端时自动投递；排队项可以取消。同一条消息发送失败后，正文会保留并暂停，先去终端检查，再回任务台手动重试。</p>
+                <p>blocked 或状态未知的 agent 会被拒绝。blocked 需要先在终端处理。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>「主 agent」是什么？</summary>
+              <div class="qa-body">
+                <p>投递框默认的收件人。第一次打开投递框时会采用当前选中或第一个可接收消息的 agent；之后点收件人 chip 可以切换，选中的会成为新的主 agent。</p>
+                <ul>
+                  <li>主 agent 忙：可以排队一条，等本轮结束自动发送。</li>
+                  <li>主 agent blocked：提示换一个，或跳去终端处理。</li>
+                  <li>主 agent 退出或 pane 被复用：提示「主 Agent 已退出，这次将新建」。</li>
+                </ul>
+                <p>身份按 pane、workspace 和 agent kind 一起判断；只有 pane ID 相同不算同一个 agent。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>详情终端和 Herdr 是什么关系？</summary>
+              <div class="qa-body">
+                <p>通过 Herdr 的单 pane socket 协议 22 连接现有会话，SwiftTerm 渲染。尺寸直接同步给该 pane。</p>
+                <p>关闭详情只释放连接，不停止 Herdr server、shell 或 agent。断线后手动重连，已输入的按键不会自动重发；断开前已经发出的输入可能已经执行，重连前先检查终端。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>为什么终端里 Esc 不退出详情？</summary>
+              <div class="qa-body">
+                <p>详情聚焦终端时，Esc、方向键、Tab 和 Ctrl+C 都交给终端程序。用 <span class="kbd">⌘W</span> 返回任务台。</p>
+                <p>在任务台或输入框里，Esc 仍然是逐层退出：先收输入框，再退出搜索、详情，最后收起面板。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>终端支持哪些输入和操作？</summary>
+              <div class="qa-body">
+                <p>键盘、中文输入法、多行粘贴、文件/图片粘贴或拖入、鼠标报告、Shift + 拖动选择文字、<span class="kbd">⌘C</span> / <span class="kbd">⌘V</span>、滚轮历史。图片会转成本地 PNG 路径，不追加 Enter，关闭详情后仍保留。</p>
+                <p>还不支持：完整的按键按下/重复/释放协议、焦点报告、OSC 52 剪贴板、终端内图像显示。协议 22 的鼠标通道没有处理确认，鼠标与键盘跨通道的严格排序不保证。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>窗口锁定能做什么？</summary>
+              <div class="qa-body">
+                <p>按住 Option 拖动水滴，锁定指针下的窗口。发送时尝试截一张窗口 PNG，并自动读取选中文本、网页地址、文档路径（需要辅助功能），再加上你添加的文件路径，一起拼进投递。</p>
+                <p>只支持当前 Space、当前屏幕上的窗口；窗口关闭再打开会换 windowID；最小化或切到别的 Space 时连线隐藏、截图会失败；受 DRM 或安全保护的窗口可能只能截到黑屏。锁定只存在于本次运行期间。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>水滴拖拽和 ⌃⌥N 有什么区别？</summary>
+              <div class="qa-body">
+                <p><strong>水滴拖拽</strong>使用共享投递框：收件人 chip（主 agent 或新建）、模型、目录、worktree、附件、自动窗口上下文；落点决定位置。普通拖动创建新 agent；按住 Option 拖动是锁定窗口。</p>
+                <p><strong>⌃⌥N</strong>是 420 × 196 的快速新任务框，沿用当前 pane 的目录和上次模型，可选 worktree，不改动现有终端。它不提供收件人 chip 和附件。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>怎么设置声音提醒？</summary>
+              <div class="qa-body">
+                <p>设置 → 声音。「需要你处理」和「任务完成」可以分别选 macOS 内置提示音，选中即试听；默认关闭。选择「无」可以单独关闭某一类提醒。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>开了 Reduce Motion 会怎样？</summary>
+              <div class="qa-body">
+                <p>面板改为瞬时切换，状态点不再脉冲，水滴停止呼吸，落点涟漪只淡出。拖拽本身仍然跟随指针，因为它不是补间动画。</p>
+              </div>
+            </details>
+          </section>
+
+          <section id="permissions">
+            <h2><span class="idx">03 / 权限与隐私</span>它为什么要这些权限？</h2>
+
+            <details class="qa">
+              <summary>为什么需要屏幕录制？</summary>
+              <div class="qa-body">
+                <p>只用于窗口锁定后的发送时截图。不会持续录屏，也不会截整个屏幕。未授权时投递降级为文字、上下文和文件，不阻断发送。</p>
+                <p>授权后可能需要重启 Island。截图调用没有单独的取消按钮；权限弹窗或 ScreenCaptureKit 卡住时，一次发送可能等待较久。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>为什么需要辅助功能？</summary>
+              <div class="qa-body">
+                <p>只用于读取锁定窗口的选中文本、网页地址和文档路径，作为投递上下文。未授权时这些字段为空；文字、截图和文件仍按其他授权情况发送。</p>
+                <p>读取是 best-effort：目标 App 不暴露属性、超时或返回空时，不会阻塞投递。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>为什么需要自动化？</summary>
+              <div class="qa-body">
+                <p>只用于把 Herdr 的 pane 带到 Ghostty 前台。没有 Ghostty 时仍然会聚焦 Herdr pane；权限被拒只影响精确跳转，不影响任务台和投递。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>截图、代码和 prompt 会离开本机吗？</summary>
+              <div class="qa-body">
+                <p>不会。截图保存在本机 <code>~/Library/Application Support/HerdrIsland/Captures/</code>，prompt 里只有绝对路径、窗口元数据、自动上下文和任务。附件只传绝对路径，不复制文件。</p>
+                <p>Island 没有账号、遥测、分析或网络请求；更新通过 GitHub Releases 手动下载。完整清单见<a href="what-it-reads.html">它读了什么</a>。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>Island 会读我的代码或终端内容吗？</summary>
+              <div class="qa-body">
+                <p>会读 Herdr 提供的 agent 状态、最近终端输出、当前目录、标签和终端流，用于任务台和详情显示；这些都只在本机处理，不上传。</p>
+                <p>详情终端只连接你选中的 pane；关闭详情只释放连接，不停止 agent。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>数据存在哪里？</summary>
+              <div class="qa-body">
+                <p>截图在 <code>~/Library/Application Support/HerdrIsland/Captures/</code>，保留最新 50 张；粘贴图片在 <code>~/Library/Caches/HerdrIsland/TerminalImages/</code>，目录 0700、文件 0600，超过 7 天的会在下次打开终端或粘贴图片时清理；偏好和主 agent 身份在 UserDefaults。</p>
+                <p>完整路径、保留策略和删除方式见<a href="what-it-reads.html">它读了什么</a>与<a href="uninstall.html">卸载</a>。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>附件会复制到别处吗？</summary>
+              <div class="qa-body">
+                <p>不会。附件只传绝对路径，最多 8 个。发送前会检查文件仍然可读；排队消息投递前会再次检查，缺失的文件会被移除。只支持绝对路径，<code>~/</code> 会展开。</p>
+              </div>
+            </details>
+          </section>
+
+          <section id="install">
+            <h2><span class="idx">04 / 安装与升级</span>下载、放行和更新</h2>
+
+            <details class="qa">
+              <summary>怎么安装？</summary>
+              <div class="qa-body">
+                <p>下载 <code>HerdrIsland-&lt;版本&gt;.zip</code> 和同名 <code>.sha256</code>，放在同一目录校验后解压，把 <code>HerdrIsland.app</code> 拖进 <code>/Applications</code>。</p>
+                <pre><code>shasum -a 256 -c HerdrIsland-&lt;版本&gt;.zip.sha256
+xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
+                <p>也可以在系统设置 → 隐私与安全性里点「仍要打开」。具体步骤见<a href="index.html#install">安装</a>。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>为什么首次打开被 Gatekeeper 拦截？</summary>
+              <div class="qa-body">
+                <p>应用只有 ad-hoc 签名，没有经过 Apple 公证，所以系统不会显示「已识别的开发者」。这不是下载损坏；按安装步骤手动放行即可。不要用 <code>sudo spctl --master-disable</code> 全局关闭 Gatekeeper。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>更新后为什么要重新授权？</summary>
+              <div class="qa-body">
+                <p>ad-hoc 签名的身份可能随构建变化，macOS 会把新版本当成不同 app，重新询问自动化、屏幕录制或辅助功能。每次更新后检查设置 → 权限；如果只是替换了 app，权限可能仍然保留，也可能再次询问。</p>
+                <p>用稳定的 Developer ID 签名和公证可以避免这个问题；当前版本还没有公证。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>有自动更新吗？</summary>
+              <div class="qa-body">
+                <p>没有。Island 不主动联网检查更新，也不会在后台下载。新版本发布在 <a href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">GitHub Releases</a>，需要手动下载替换。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>怎么完全卸载？</summary>
+              <div class="qa-body">
+                <p>退出 app，删除 app、Application Support/HerdrIsland 和 Caches/HerdrIsland，再到系统设置移除自动化、屏幕录制和辅助功能授权。Island 不安装后台服务，也不注册登录项。</p>
+                <p>逐项步骤见<a href="uninstall.html">卸载</a>。</p>
+              </div>
+            </details>
+          </section>
+
+          <section id="troubleshooting">
+            <h2><span class="idx">05 / 故障排查</span>状态不动、连不上、发不出去</h2>
+
+            <details class="qa">
+              <summary>状态不更新 / 连接不上 Herdr？</summary>
+              <div class="qa-body">
+                <p>先看设置 → 运行环境：可执行文件和 socket 是否存在。确认 Herdr 0.9.5 正在运行；socket 读不到时 Island 会回退 CLI，冷却 10 秒后再试 socket。</p>
+                <p>移动过 Herdr 或改过 <code>HERDR_SOCKET_PATH</code> 后重启 Island。创建和提交等写操作不会自动重试。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>终端提示协议不兼容？</summary>
+              <div class="qa-body">
+                <p>当前只适配 Herdr 0.9.5 的单 pane 协议 22。升级或降级 Herdr 后如果协议变了，详情会明确提示不兼容；任务台、投递和跳转仍然可用，完整终端请用 Herdr / Ghostty。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>按钮是「需处理」或发送被拒绝？</summary>
+              <div class="qa-body">
+                <p>常见原因：</p>
+                <ul>
+                  <li>agent blocked：去终端处理，岛不会代答。</li>
+                  <li>agent 忙且已有一条排队：等本轮结束，或取消排队。</li>
+                  <li>主 agent 不在了：换一个收件人，或新建 agent。</li>
+                  <li>附件不是绝对路径、文件已被移动，或草稿为空。</li>
+                </ul>
+                <p>投递框的 notice 会说明原因；「换一个」会打开收件人选择。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>为什么截图是黑屏或失败？</summary>
+              <div class="qa-body">
+                <p>受 DRM 或安全保护的窗口可能只能截到黑屏，公开 API 无法绕过。窗口最小化、切到别的 Space、关闭后重新打开（windowID 变化）也会让截图失败。失败时投递会降级为文字、上下文和文件，不会丢掉已输入的任务。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>新任务失败后为什么留下了一个 workspace？</summary>
+              <div class="qa-body">
+                <p>创建任务分「准备目录、启动模型、提交并确认」三步。失败时已经创建的 workspace 会保留，错误里带 pane ID；Island 不会自动重试创建，也不会重复发送，以免在结果不确定时写入两次。</p>
+                <p>先在终端检查，再决定重试或「另建任务」。任务本身是否完成不由 Island 保证。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>怎么反馈问题？</summary>
+              <div class="qa-body">
+                <p>到 <a href="https://github.com/arronKler/herdr-island/issues" target="_blank" rel="noreferrer">GitHub Issues</a>。带上 app 版本（设置 → 运行环境）、macOS、Herdr 版本、协议提示、复现步骤和相关日志。</p>
+                <p>不要贴包含敏感代码、token 或完整窗口截图的终端输出；只保留最小复现所需的部分。</p>
+              </div>
+            </details>
+          </section>
+
+          <div class="page-end">
+            <span>最近核对：2026-11-11 · Herdr 0.9.5 · 协议 22</span>
+            <span><a href="known-issues.html">下一步：已知问题 →</a></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="../assets/brand/icon.svg" width="38" height="38" alt="">
+        <div>
+          <div class="name">Herdr Island</div>
+          <p>Herdr 的图形前端。Herdr 仍然是任务的执行者。</p>
+        </div>
+      </div>
+      <nav class="footer-links" aria-label="页脚链接">
+        <a href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">Releases</a>
+        <a href="https://github.com/arronKler/herdr-island#readme" target="_blank" rel="noreferrer">README</a>
+        <a href="faq.html">FAQ</a>
+        <a href="known-issues.html">已知问题</a>
+        <a href="what-it-reads.html">它读了什么</a>
+        <a href="uninstall.html">卸载</a>
+        <a href="../faq.html" data-language="en" lang="en">English</a>
+        <a href="#top">回到顶部</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span>macOS 14+ · Herdr 0.9.5+ · Apple Silicon · 版本与 sha256 见 Releases</span>
+      <span>没有账号、遥测或上传。截图和 prompt 留在本机。</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

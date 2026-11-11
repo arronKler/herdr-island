@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en" data-counterpart="zh/uninstall.html">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#08090C">
+<title>Uninstall · Herdr Island</title>
+<meta name="description" content="Remove Herdr Island completely: the app, screenshots, pasted images, preferences, and the Automation, Screen Recording, and Accessibility grants.">
+<link rel="canonical" href="https://arronkler.github.io/herdr-island/uninstall.html">
+<link rel="alternate" hreflang="en" href="https://arronkler.github.io/herdr-island/uninstall.html">
+<link rel="alternate" hreflang="zh-Hans" href="https://arronkler.github.io/herdr-island/zh/uninstall.html">
+<link rel="alternate" hreflang="x-default" href="https://arronkler.github.io/herdr-island/uninstall.html">
+<link rel="icon" href="assets/brand/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="pages.css">
+<script src="lang.js"></script>
+</head>
+<body id="top">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <nav class="nav wrap" aria-label="Main navigation">
+    <a class="brand" href="index.html">
+      <img src="assets/brand/icon.svg" width="28" height="28" alt="">
+      <span class="brand-name">Herdr Island</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html#install">Install</a>
+      <a href="index.html#status">Status</a>
+      <a href="index.html#deck">Deck</a>
+      <a href="index.html#terminal">Terminal</a>
+      <a href="index.html#new-task">New task</a>
+      <a href="index.html#window">Window</a>
+      <a href="index.html#safety">Safety</a>
+      <a href="faq.html">Docs</a>
+    </div>
+    <div class="nav-actions">
+      <a class="lang-switch" href="zh/uninstall.html" data-language="zh" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+      <a class="btn btn-ghost nav-github" href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">
+        GitHub
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5h7v7M12.5 3.5 4 12"/></svg>
+      </a>
+      <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">Download</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main" class="page-main">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="index.html">Herdr Island</a><span>/</span><a href="faq.html">Docs</a><span>/</span><span>Uninstall</span>
+    </nav>
+
+    <div class="page-hero">
+      <p class="eyebrow">Removal · Local and complete</p>
+      <h1>Remove it completely.</h1>
+      <p class="lede">Island installs no background service, login item, or cloud account, so uninstalling is mostly deleting the app and two local directories. This page also removes the permission grants macOS keeps separately.</p>
+      <div class="meta-row">
+        <span class="meta"><b>Background service</b> None</span>
+        <span class="meta"><b>Login item</b> None</span>
+        <span class="meta"><b>Account</b> None</span>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="layout">
+        <aside class="toc" aria-label="On this page">
+          <div class="toc-label">On this page</div>
+          <ol>
+            <li><a href="#before">Before you start</a></li>
+            <li><a href="#app">Quit and delete</a></li>
+            <li><a href="#data">Remove local data</a></li>
+            <li><a href="#permissions">Remove permissions</a></li>
+            <li><a href="#verify">Verify</a></li>
+            <li><a href="#keeps">What stays behind</a></li>
+            <li><a href="#reinstall">Clean reinstall</a></li>
+            <li><a href="what-it-reads.html">← What it reads</a></li>
+          </ol>
+        </aside>
+
+        <div class="content">
+          <div class="callout callout--amber">
+            <span class="mark" aria-hidden="true"></span>
+            <p><strong>Uninstalling Island does not touch Herdr.</strong> Your workspaces, worktrees, agent sessions, and terminal history belong to Herdr and keep running unless you stop them there.</p>
+          </div>
+
+          <section id="before">
+            <h2><span class="idx">01 / Before you start</span>Decide what you want to keep</h2>
+            <p>Choose how far to go:</p>
+            <ul>
+              <li><strong>Delete the app only.</strong> Screenshots, pasted images, preferences, and permissions remain. Reinstalling picks them up again.</li>
+              <li><strong>Delete the app and local data.</strong> Removes screenshots, pasted images, and preferences. Permissions may remain in System Settings.</li>
+              <li><strong>Delete everything.</strong> Also removes the Automation, Screen Recording, and Accessibility grants. This is the full removal described below.</li>
+            </ul>
+            <p>If you only want to reset a broken install, keep the local data and remove the app plus its permissions; see <a href="#reinstall">Clean reinstall</a>.</p>
+          </section>
+
+          <section id="app">
+            <h2><span class="idx">02 / Quit and delete</span>The app itself</h2>
+            <ol>
+              <li>Click the Herdr Island menu-bar item and choose Quit. If the menu is unavailable, run <code>pkill -x HerdrIsland</code>.</li>
+              <li>Open <code>/Applications</code> and move <code>HerdrIsland.app</code> to the Trash.</li>
+              <li>Empty the Trash when you are ready. The app bundle is the only executable Island installs.</li>
+            </ol>
+            <pre><code># Confirm the process is gone
+pgrep -fl HerdrIsland || echo "not running"
+
+# Delete the app
+rm -rf /Applications/HerdrIsland.app</code></pre>
+          </section>
+
+          <section id="data">
+            <h2><span class="idx">03 / Remove local data</span>Screenshots, images, preferences</h2>
+            <p>These are the only places Island writes to. The app is safe to delete first; the directories do not affect anything else.</p>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>What</th><th>Location</th><th>Remove with</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>Window screenshots</strong><br>newest 50 PNGs</td>
+                    <td><code>~/Library/Application Support/HerdrIsland/Captures/</code></td>
+                    <td><code>rm -rf ~/Library/Application\ Support/HerdrIsland</code></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Pasted images</strong><br>PNGs converted from the clipboard or drag-in</td>
+                    <td><code>~/Library/Caches/HerdrIsland/TerminalImages/</code></td>
+                    <td><code>rm -rf ~/Library/Caches/HerdrIsland</code></td>
+                  </tr>
+                  <tr>
+                    <td><strong>Preferences</strong><br>main-agent identity, directories, sounds, toggles</td>
+                    <td>UserDefaults <code>local.herdr.island</code></td>
+                    <td><code>defaults delete local.herdr.island</code></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <pre><code>rm -rf ~/Library/Application\ Support/HerdrIsland
+rm -rf ~/Library/Caches/HerdrIsland
+defaults delete local.herdr.island 2>/dev/null || true</code></pre>
+            <p class="table-note">If <code>defaults delete</code> says the domain does not exist, the preference was already absent. Nothing else needs cleaning.</p>
+          </section>
+
+          <section id="permissions">
+            <h2><span class="idx">04 / Remove permissions</span>macOS keeps these separately</h2>
+            <p>Deleting an app does not always remove its privacy grants. Open System Settings → Privacy &amp; Security and remove Herdr Island from each list where it appears:</p>
+            <ul class="checklist">
+              <li><strong>Automation</strong>: Herdr Island controlling Ghostty.</li>
+              <li><strong>Screen Recording</strong>: used only for one window screenshot on send.</li>
+              <li><strong>Accessibility</strong>: used only to read selected text, URL, and document path from a locked window.</li>
+            </ul>
+            <p>You can also reset the grants from Terminal. The bundle identifier is <code>local.herdr.island</code>:</p>
+            <pre><code>tccutil reset AppleEvents local.herdr.island
+tccutil reset ScreenCapture local.herdr.island
+tccutil reset Accessibility local.herdr.island</code></pre>
+            <div class="callout">
+              <span class="mark" aria-hidden="true"></span>
+              <p>These commands reset only Island's entries. If macOS reports that the service is unknown or nothing was reset, remove the entries manually in System Settings. Do not run <code>tccutil reset All</code> unless you intend to reset every app's permissions.</p>
+            </div>
+          </section>
+
+          <section id="verify">
+            <h2><span class="idx">05 / Verify</span>No process, no data, no grant</h2>
+            <pre><code># No Island process
+pgrep -fl HerdrIsland || echo "no process"
+
+# No local data
+ls ~/Library/Application\ Support/HerdrIsland 2>/dev/null || echo "no app support"
+ls ~/Library/Caches/HerdrIsland 2>/dev/null || echo "no cache"
+
+# No preference domain
+defaults read local.herdr.island 2>/dev/null || echo "no preferences"
+
+# No login item or launch agent
+launchctl list | grep -i herdr || echo "no launch agent"</code></pre>
+            <p>Then check System Settings → Privacy &amp; Security: Automation, Screen Recording, and Accessibility should no longer list Herdr Island. Also check General → Login Items; Island never registers one, but this confirms nothing was added on your behalf.</p>
+          </section>
+
+          <section id="keeps">
+            <h2><span class="idx">06 / What stays behind</span>Herdr and the agents</h2>
+            <p>Island is a front end. Removing it leaves the following untouched:</p>
+            <ul>
+              <li>Herdr itself and its socket, configuration, and server.</li>
+              <li>Workspaces, worktrees, panes, and running agent processes.</li>
+              <li>Agent CLIs and their own credentials, sessions, and logs.</li>
+              <li>The Ghostty app and anything it is currently running.</li>
+              <li>macOS logs that may mention the app, such as unified logging entries. These are managed by the system, not by Island.</li>
+            </ul>
+            <p>To stop Herdr, use Herdr's own commands or quit it directly. Island does not install a daemon that would keep it alive.</p>
+          </section>
+
+          <section id="reinstall">
+            <h2><span class="idx">07 / Clean reinstall</span>Start from a blank slate</h2>
+            <ol>
+              <li>Quit Island and delete <code>/Applications/HerdrIsland.app</code>.</li>
+              <li>Remove the two data directories and the preference domain as above.</li>
+              <li>Reset the three permission grants with the <code>tccutil</code> commands above.</li>
+              <li>Download the latest release and <code>.sha256</code>, verify, unzip, and drag the app to <code>/Applications</code>.</li>
+              <li>Open it, approve Gatekeeper, then grant Automation, Screen Recording, and Accessibility again when prompted.</li>
+            </ol>
+            <p>The install walkthrough, including the quarantine command, is on the <a href="index.html#install">main page</a>. If a permission still does not appear after reinstall, log out and back in or reboot; macOS caches privacy decisions per app identity.</p>
+          </section>
+
+          <div class="page-end">
+            <span>Last checked: 2026-11-11 · Herdr 0.9.5 · Protocol 22</span>
+            <span><a href="what-it-reads.html">Back: What it reads →</a></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="assets/brand/icon.svg" width="38" height="38" alt="">
+        <div>
+          <div class="name">Herdr Island</div>
+          <p>The graphical front end for Herdr. Herdr still executes the work.</p>
+        </div>
+      </div>
+      <nav class="footer-links" aria-label="Footer links">
+        <a href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">Releases</a>
+        <a href="https://github.com/arronKler/herdr-island#readme" target="_blank" rel="noreferrer">README</a>
+        <a href="faq.html">FAQ</a>
+        <a href="known-issues.html">Known issues</a>
+        <a href="what-it-reads.html">What it reads</a>
+        <a href="uninstall.html">Uninstall</a>
+        <a href="zh/uninstall.html" data-language="zh" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+        <a href="#top">Back to top</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span>macOS 14+ · Herdr 0.9.5+ · Apple Silicon · Version and sha256 in Releases</span>
+      <span>No account, telemetry, or upload. Screenshots and prompts stay on this Mac.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

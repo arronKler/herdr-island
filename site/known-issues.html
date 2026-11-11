@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en" data-counterpart="zh/known-issues.html">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#08090C">
+<title>Known issues · Herdr Island</title>
+<meta name="description" content="The real boundaries in the current Herdr Island build: terminal protocol, window capture, permissions, delivery, new tasks, installation, and updates.">
+<link rel="canonical" href="https://arronkler.github.io/herdr-island/known-issues.html">
+<link rel="alternate" hreflang="en" href="https://arronkler.github.io/herdr-island/known-issues.html">
+<link rel="alternate" hreflang="zh-Hans" href="https://arronkler.github.io/herdr-island/zh/known-issues.html">
+<link rel="alternate" hreflang="x-default" href="https://arronkler.github.io/herdr-island/known-issues.html">
+<link rel="icon" href="assets/brand/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="pages.css">
+<script src="lang.js"></script>
+</head>
+<body id="top">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <nav class="nav wrap" aria-label="Main navigation">
+    <a class="brand" href="index.html">
+      <img src="assets/brand/icon.svg" width="28" height="28" alt="">
+      <span class="brand-name">Herdr Island</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html#install">Install</a>
+      <a href="index.html#status">Status</a>
+      <a href="index.html#deck">Deck</a>
+      <a href="index.html#terminal">Terminal</a>
+      <a href="index.html#new-task">New task</a>
+      <a href="index.html#window">Window</a>
+      <a href="index.html#safety">Safety</a>
+      <a href="faq.html">Docs</a>
+    </div>
+    <div class="nav-actions">
+      <a class="lang-switch" href="zh/known-issues.html" data-language="zh" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+      <a class="btn btn-ghost nav-github" href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">
+        GitHub
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5h7v7M12.5 3.5 4 12"/></svg>
+      </a>
+      <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">Download</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main" class="page-main">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="index.html">Herdr Island</a><span>/</span><a href="faq.html">Docs</a><span>/</span><span>Known issues</span>
+    </nav>
+
+    <div class="page-hero">
+      <p class="eyebrow">Known issues · 2026-11-11</p>
+      <h1>Known issues.</h1>
+      <p class="lede">This list states only the boundaries that exist in the current build; it is not a roadmap. Last checked 2026-11-11 against Herdr 0.9.5 and single-pane protocol 22. Released builds are authoritative on <a href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">Releases</a>.</p>
+      <div class="meta-row">
+        <span class="meta"><b>Herdr</b> 0.9.5</span>
+        <span class="meta"><b>Terminal protocol</b> 22</span>
+        <span class="meta"><b>System</b> macOS 14+</span>
+        <span class="meta"><b>Signing</b> ad-hoc · not notarized</span>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="layout">
+        <aside class="toc" aria-label="On this page">
+          <div class="toc-label">On this page</div>
+          <ol>
+            <li><a href="#terminal">Terminal</a></li>
+            <li><a href="#window">Window &amp; permissions</a></li>
+            <li><a href="#delivery">Delivery &amp; new tasks</a></li>
+            <li><a href="#install">Install &amp; updates</a></li>
+            <li><a href="#unverified">Unverified / tradeoffs</a></li>
+            <li><a href="#report">Reporting</a></li>
+            <li><a href="faq.html">← FAQ</a></li>
+            <li><a href="what-it-reads.html">What it reads →</a></li>
+          </ol>
+        </aside>
+
+        <div class="content">
+          <div class="callout callout--amber">
+            <span class="mark" aria-hidden="true"></span>
+            <p><strong>Read this first:</strong> Island is a front end for Herdr, not a full Herdr client, and it never auto-approves blocked agents. Use Herdr for full workspaces, tabs, splits, and menus. Keep permission, trust, and usage dialogs in the terminal.</p>
+          </div>
+
+          <section id="terminal">
+            <h2><span class="idx">01 / Terminal</span>It connects only to the current pane</h2>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>The interactive terminal supports only Herdr 0.9.5's single-pane protocol 22</h3>
+                <span class="pill pill--limit">Limit</span>
+              </div>
+              <p>Other protocol versions fail with an explicit incompatibility message. After upgrading or downgrading Herdr, the deck, delivery, and jumps still work, but the detail terminal may not connect. Use Herdr / Ghostty for the full terminal.</p>
+              <div class="issue-meta">Settings → Environment shows the version; the error names the protocol mismatch.</div>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>The detail view is not a full Herdr client</h3>
+                <span class="pill pill--limit">Limit</span>
+              </div>
+              <p>Workspaces, tabs, splits, menus, and client-level shortcuts are not part of the detail view. The earlier full client, the separate 1080 × 720 terminal window, and its proxy were withdrawn. What remains is the single-pane terminal inside the 660 × 640 detail. Click "Open in Herdr" for the full interface.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Some terminal capabilities are still missing</h3>
+                <span class="pill pill--limit">Limit</span>
+              </div>
+              <p>The full key-down/repeat/key-up protocol, focus reporting, OSC 52 clipboard, and in-terminal image display are still incomplete. Keyboard, IME input, paste, mouse reporting, Shift-drag selection, scrollback, and size sync are supported.</p>
+              <div class="issue-meta">Source: docs/terminal-verification-2026-11-10.md</div>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Protocol 22's mouse channel has no acknowledgement</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>Keyboard, text, and paste wait for the socket API to acknowledge. Mouse, scroll, and resize do not have equivalent acknowledgement. Strict global ordering across channels is not guaranteed; under mixed input, some programs may observe a different order.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Clipboard, bell, and title events may be incomplete</h3>
+                <span class="pill pill--limit">Limit</span>
+              </div>
+              <p>Herdr 0.9.5 sends these events to the global foreground client. A direct single-pane attachment is not that client, and clipboard events also lack a source pane identifier. Copying to the system clipboard, bells, or title updates inside the terminal may therefore not appear. Local <span class="kbd">⌘C</span> / <span class="kbd">⌘V</span> still works.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Input is not replayed after a disconnect</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>Reconnect manually after the connection drops; keystrokes already typed are not resent automatically. Input sent before the drop may already have run. Check the terminal before reconnecting. If another client holds the pane, you can take it over explicitly.</p>
+            </div>
+          </section>
+
+          <section id="window">
+            <h2><span class="idx">02 / Window &amp; permissions</span>Capture and context are optional</h2>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Window lock supports only the current Space and display</h3>
+                <span class="pill pill--limit">Limit</span>
+              </div>
+              <p>The lock targets a specific windowID. Closing and reopening a window changes the ID, so it must be locked again. Minimizing or switching Spaces hides the tether and makes capture fail. A lock exists only for the current run.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>DRM or secure windows may capture as black</h3>
+                <span class="pill pill--limit">Limit</span>
+              </div>
+              <p>ScreenCaptureKit cannot bypass protected content. When capture fails, delivery degrades to text, context, and files, and keeps the task you typed.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Window lock is unavailable without a notch</h3>
+                <span class="pill pill--limit">Limit</span>
+              </div>
+              <p>Island appears as a menu-bar item. ⌃⌥H, ⌃⌥N, the deck, details, and delivery still work. The droplet only lives on displays with a notch, and window lock is unavailable without one.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Fields go missing without Screen Recording / Accessibility</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>Without Screen Recording: no screenshot is attached; text, automatic context, and files still send. Without Accessibility: selected text, page URL, and document path are not read; screenshots, text, and files still send. Neither blocks delivery, but the prompt has less content.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>The capture call has no separate cancel button</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>If a permission dialog or ScreenCaptureKit hangs, one send may wait a long time. Closing the composer does not abort a capture already in progress. If it never returns, check for a system permission dialog first.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Automatic context is best-effort</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>Selected text, page URL, and document path come from the target app's Accessibility attributes. If the app does not expose them, times out, or returns nothing, those fields are empty. The caps are 4,000, 2,048, and 1,024 characters. Island does not capture the screen or read the clipboard to fill the gap.</p>
+            </div>
+          </section>
+
+          <section id="delivery">
+            <h2><span class="idx">03 / Delivery &amp; new tasks</span>Queueing, attachments, and the main agent</h2>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>The main agent is identified by pane + workspace + kind</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>Herdr may reuse a pane ID for another workspace or agent. Only a match on pane, workspace, and kind counts as the same agent. Otherwise Island says "The main agent exited; this delivery will start a new one" instead of sending to the wrong target.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Only one message can be queued while busy</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>While the main agent is running you can queue one message. It is delivered when the turn ends, provided the interactive terminal for that pane is not open. Sending another while one is queued is refused. Blocked or unknown-state agents cannot receive messages; handle them in the terminal first.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Attachments are absolute paths, not copied files</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>At most 8; <code>~/</code> is expanded. Island checks readability before sending and blocks the send if a file is missing. Queued messages are checked again before delivery and missing files are dropped. Only absolute paths are supported.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Pasted images have size and retention limits</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>Up to 16 MB and 40 megapixels per image. Images become local PNGs with a 0700 directory and 0600 files. Images older than 7 days are cleaned the next time the terminal opens or an image is pasted; cleanup is not scheduled while the app is closed.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>A failed new task may leave a workspace behind</h3>
+                <span class="pill pill--limit">Limit</span>
+              </div>
+              <p>Creation has three stages: prepare the directory, start the model, then submit and confirm. If a later stage fails, the workspace already created is retained and the error includes its pane ID. Island does not retry creation or resend automatically. When an existing pane or an uncertain outcome is involved, inspect the terminal first, then retry or start a separate task.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Multi-line first tasks wait up to 20 seconds for an empty input box</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>Multi-line Claude, Codex, and Cursor tasks confirm that a real empty input box is ready before the first send, preserving line breaks and indentation. If the input area cannot be identified or already has content, Island checks for up to 20 seconds and then exits safely, leaving the terminal for inspection without appending Return or resending the task.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Trust, usage, and model pickers are yours to handle</h3>
+                <span class="pill pill--limit">Limit</span>
+              </div>
+              <p>Cursor's workspace-trust dialog and Codex's usage/model picker are never confirmed automatically. Automatic messages check for these dialogs before sending and refuse if one is present; no keys are simulated. New-task worktrees also do not pass <code>--trust-repository</code>.</p>
+            </div>
+          </section>
+
+          <section id="install">
+            <h2><span class="idx">04 / Install &amp; updates</span>No notarization, no auto-update</h2>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Ad-hoc signing means the first launch needs manual approval</h3>
+                <span class="pill pill--limit">Limit</span>
+              </div>
+              <p>The app is not notarized by Apple, so Gatekeeper does not show an identified developer. Click "Open Anyway" in System Settings → Privacy &amp; Security as described in the install steps, or remove the quarantine flag. Do not disable Gatekeeper globally.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Updates may ask for system permissions again</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>An ad-hoc identity can change between builds, so macOS may treat the new version as a different app and ask again for Automation, Screen Recording, or Accessibility. Check Settings → Permissions after each update. A stable Developer ID signature and notarization would avoid it; neither exists today.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>No auto-update</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>Island does not check for updates over the network or download in the background. New versions are published only on GitHub Releases and must be downloaded and replaced manually. Version and sha256 are in Releases.</p>
+            </div>
+          </section>
+
+          <section id="unverified">
+            <h2><span class="idx">05 / Unverified &amp; tradeoffs</span>These are not hidden bugs</h2>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>Retina sharpness with mixed display scaling is not fully measured</h3>
+                <span class="pill pill--unverified">Unverified</span>
+              </div>
+              <p>One panel can still span multiple displays, and the drop canvas covers the union of all screens. Per-display sharpness at different backing scales has not been fully verified. The known issue is layout coordinates, not window splitting.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>The full-desktop drop panel swallows clicks outside the composer</h3>
+                <span class="pill pill--design">Tradeoff</span>
+              </div>
+              <p>While the drop surface is open it covers the desktop, and a click outside the composer is received by the modal layer first (usually to dismiss it) instead of reaching the app below. This is a deliberate quick-capture tradeoff, not ordinary floating-window behavior.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
+                <h3>The app UI is currently Chinese-only</h3>
+                <span class="pill pill--unverified">Known</span>
+              </div>
+              <p>There is no localization framework or English app UI. The site is available in English and Chinese, but the in-app copy is Chinese.</p>
+            </div>
+
+            <div class="callout callout--mint">
+              <span class="mark" aria-hidden="true"></span>
+              <p><strong>Deliberate boundaries:</strong> no auto-approving blocked agents; no sending y / Enter for you; no full Herdr client inside the detail; the menu-bar icon does not change color with status; no whole-screen capture; no uploading prompts, code, or screenshots; no accounts, cloud sync, team rooms, or general notch utilities. These are product choices, not pending bugs.</p>
+            </div>
+          </section>
+
+          <section id="report">
+            <h2><span class="idx">06 / Reporting</span>Include these details</h2>
+            <p>File an issue on <a href="https://github.com/arronKler/herdr-island/issues" target="_blank" rel="noreferrer">GitHub Issues</a>. Please include:</p>
+            <ul class="checklist">
+              <li>Island version and build (Settings → Environment).</li>
+              <li>macOS version, Apple Silicon / Intel, and whether the Mac has a notch.</li>
+              <li>Herdr version, any protocol message, and the executable and socket paths (Settings → Environment).</li>
+              <li>Reproduction steps: where it first went wrong, and whether you switched Spaces, windows, or agents beforehand.</li>
+              <li>Relevant logs. You can launch with <code>--log &lt;path&gt;</code> and reproduce.</li>
+              <li>If it involves sending: whether Screen Recording / Accessibility / Automation are granted, and the notice text you saw.</li>
+            </ul>
+            <div class="callout callout--red">
+              <span class="mark" aria-hidden="true"></span>
+              <p><strong>Do not paste:</strong> terminal output containing tokens, private code, or full window screenshots. Keep only what a minimal reproduction needs; redact sensitive content in screenshots.</p>
+            </div>
+            <p>For a field-by-field account of what Island reads, writes, and keeps local, see <a href="what-it-reads.html">What it reads</a>. To remove everything, see <a href="uninstall.html">Uninstall</a>.</p>
+          </section>
+
+          <div class="page-end">
+            <span>Last checked: 2026-11-11 · Herdr 0.9.5 · Protocol 22</span>
+            <span><a href="what-it-reads.html">Next: What it reads →</a></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="assets/brand/icon.svg" width="38" height="38" alt="">
+        <div>
+          <div class="name">Herdr Island</div>
+          <p>The graphical front end for Herdr. Herdr still executes the work.</p>
+        </div>
+      </div>
+      <nav class="footer-links" aria-label="Footer links">
+        <a href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">Releases</a>
+        <a href="https://github.com/arronKler/herdr-island#readme" target="_blank" rel="noreferrer">README</a>
+        <a href="faq.html">FAQ</a>
+        <a href="known-issues.html">Known issues</a>
+        <a href="what-it-reads.html">What it reads</a>
+        <a href="uninstall.html">Uninstall</a>
+        <a href="zh/known-issues.html" data-language="zh" hreflang="zh-Hans" lang="zh-Hans">中文</a>
+        <a href="#top">Back to top</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span>macOS 14+ · Herdr 0.9.5+ · Apple Silicon · Version and sha256 in Releases</span>
+      <span>No account, telemetry, or upload. Screenshots and prompts stay on this Mac.</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

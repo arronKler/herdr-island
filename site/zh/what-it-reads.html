@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="zh-CN" data-counterpart="../what-it-reads.html">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#08090C">
+<title>它读了什么 · Herdr Island</title>
+<meta name="description" content="Herdr Island 的数据清单：从 Herdr 和 macOS 读取什么、向 Herdr 写入什么、在本机保留什么，以及哪些数据会离开本机。">
+<link rel="canonical" href="https://arronkler.github.io/herdr-island/zh/what-it-reads.html">
+<link rel="alternate" hreflang="en" href="https://arronkler.github.io/herdr-island/what-it-reads.html">
+<link rel="alternate" hreflang="zh-Hans" href="https://arronkler.github.io/herdr-island/zh/what-it-reads.html">
+<link rel="alternate" hreflang="x-default" href="https://arronkler.github.io/herdr-island/what-it-reads.html">
+<link rel="icon" href="../assets/brand/icon.svg" type="image/svg+xml">
+<link rel="icon" href="../assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<link rel="stylesheet" href="../pages.css">
+<script src="../lang.js"></script>
+</head>
+<body id="top">
+<a class="skip" href="#main">跳到主要内容</a>
+
+<header class="site-header">
+  <nav class="nav wrap" aria-label="主导航">
+    <a class="brand" href="index.html">
+      <img src="../assets/brand/icon.svg" width="28" height="28" alt="">
+      <span class="brand-name">Herdr Island</span>
+    </a>
+    <div class="nav-links">
+      <a href="index.html#install">安装</a>
+      <a href="index.html#status">状态</a>
+      <a href="index.html#deck">任务台</a>
+      <a href="index.html#terminal">终端</a>
+      <a href="index.html#new-task">新任务</a>
+      <a href="index.html#window">窗口</a>
+      <a href="index.html#safety">安全</a>
+      <a href="faq.html">文档</a>
+    </div>
+    <div class="nav-actions">
+      <a class="lang-switch" href="../what-it-reads.html" data-language="en" hreflang="en" lang="en">EN</a>
+      <a class="btn btn-ghost nav-github" href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">
+        GitHub
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5h7v7M12.5 3.5 4 12"/></svg>
+      </a>
+      <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">下载</a>
+    </div>
+  </nav>
+</header>
+
+<main id="main" class="page-main">
+  <div class="wrap">
+    <nav class="crumbs" aria-label="面包屑">
+      <a href="index.html">Herdr Island</a><span>/</span><a href="faq.html">文档</a><span>/</span><span>它读了什么</span>
+    </nav>
+
+    <div class="page-hero">
+      <p class="eyebrow">Data · 可审计清单</p>
+      <h1>它读了什么。</h1>
+      <p class="lede">Island 是本地工具：没有账号、遥测或网络请求。下面是它从 Herdr 和 macOS 读取、向 Herdr 写入、在本机保留的全部数据。最近核对：2026-11-11，对应 Herdr 0.9.5 与单 pane 协议 22。</p>
+      <div class="meta-row">
+        <span class="meta"><b>账号</b> 无</span>
+        <span class="meta"><b>遥测</b> 无</span>
+        <span class="meta"><b>网络请求</b> 无</span>
+        <span class="meta"><b>上传</b> 无</span>
+      </div>
+    </div>
+
+    <div class="page-body">
+      <div class="layout">
+        <aside class="toc" aria-label="目录">
+          <div class="toc-label">本页目录</div>
+          <ol>
+            <li><a href="#summary">一句话</a></li>
+            <li><a href="#reads-herdr">从 Herdr 读</a></li>
+            <li><a href="#reads-macos">从 macOS 读</a></li>
+            <li><a href="#writes-herdr">写到 Herdr</a></li>
+            <li><a href="#writes-local">写到本机</a></li>
+            <li><a href="#permissions">权限对照</a></li>
+            <li><a href="#does-not">不做什么</a></li>
+            <li><a href="#verify">自己核对</a></li>
+            <li><a href="uninstall.html">保留与删除 →</a></li>
+          </ol>
+        </aside>
+
+        <div class="content">
+          <section id="summary">
+            <h2><span class="idx">00 / 一句话</span>读 Herdr，写 Herdr，留本机</h2>
+            <div class="card-grid">
+              <div class="card">
+                <div class="card-kicker">读</div>
+                <h3>Herdr 的状态和终端</h3>
+                <p>agent 状态、最近输出、当前目录、标签、worktree 和终端流。可选读取锁定窗口的选中文本、URL、文档路径和一张截图。</p>
+              </div>
+              <div class="card card--amber">
+                <div class="card-kicker">写</div>
+                <h3>你明确触发的操作</h3>
+                <p>创建 workspace / worktree、启动 agent、提交 prompt、聚焦 pane、向详情终端输入。没有后台写入。</p>
+              </div>
+              <div class="card card--mint">
+                <div class="card-kicker">留</div>
+                <h3>只留在本机</h3>
+                <p>截图、粘贴图片和偏好保存在本机目录；prompt、代码、附件路径和截图不上传，也没有账号或云同步。</p>
+              </div>
+            </div>
+            <div class="callout">
+              <span class="mark" aria-hidden="true"></span>
+              <p><strong>唯一离开本机的路径：</strong>没有。Island 不发起网络请求。Herdr 本身、你使用的 agent 和 macOS 系统可能有自己的网络行为，那些不属于 Island 的读取或写入。</p>
+            </div>
+          </section>
+
+          <section id="reads-herdr">
+            <h2><span class="idx">01 / 从 Herdr 读</span>状态、预览和终端</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>数据</th><th>来源</th><th>用途</th><th>离开本机</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>agent 列表与元数据</strong><br>pane / workspace / tab、agent kind、状态、标题、cwd / foreground_cwd、completion_seq、state_change_seq、state_labels、name、focused、revision</td>
+                    <td>Unix socket 的 <code>agent.list</code> 和 <code>pane.list</code>；每 1.5 秒采样，状态事件即时更新</td>
+                    <td>任务台、状态、筛选、搜索、主 agent 解析</td>
+                    <td>否</td>
+                  </tr>
+                  <tr>
+                    <td><strong>最近终端输出</strong><br>recent unwrapped 预览</td>
+                    <td>socket 的 <code>agent.read</code>；断线时回退 <code>herdr agent read --source recent-unwrapped</code></td>
+                    <td>运行中行尾的最近一行、详情预览</td>
+                    <td>否</td>
+                  </tr>
+                  <tr>
+                    <td><strong>终端流与尺寸</strong><br>连续 ANSI 帧、主屏历史、鼠标模式、PTY 尺寸</td>
+                    <td>单 pane 二进制 socket，协议 22；<code>TerminalAttach</code> / <code>pane.get</code></td>
+                    <td>详情里的交互终端</td>
+                    <td>否</td>
+                  </tr>
+                  <tr>
+                    <td><strong>状态事件</strong><br><code>pane_agent_status_changed</code> / <code>pane.agent_status_changed</code></td>
+                    <td>Herdr socket 事件</td>
+                    <td>不等待下一次采样，立即更新状态</td>
+                    <td>否</td>
+                  </tr>
+                  <tr>
+                    <td><strong>CLI 回退结果</strong><br><code>herdr agent list</code>、<code>agent read</code>、<code>pane list</code> 等</td>
+                    <td>本地可执行文件 <code>~/.local/bin/herdr</code> 或 PATH 中的 <code>herdr</code></td>
+                    <td>socket 不兼容或断线时的只读回退；写操作不走自动重试</td>
+                    <td>否</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="table-note">socket 路径默认 <code>~/.config/herdr/herdr.sock</code>，可用 <code>HERDR_SOCKET_PATH</code> 或 <code>HERDR_SOCKET</code> 覆盖。设置 → 运行环境显示实际路径。</p>
+          </section>
+
+          <section id="reads-macos">
+            <h2><span class="idx">02 / 从 macOS 读</span>只在对应动作发生时</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>数据</th><th>何时</th><th>权限</th><th>不授权时</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><strong>选中文本、网页地址、文档路径</strong><br>上限 4,000 / 2,048 / 1,024 字符</td>
+                    <td>锁定窗口后组稿和发送时，对目标 App 做 best-effort 读取</td>
+                    <td>辅助功能</td>
+                    <td>字段为空；其他内容照常发送</td>
+                  </tr>
+                  <tr>
+                    <td><strong>窗口截图</strong><br>一张目标窗口 PNG</td>
+                    <td>只在你按下发送时；不持续录屏，不截整个屏幕</td>
+                    <td>屏幕录制</td>
+                    <td>不附截图；文字、上下文和文件照常发送</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Ghostty 终端定位</strong><br>通过 Apple Events 查到承载 Herdr 的 tty</td>
+                    <td>你点「去终端」或详情里的跳转时</td>
+                    <td>自动化</td>
+                    <td>仍然聚焦 Herdr pane，只是不精确到 Ghostty 终端</td>
+                  </tr>
+                  <tr>
+                    <td><strong>剪贴板</strong><br>文字、文件 URL、PNG / TIFF 图片</td>
+                    <td>你在详情里按 ⌘V、从菜单粘贴，或拖入文件时</td>
+                    <td>无额外权限</td>
+                    <td>不粘贴；没有后台剪贴板历史</td>
+                  </tr>
+                  <tr>
+                    <td><strong>你选择的文件</strong><br>绝对路径</td>
+                    <td>你添加附件或拖入投递框时</td>
+                    <td>无额外权限</td>
+                    <td>不添加附件</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="callout">
+              <span class="mark" aria-hidden="true"></span>
+              <p>Island 不读取麦克风、摄像头、日历、通讯录、位置、蓝牙、焦点状态或整个磁盘。辅助功能只读取你锁定的那个窗口的少量文本属性；屏幕录制只在你发送时截一张目标窗口。</p>
+            </div>
+          </section>
+
+          <section id="writes-herdr">
+            <h2><span class="idx">03 / 写到 Herdr</span>只在你明确操作时</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>操作</th><th>对应的 Herdr 能力</th><th>触发</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><strong>创建工作区</strong></td><td><code>workspace create --cwd … --label … --no-focus</code></td><td>新任务 / 投递到新 agent</td></tr>
+                  <tr><td><strong>创建隔离 worktree</strong></td><td><code>worktree create --cwd … --branch … --label … --no-focus</code></td><td>投递框打开 worktree</td></tr>
+                  <tr><td><strong>启动 agent</strong></td><td><code>agent start</code></td><td>新任务 / 投递到新 agent</td></tr>
+                  <tr><td><strong>提交 prompt</strong></td><td><code>agent prompt</code>（必要时 <code>--wait</code>）</td><td>发送或排队消息成交</td></tr>
+                  <tr><td><strong>聚焦 pane / workspace</strong></td><td><code>agent focus</code>、<code>workspace focus</code></td><td>点「去终端」/「在 Herdr 打开」</td></tr>
+                  <tr><td><strong>终端输入</strong></td><td>单 pane socket：按键、文字、粘贴、滚动、尺寸、鼠标报告</td><td>你在详情终端里实际输入或操作</td></tr>
+                  <tr><td><strong>等待状态</strong></td><td><code>agent wait</code></td><td>确认新任务或发送后的状态</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="table-note">创建和提交等写操作没有自动重试。blocked 的 agent 不会被 <code>agent prompt</code> 接受，Island 也不会改用按键绕过。</p>
+          </section>
+
+          <section id="writes-local">
+            <h2><span class="idx">04 / 写到本机</span>目录、保留和删除</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>位置</th><th>内容</th><th>保留</th><th>删除方式</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><code>~/Library/Application Support/HerdrIsland/Captures/</code></td>
+                    <td>窗口截图 PNG</td>
+                    <td>保留最新 50 张，写入新截图时清理旧图</td>
+                    <td>删除目录；或卸载时清理</td>
+                  </tr>
+                  <tr>
+                    <td><code>~/Library/Caches/HerdrIsland/TerminalImages/</code></td>
+                    <td>⌘V / 拖入的图片转成的 PNG</td>
+                    <td>目录 0700、文件 0600；超过 7 天在下次打开终端或粘贴时清理</td>
+                    <td>删除目录；或卸载时清理</td>
+                  </tr>
+                  <tr>
+                    <td>UserDefaults <code>local.herdr.island</code></td>
+                    <td>主 agent 身份（pane / kind / name / project / workspace）、上次模型、上次 / 默认目录、自动展开开关、完成停留、两类提示音</td>
+                    <td>直到删除偏好</td>
+                    <td><code>defaults delete local.herdr.island</code></td>
+                  </tr>
+                  <tr>
+                    <td>系统剪贴板</td>
+                    <td>你点「复制命令」或从终端复制的内容</td>
+                    <td>由 macOS 和你的其他 app 管理</td>
+                    <td>正常覆盖或清空剪贴板</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="table-note">Island 不安装后台服务、不注册登录项、不写 LaunchAgent，也不在 Application Support 之外创建数据库。</p>
+          </section>
+
+          <section id="permissions">
+            <h2><span class="idx">05 / 权限对照</span>三项都是按需</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>权限</th><th>用途</th><th>不授权时</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td><strong>自动化</strong></td><td>把 Herdr 的 pane 带到 Ghostty 前台</td><td>仍然聚焦 Herdr pane；精确跳转不可用</td></tr>
+                  <tr><td><strong>屏幕录制</strong></td><td>发送时截一张锁定窗口</td><td>不附截图；其他内容照常</td></tr>
+                  <tr><td><strong>辅助功能</strong></td><td>读取锁定窗口的选中文本、URL、文档路径</td><td>上下文为空；其他内容照常</td></tr>
+                </tbody>
+              </table>
+            </div>
+            <p>在设置 → 权限里可以查看状态并打开对应的系统设置。更改权限后 macOS 可能要求重启 Island。没有麦克风、摄像头、日历、通讯录、位置或蓝牙权限。</p>
+          </section>
+
+          <section id="does-not">
+            <h2><span class="idx">06 / 不做什么</span>明确的不做清单</h2>
+            <ul class="checklist checklist--no">
+              <li>没有账号、云同步、遥测、分析或崩溃上传。</li>
+              <li>不发起网络请求；没有自动更新检查，也没有后台下载。</li>
+              <li>不在锁定期间持续录屏，不截整个屏幕，不读其他窗口。</li>
+              <li>没有剪贴板历史，不在后台读取剪贴板。</li>
+              <li>不复制附件；prompt 里只有绝对路径。</li>
+              <li>不自动批准 blocked，不代发 y / Enter，不模拟确认按键。</li>
+              <li>不把 prompt、代码、附件路径或截图上传到任何地方。</li>
+              <li>不安装后台服务或登录项；退出 app 后没有 Island 进程。</li>
+            </ul>
+            <div class="callout callout--mint">
+              <span class="mark" aria-hidden="true"></span>
+              <p><strong>能验证的部分：</strong>上面每一条都能在源码里找到对应位置。下面给了主要文件和自查命令；如果你发现清单和实际行为不一致，它是 bug，请提 Issue。</p>
+            </div>
+          </section>
+
+          <section id="verify">
+            <h2><span class="idx">07 / 自己核对</span>源码、路径和网络</h2>
+            <h3>主要源码</h3>
+            <ul>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/HerdrKit/HerdrWire.swift" target="_blank" rel="noreferrer">HerdrWire.swift</a>：从 Herdr 读取的 agent 字段。</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/HerdrKit/HerdrCLI.swift" target="_blank" rel="noreferrer">HerdrCLI.swift</a>：socket / CLI 读取与写入命令。</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/HerdrKit/HerdrTerminalSession.swift" target="_blank" rel="noreferrer">HerdrTerminalSession.swift</a>：单 pane 终端协议。</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/WindowContextService.swift" target="_blank" rel="noreferrer">WindowContextService.swift</a>：辅助功能读取。</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/WindowCaptureService.swift" target="_blank" rel="noreferrer">WindowCaptureService.swift</a>：ScreenCaptureKit 截图和 50 张保留。</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/TerminalPasteboard.swift" target="_blank" rel="noreferrer">TerminalPasteboard.swift</a>：粘贴图片缓存、0700 / 0600 和 7 天清理。</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/MainAgentStore.swift" target="_blank" rel="noreferrer">MainAgentStore.swift</a>：主 agent 身份只存标识。</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/IslandSettings.swift" target="_blank" rel="noreferrer">IslandSettings.swift</a>：偏好和提示音。</li>
+            </ul>
+            <h3>在本机核对</h3>
+            <pre><code># 偏好（主 agent、目录、声音等）
+defaults read local.herdr.island
+
+# 截图和粘贴图片
+ls -la ~/Library/Application\ Support/HerdrIsland/Captures/
+ls -la ~/Library/Caches/HerdrIsland/TerminalImages/
+
+# 签名和版本
+codesign -dv /Applications/HerdrIsland.app
+defaults read /Applications/HerdrIsland.app/Contents/Info.plist CFBundleShortVersionString
+
+# 网络：用 Little Snitch / nettop 观察，或直接搜索源码里的网络客户端
+grep -rnE 'URLSession|URLRequest|NWConnection' Sources</code></pre>
+            <p>如果你没有开发环境，也可以用 macOS 的「活动监视器 → 网络」或 Little Snitch 观察：Island 在空闲和发送时都不应该产生网络连接。</p>
+          </section>
+
+          <div class="page-end">
+            <span>最近核对：2026-11-11 · Herdr 0.9.5 · 协议 22</span>
+            <span><a href="uninstall.html">下一步：卸载 →</a></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="../assets/brand/icon.svg" width="38" height="38" alt="">
+        <div>
+          <div class="name">Herdr Island</div>
+          <p>Herdr 的图形前端。Herdr 仍然是任务的执行者。</p>
+        </div>
+      </div>
+      <nav class="footer-links" aria-label="页脚链接">
+        <a href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">Releases</a>
+        <a href="https://github.com/arronKler/herdr-island#readme" target="_blank" rel="noreferrer">README</a>
+        <a href="faq.html">FAQ</a>
+        <a href="known-issues.html">已知问题</a>
+        <a href="what-it-reads.html">它读了什么</a>
+        <a href="uninstall.html">卸载</a>
+        <a href="../what-it-reads.html" data-language="en" lang="en">English</a>
+        <a href="#top">回到顶部</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span>macOS 14+ · Herdr 0.9.5+ · Apple Silicon · 版本与 sha256 见 Releases</span>
+      <span>没有账号、遥测或上传。截图和 prompt 留在本机。</span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

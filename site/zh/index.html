@@ -1,0 +1,2127 @@
+<!doctype html>
+<html lang="zh-CN" data-counterpart="../index.html">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#08090C">
+<title>Herdr Island · 刘海下，挂着你的 agent</title>
+<meta name="description" content="Herdr Island 是 Herdr 的 macOS 图形前端。把多个 coding agent 的状态放进刘海两侧，拖动水滴在任意位置创建任务。">
+<link rel="canonical" href="https://arronkler.github.io/herdr-island/zh/">
+<link rel="alternate" hreflang="en" href="https://arronkler.github.io/herdr-island/">
+<link rel="alternate" hreflang="zh-Hans" href="https://arronkler.github.io/herdr-island/zh/">
+<link rel="alternate" hreflang="x-default" href="https://arronkler.github.io/herdr-island/">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Herdr Island">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:title" content="Herdr Island · 刘海下，挂着你的 agent">
+<meta property="og:description" content="Herdr Island 是 Herdr 的 macOS 图形前端。把多个 coding agent 的状态放进刘海两侧，拖动水滴在任意位置创建任务。">
+<meta property="og:url" content="https://arronkler.github.io/herdr-island/zh/">
+<meta property="og:image" content="https://arronkler.github.io/herdr-island/assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Herdr Island 产品页分享卡片">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Herdr Island · 刘海下，挂着你的 agent">
+<meta name="twitter:description" content="Herdr Island 是 Herdr 的 macOS 图形前端。把多个 coding agent 的状态放进刘海两侧，拖动水滴在任意位置创建任务。">
+<meta name="twitter:image" content="https://arronkler.github.io/herdr-island/assets/og.png">
+<link rel="icon" href="../assets/brand/icon.svg" type="image/svg+xml">
+<link rel="icon" href="../assets/brand/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="../assets/brand/apple-touch-icon.png">
+<style>
+:root{
+  --bg:#08090C;
+  --bg-2:#0B0D12;
+  --surface:#0F1218;
+  --surface-2:#141821;
+  --line:rgba(215,239,252,.12);
+  --line-soft:rgba(215,239,252,.07);
+  --text:#F1F5F7;
+  --muted:#A3AEB5;
+  --muted-2:#8B969D;
+  --ice:#D7EFFC;
+  --ice-dim:#B7D9E8;
+  --amber:#FFB224;
+  --amber-bright:#FFC65C;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Hiragino Sans GB","Noto Sans CJK SC","Microsoft YaHei",sans-serif;
+  --mono:"SF Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --maxw:1120px;
+  --menu-h:40px;
+  --radius:20px;
+  color-scheme:dark;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{
+  -webkit-text-size-adjust:100%;
+  scroll-behavior:smooth;
+  scroll-padding-top:96px;
+}
+body{
+  margin:0;
+  background:
+    radial-gradient(1000px 560px at 50% -220px,rgba(215,239,252,.085),transparent 70%),
+    radial-gradient(900px 700px at 92% 34%,rgba(78,48,120,.10),transparent 72%),
+    var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:16px;
+  line-height:1.7;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:clip;
+}
+img,svg{display:block}
+img{max-width:100%}
+a{color:inherit;text-decoration:none}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+h1,h2,h3,p,ul,ol,figure{margin:0}
+ul,ol{padding:0}
+::selection{background:var(--amber);color:#08090C}
+
+:focus-visible{
+  outline:2px solid var(--amber);
+  outline-offset:3px;
+  border-radius:4px;
+}
+.btn-primary:focus-visible,.send:focus-visible{
+  outline-color:var(--ice);
+}
+
+.wrap{width:min(var(--maxw),calc(100% - 48px));margin-inline:auto}
+.sr-only{
+  position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;
+}
+.skip{
+  position:fixed;top:-80px;left:16px;z-index:200;
+  padding:10px 16px;border-radius:9px;
+  background:var(--amber);color:#08090C;
+  font-size:13px;font-weight:700;
+  transition:top .15s ease;
+}
+.skip:focus{top:12px}
+
+.kbd{
+  display:inline-block;
+  min-width:18px;padding:1px 5px;
+  border:1px solid rgba(215,239,252,.18);
+  border-bottom-width:2px;border-radius:5px;
+  background:#151921;color:var(--ice);
+  font-family:var(--mono);font-size:10.5px;line-height:1.45;
+  text-align:center;white-space:nowrap;
+}
+
+/* Header */
+.site-header{
+  position:sticky;top:0;z-index:60;
+  background:rgba(8,9,12,.74);
+  -webkit-backdrop-filter:blur(18px) saturate(1.2);
+  backdrop-filter:blur(18px) saturate(1.2);
+  border-bottom:1px solid var(--line-soft);
+}
+.nav{
+  display:flex;align-items:center;gap:22px;
+  min-height:68px;padding-block:10px;
+  flex-wrap:wrap;
+}
+.brand{display:inline-flex;align-items:center;gap:10px;flex:none}
+.brand img{
+  width:28px;height:28px;border-radius:7px;
+  box-shadow:0 0 0 1px rgba(215,239,252,.15),0 8px 22px rgba(0,0,0,.45);
+}
+.brand-name{
+  font-size:14.5px;font-weight:650;letter-spacing:-.015em;
+}
+.nav-links{
+  display:flex;align-items:center;gap:2px;
+  margin-left:auto;flex-wrap:wrap;
+}
+.nav-links a{
+  padding:8px 10px;border-radius:8px;
+  color:var(--muted);font-size:12.5px;letter-spacing:.01em;
+  transition:color .15s ease,background .15s ease;
+}
+.nav-links a:hover{color:var(--text);background:rgba(215,239,252,.06)}
+.nav-actions{display:flex;align-items:center;gap:8px;flex:none}
+.nav .btn{min-height:36px;padding:0 13px;font-size:12.5px}
+.nav-github{gap:6px}
+.nav-github svg{width:12px;height:12px;opacity:.7}
+.lang-switch{
+  display:inline-flex;align-items:center;justify-content:center;
+  min-height:36px;padding:0 10px;border-radius:8px;
+  color:var(--muted);font-family:var(--mono);font-size:11px;
+  letter-spacing:.04em;white-space:nowrap;
+  transition:color .15s ease,background .15s ease;
+}
+.lang-switch:hover{color:var(--text);background:rgba(215,239,252,.06)}
+
+/* Buttons */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  min-height:44px;padding:0 19px;
+  border:1px solid transparent;border-radius:11px;
+  font-size:13.5px;font-weight:600;letter-spacing:.01em;
+  transition:transform .15s ease,background .15s ease,border-color .15s ease,box-shadow .15s ease;
+}
+.btn svg{width:15px;height:15px;flex:none}
+.btn-primary{
+  background:var(--amber);color:#0A0A0A;
+  box-shadow:0 8px 26px rgba(255,178,36,.18);
+}
+.btn-primary:hover{background:var(--amber-bright);transform:translateY(-1px)}
+.btn-ghost{
+  border-color:var(--line);background:rgba(215,239,252,.025);color:var(--ice);
+}
+.btn-ghost:hover{border-color:rgba(215,239,252,.3);background:rgba(215,239,252,.07)}
+.btn:active{transform:translateY(0) scale(.99)}
+
+/* Hero */
+.hero{position:relative;padding:66px 0 0}
+.eyebrow{
+  display:inline-flex;align-items:center;gap:9px;
+  margin-inline:auto;
+  padding:6px 12px;border:1px solid var(--line);border-radius:999px;
+  color:var(--ice-dim);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;
+  width:max-content;max-width:100%;
+}
+.hero > .wrap{display:flex;flex-direction:column;align-items:center}
+.live-dot{
+  width:5px;height:5px;border-radius:50%;flex:none;
+  background:var(--ice);box-shadow:0 0 10px rgba(215,239,252,.8);
+}
+@media (prefers-reduced-motion:no-preference){
+  .live-dot{animation:live-pulse 2.6s ease-in-out infinite}
+}
+@keyframes live-pulse{0%,100%{opacity:.45}50%{opacity:1}}
+.hero h1{
+  margin-top:26px;
+  max-width:15em;
+  text-align:center;
+  font-size:clamp(39px,6.1vw,80px);
+  line-height:1.1;letter-spacing:-.035em;font-weight:700;
+  text-wrap:balance;
+  color:#F7FBFD;
+}
+@supports ((-webkit-background-clip:text) or (background-clip:text)){
+  .hero h1{
+    background:linear-gradient(180deg,#FFFFFF 18%,#C9DFEA 100%);
+    -webkit-background-clip:text;background-clip:text;
+    -webkit-text-fill-color:transparent;color:transparent;
+  }
+}
+.hero h1 .stop{
+  color:var(--amber);
+  -webkit-text-fill-color:var(--amber);
+}
+.hero-lead{
+  max-width:680px;margin-top:22px;text-align:center;
+  color:#B4BFC6;font-size:17px;line-height:1.88;
+}
+.hero-lead strong{color:var(--text);font-weight:600}
+.hero-cta{
+  display:flex;align-items:center;justify-content:center;gap:12px;
+  flex-wrap:wrap;margin-top:30px;
+}
+.hero-env{
+  margin-top:16px;text-align:center;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.05em;
+  color:var(--muted-2);
+}
+
+/* Stage */
+.stage-block{width:100%;margin-top:52px}
+.stage-meta{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.07em;
+  color:var(--muted-2);
+}
+.stage-meta .meta-left{display:inline-flex;align-items:center;gap:9px;color:var(--ice-dim)}
+.stage-meta .meta-right{display:inline-flex;align-items:center;gap:7px;color:var(--amber)}
+.stage-meta .meta-right svg{width:12px;height:12px}
+
+.stage{
+  position:relative;
+  height:540px;
+  border-radius:22px;
+  overflow:hidden;
+  border:1px solid rgba(215,239,252,.16);
+  background:#0A0C12;
+  box-shadow:
+    0 60px 140px -30px rgba(0,0,0,.85),
+    0 0 0 1px rgba(0,0,0,.35),
+    inset 0 1px 0 rgba(255,255,255,.06);
+  isolation:isolate;
+}
+.stage::before{
+  content:"";position:absolute;inset:0;z-index:0;
+  background:
+    radial-gradient(58% 68% at 16% 82%,rgba(42,66,105,.55),transparent 70%),
+    radial-gradient(54% 62% at 84% 68%,rgba(74,44,104,.55),transparent 72%),
+    linear-gradient(180deg,#0C0F16 0%,#090A0F 100%);
+}
+.stage-light{
+  position:absolute;top:-1px;left:50%;z-index:0;
+  width:76%;height:100%;
+  transform:translateX(-50%);
+  background:linear-gradient(180deg,rgba(215,239,252,.11),rgba(215,239,252,.02) 48%,transparent 78%);
+  clip-path:polygon(46% 0,54% 0,88% 100%,12% 100%);
+  filter:blur(18px);
+  pointer-events:none;
+}
+.stage-grain{
+  position:absolute;inset:0;z-index:1;pointer-events:none;
+  opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.55'/%3E%3C/svg%3E");
+}
+
+.menubar{
+  position:absolute;top:0;left:0;right:0;z-index:4;
+  height:var(--menu-h);
+  display:flex;align-items:center;justify-content:space-between;
+  gap:16px;padding:0 16px;
+  border-bottom:1px solid rgba(215,239,252,.05);
+  background:linear-gradient(180deg,rgba(22,25,33,.84),rgba(13,15,20,.7));
+  -webkit-backdrop-filter:blur(14px);
+  backdrop-filter:blur(14px);
+  color:#C6CFD5;font-size:11.5px;
+}
+.menubar-left,.menubar-right{display:flex;align-items:center;gap:14px;white-space:nowrap;min-width:0}
+.menu-item{opacity:.72}
+.menu-item.active{opacity:1;color:#fff;font-weight:600}
+.menubar-right{gap:12px}
+.status-icons{display:flex;align-items:center;gap:12px}
+.mb-icon{width:14px;height:14px;opacity:.82}
+.clock{font-family:var(--mono);font-size:10.5px;letter-spacing:.02em;opacity:.9}
+
+.island{
+  position:absolute;top:0;left:50%;z-index:5;
+  transform:translateX(-50%);
+  width:min(340px,calc(100% - 24px));height:var(--menu-h);
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 16px;
+  border-radius:0 0 18px 18px;
+  background:#000;
+  box-shadow:0 12px 34px rgba(0,0,0,.62);
+}
+.ear{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:10.5px;letter-spacing:.02em;color:#B9C3C9;white-space:nowrap;
+}
+.ear .dot{width:5px;height:5px;border-radius:50%;flex:none}
+.ear-left .dot{background:var(--amber);box-shadow:0 0 9px rgba(255,178,36,.7)}
+.ear-right .dot{background:var(--ice);box-shadow:0 0 9px rgba(215,239,252,.7)}
+.notch-cam{
+  position:absolute;top:5px;left:50%;transform:translateX(-50%);
+  width:6px;height:6px;border-radius:50%;
+  background:#11151C;border:1px solid rgba(215,239,252,.08);
+}
+
+.thread{
+  position:absolute;top:var(--menu-h);left:50%;z-index:4;
+  width:1px;height:22px;
+  transform:translateX(-50%);
+  background:linear-gradient(180deg,rgba(215,239,252,.45),rgba(215,239,252,.04));
+  transition:opacity .15s ease;
+  pointer-events:none;
+}
+.neck{
+  position:absolute;inset:0;z-index:3;
+  width:100%;height:100%;
+  pointer-events:none;overflow:visible;
+  opacity:0;transition:opacity .08s linear;
+}
+.neck.on{opacity:1}
+#neckGlow{filter:blur(7px)}
+.bead{
+  position:absolute;top:calc(var(--menu-h) + 2px);left:50%;z-index:4;
+  width:6px;height:6px;border-radius:50%;
+  background:var(--ice);
+  box-shadow:0 0 12px rgba(215,239,252,.85);
+  transform:translateX(-50%) scale(0);
+  transition:transform .18s ease;
+  pointer-events:none;
+}
+.bead.on{transform:translateX(-50%) scale(1)}
+
+.droplet{
+  position:absolute;top:50px;left:50%;z-index:6;
+  width:44px;height:44px;
+  display:grid;place-items:center;
+  padding:0;border:0;background:none;
+  transform:translate(calc(-50% + var(--dx,0px)),var(--dy,0px));
+  transition:transform .32s cubic-bezier(.2,.8,.2,1),opacity .2s ease;
+  cursor:grab;
+  touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+  will-change:transform;
+}
+.droplet.is-dragging{transition:none;cursor:grabbing}
+.droplet.is-away{opacity:0;pointer-events:none}
+.droplet:focus-visible{outline-offset:5px;border-radius:50%}
+.droplet .core{
+  width:20px;height:20px;
+  border-radius:50% 50% 48% 48% / 56% 56% 44% 44%;
+  background:radial-gradient(circle at 36% 28%,#F6FCFF 0%,#C7E9F8 40%,#82BCD8 74%,#4C7893 100%);
+  box-shadow:
+    0 0 18px rgba(215,239,252,.5),
+    0 0 48px rgba(215,239,252,.18),
+    inset -2px -3px 6px rgba(0,0,0,.22);
+  position:relative;
+  transition:transform .18s ease,box-shadow .18s ease;
+}
+.droplet .core::after{
+  content:"";position:absolute;top:4px;left:5px;
+  width:5px;height:4px;border-radius:50%;
+  background:rgba(255,255,255,.85);
+  filter:blur(.3px);
+}
+.droplet:hover .core{transform:scale(1.08)}
+@media (prefers-reduced-motion:no-preference){
+  .droplet:not(.is-dragging):not(.is-away) .core{animation:breathe 5.5s ease-in-out infinite}
+}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+.droplet::after{
+  content:"";position:absolute;inset:-5px;border-radius:50%;
+  background:conic-gradient(from -90deg,rgba(255,178,36,.95) calc(var(--charge,0) * 360deg),rgba(215,239,252,.11) 0);
+  -webkit-mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1.4px));
+  mask:radial-gradient(farthest-side,transparent calc(100% - 2px),#000 calc(100% - 1.4px));
+  opacity:0;transition:opacity .15s ease;
+  pointer-events:none;
+}
+.droplet.is-dragging::after{opacity:1}
+.droplet.is-detached::after{opacity:0}
+.droplet.is-detached .core{
+  box-shadow:0 0 24px rgba(255,178,36,.6),0 0 62px rgba(255,178,36,.22),inset -2px -3px 6px rgba(0,0,0,.22);
+}
+.droplet.is-away .core{transform:scale(.45);opacity:0}
+
+.ripple-layer{position:absolute;inset:0;z-index:18;pointer-events:none}
+.ripple{
+  position:absolute;width:12px;height:12px;margin:-6px 0 0 -6px;
+  border-radius:50%;
+  border:1px solid rgba(215,239,252,.7);
+  box-shadow:0 0 24px rgba(215,239,252,.4);
+  animation:ripple-out .7s cubic-bezier(.15,.6,.3,1) forwards;
+}
+@keyframes ripple-out{
+  0%{transform:scale(.4);opacity:.95}
+  100%{transform:scale(4.6);opacity:0}
+}
+
+.tether{
+  position:absolute;z-index:19;width:1px;
+  background:linear-gradient(180deg,rgba(215,239,252,.3),rgba(255,178,36,.7));
+  opacity:0;pointer-events:none;
+}
+.tether.on{opacity:1}
+.tether::after{
+  content:"";position:absolute;bottom:-3px;left:-2px;
+  width:5px;height:5px;border-radius:50%;
+  background:var(--amber);
+  box-shadow:0 0 12px rgba(255,178,36,.75);
+}
+
+.stage-bar{
+  position:absolute;left:0;right:0;bottom:0;z-index:4;
+  height:40px;
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:0 18px;
+  border-top:1px solid rgba(215,239,252,.07);
+  background:rgba(8,9,12,.52);
+  -webkit-backdrop-filter:blur(10px);
+  backdrop-filter:blur(10px);
+  font-family:var(--mono);font-size:10px;letter-spacing:.03em;
+  color:var(--muted-2);
+  pointer-events:none;
+}
+.stage-bar .hint-left{color:var(--ice-dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage-bar .hint-right{color:var(--amber);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+/* Composer */
+.composer{
+  position:absolute;z-index:20;
+  width:min(344px,calc(100% - 32px));
+  padding:14px;
+  border:1px solid rgba(215,239,252,.16);
+  border-radius:16px;
+  background:linear-gradient(180deg,#161A22 0%,#10131A 100%);
+  box-shadow:
+    0 34px 90px rgba(0,0,0,.72),
+    0 0 0 1px rgba(0,0,0,.45),
+    inset 0 1px 0 rgba(255,255,255,.05);
+  color:var(--text);
+  animation:composer-in .18s cubic-bezier(.2,.8,.2,1);
+}
+.composer[hidden]{display:none}
+@keyframes composer-in{from{opacity:0;transform:translateY(7px) scale(.98)}to{opacity:1;transform:none}}
+.composer-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.composer-title{font-size:13.5px;font-weight:600;letter-spacing:-.01em}
+.icon-btn{
+  width:28px;height:28px;display:grid;place-items:center;
+  padding:0;border:1px solid transparent;border-radius:8px;
+  background:transparent;color:#8F9AA1;
+  transition:background .15s ease,color .15s ease;
+}
+.icon-btn:hover{background:rgba(215,239,252,.08);color:#fff}
+.icon-btn svg{width:13px;height:13px}
+.composer form{margin:0}
+.models{
+  display:flex;align-items:center;flex-wrap:wrap;gap:6px;
+  margin:10px 0 0;padding:0;border:0;min-width:0;
+}
+.model{position:relative}
+.model input{
+  position:absolute;width:1px;height:1px;opacity:0;
+  pointer-events:none;
+}
+.model span{
+  display:inline-flex;align-items:center;gap:6px;
+  height:28px;padding:0 9px;
+  border:1px solid rgba(215,239,252,.12);border-radius:8px;
+  background:rgba(215,239,252,.025);
+  color:#C7D0D5;font-size:11.5px;cursor:pointer;
+  transition:border-color .15s ease,background .15s ease,color .15s ease;
+}
+.model span i{width:5px;height:5px;border-radius:50%;background:currentColor;opacity:.85;flex:none}
+.model[data-model="claude"] span i{background:#D97757}
+.model[data-model="codex"] span i{background:#DDE3E7}
+.model[data-model="cursor"] span i{background:#9BA7FF}
+.model[data-model="gemini"] span i{background:#7FB4FF}
+.model span:hover{border-color:rgba(215,239,252,.24);color:#fff}
+.model input:checked + span{
+  border-color:rgba(255,178,36,.55);
+  background:rgba(255,178,36,.12);
+  color:#FFD27A;
+  box-shadow:inset 0 0 0 1px rgba(255,178,36,.1);
+}
+.model input:focus-visible + span{outline:2px solid var(--amber);outline-offset:2px}
+.composer textarea{
+  display:block;width:100%;min-height:56px;max-height:110px;
+  margin-top:10px;padding:9px 10px;
+  border:1px solid rgba(215,239,252,.12);border-radius:9px;
+  background:rgba(0,0,0,.26);color:var(--text);
+  font-size:12.5px;line-height:1.6;
+  resize:vertical;
+}
+.composer textarea::placeholder{color:#7C878E}
+.composer textarea:focus-visible{outline:2px solid var(--amber);outline-offset:1px;border-color:transparent}
+.composer textarea[aria-invalid="true"]{border-color:rgba(255,178,36,.75)}
+.composer-meta{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  flex-wrap:wrap;margin-top:9px;
+  font-size:11px;color:var(--muted);
+}
+.dir{position:relative;display:inline-flex;align-items:center;gap:6px;min-width:0;padding-right:12px}
+.dir > svg:first-child{width:12px;height:12px;flex:none;opacity:.75}
+.dir select{
+  max-width:150px;padding:2px 0;
+  border:0;background:transparent;color:#C7D0D5;
+  font-size:11px;appearance:none;cursor:pointer;
+  text-overflow:ellipsis;
+}
+.dir .chev{position:absolute;right:0;width:9px;height:9px;pointer-events:none;opacity:.6}
+.switch{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;cursor:pointer;position:relative}
+.switch input{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.switch .track{
+  width:26px;height:15px;border-radius:999px;flex:none;
+  background:rgba(215,239,252,.13);position:relative;
+  transition:background .15s ease;
+}
+.switch .track::after{
+  content:"";position:absolute;top:2px;left:2px;
+  width:11px;height:11px;border-radius:50%;
+  background:#9AA6AE;
+  transition:transform .15s ease,background .15s ease;
+}
+.switch input:checked + .track{background:rgba(255,178,36,.32)}
+.switch input:checked + .track::after{transform:translateX(11px);background:var(--amber)}
+.switch input:focus-visible + .track{outline:2px solid var(--amber);outline-offset:2px}
+.composer-foot{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  flex-wrap:wrap;margin-top:12px;
+}
+.composer-note{font-size:10px;line-height:1.5;color:var(--muted-2);max-width:170px}
+.composer-note.is-error{color:var(--amber)}
+.send{
+  display:inline-flex;align-items:center;gap:7px;
+  height:31px;padding:0 12px;
+  border:0;border-radius:8px;
+  background:var(--amber);color:#0A0A0A;
+  font-size:12px;font-weight:650;
+  transition:background .15s ease,transform .15s ease;
+}
+.send:hover{background:var(--amber-bright)}
+.send:active{transform:scale(.985)}
+.send .kbd{background:rgba(0,0,0,.16);border-color:rgba(0,0,0,.18);color:#0A0A0A;font-size:9.5px;padding:0 4px}
+
+.toast{
+  position:absolute;left:50%;bottom:54px;z-index:30;
+  transform:translateX(-50%) translateY(8px);
+  max-width:calc(100% - 32px);
+  padding:9px 14px;
+  border:1px solid rgba(215,239,252,.18);border-radius:10px;
+  background:rgba(16,19,26,.95);
+  box-shadow:0 18px 50px rgba(0,0,0,.6);
+  color:var(--ice);font-size:11.5px;line-height:1.5;text-align:center;
+  opacity:0;pointer-events:none;
+  transition:opacity .2s ease,transform .2s ease;
+}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+
+.demo-note{
+  margin-top:12px;text-align:center;
+  font-size:11px;color:var(--muted-2);
+}
+.noscript{
+  margin-top:12px;padding:10px 14px;
+  border:1px solid rgba(255,178,36,.25);border-radius:10px;
+  background:rgba(255,178,36,.06);
+  color:#D9C7A6;font-size:12px;text-align:center;
+}
+.spec-rail{
+  display:flex;align-items:center;justify-content:center;gap:8px 20px;
+  flex-wrap:wrap;
+  margin-top:20px;
+  list-style:none;
+  font-family:var(--mono);font-size:10px;letter-spacing:.04em;
+  color:var(--muted-2);
+}
+.spec-rail li{display:inline-flex;align-items:center;gap:8px}
+.spec-rail li::before{
+  content:"";width:3px;height:3px;border-radius:50%;
+  background:var(--amber);opacity:.7;flex:none;
+}
+
+/* Section scaffolding */
+.section{position:relative;padding:120px 0 0}
+.section--deck{background:radial-gradient(56% 38% at 92% 46%,rgba(78,48,120,.10),transparent 72%)}
+.section--terminal{background:radial-gradient(48% 34% at 6% 58%,rgba(42,66,105,.10),transparent 72%)}
+.section--install{background:radial-gradient(50% 38% at 88% 78%,rgba(255,178,36,.055),transparent 72%)}
+.section-head{
+  display:grid;grid-template-columns:190px minmax(0,1fr);
+  gap:48px;align-items:start;
+  margin-bottom:54px;
+}
+.kicker{
+  display:flex;align-items:center;gap:10px;
+  padding-top:12px;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;
+  color:var(--muted-2);
+}
+.kicker::before{content:"";width:24px;height:1px;background:var(--amber);flex:none}
+.kicker .num{color:var(--amber)}
+.section h2{
+  font-size:clamp(30px,4vw,52px);
+  line-height:1.16;letter-spacing:-.032em;font-weight:700;
+  text-wrap:balance;max-width:16em;
+}
+.section-lead{
+  max-width:660px;margin-top:18px;
+  color:#AEB9C0;font-size:16px;line-height:1.9;
+}
+.section-lead code,.feature p code,.boundary p code,.steps p code,.footer code{
+  font-family:var(--mono);font-size:.88em;
+  padding:1px 5px;border-radius:4px;
+  background:rgba(215,239,252,.06);color:var(--ice);
+}
+
+/* Status plates */
+.stat-grid{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:clamp(18px,2.4vw,28px);
+  align-items:start;
+  overflow:clip;
+}
+.stat-card{max-width:380px;width:100%}
+.stat-card:nth-child(2){margin-top:44px}
+.stat-card:nth-child(3){margin-top:84px}
+.plate-frame{
+  position:relative;
+  padding:9px;border-radius:20px;
+  border:1px solid rgba(215,239,252,.14);
+  background:linear-gradient(180deg,#12151C 0%,#0A0C11 100%);
+  box-shadow:
+    0 42px 100px -22px rgba(0,0,0,.82),
+    inset 0 1px 0 rgba(255,255,255,.05);
+}
+.plate-frame::before{
+  content:"";position:absolute;inset:-32px;z-index:-1;
+  background:radial-gradient(50% 50% at 50% 50%,rgba(215,239,252,.075),transparent 72%);
+  filter:blur(18px);pointer-events:none;
+}
+.plate{
+  position:relative;overflow:hidden;
+  border-radius:11px;background:#0A0B0F;
+}
+.plate img{max-width:none}
+/* The 1200 × 800 renders are cropped in place so real UI text stays crisp. */
+.plate--ears{aspect-ratio:380/230}
+.plate--ears img{position:absolute;top:0;left:50%;width:1200px;height:auto;transform:translateX(-50%)}
+.plate--peek{aspect-ratio:380/285}
+.plate--peek img{position:absolute;top:0;left:-100%;width:300%;height:auto}
+.plate--deck{aspect-ratio:380/320}
+.plate--deck img{position:absolute;top:0;left:-57%;width:214%;height:auto}
+.plate--drop{aspect-ratio:500/420}
+.plate--drop img{position:absolute;top:0;left:50%;width:1200px;height:auto;transform:translateX(-50%)}
+.plate--scene{aspect-ratio:1/1}
+.plate--scene img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
+.stat-card figcaption{padding:16px 2px 0}
+.cap-label{
+  display:block;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;
+  color:var(--amber);
+}
+.stat-card h3,.figure h3{
+  margin-top:7px;font-size:15px;font-weight:600;letter-spacing:-.01em;line-height:1.45;
+}
+.stat-card p{
+  margin-top:7px;color:var(--muted);font-size:13px;line-height:1.8;
+}
+.figure{position:relative;margin:0;min-width:0}
+.figure figcaption{margin-top:14px;display:flex;gap:12px;align-items:baseline}
+.figure .cap-body{min-width:0}
+.figure p{margin-top:5px;font-size:12px;line-height:1.7;color:var(--muted)}
+.figure--deck{max-width:620px}
+.figure--terminal{max-width:620px}
+.figure--window{max-width:620px}
+.figure--drop{max-width:500px}
+
+/* Split layouts */
+.split{
+  display:grid;grid-template-columns:minmax(0,.92fr) minmax(0,1.08fr);
+  gap:clamp(36px,6vw,78px);align-items:center;
+}
+.split.is-reverse{grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr)}
+.split > *{min-width:0}
+.features{margin-top:26px;border-top:1px solid var(--line-soft)}
+.feature{
+  display:grid;grid-template-columns:34px minmax(0,1fr);gap:12px;
+  padding:17px 0;border-bottom:1px solid var(--line-soft);
+}
+.feature-index{padding-top:4px;font-family:var(--mono);font-size:10px;color:var(--amber)}
+.feature h3{font-size:14px;font-weight:600;letter-spacing:-.005em}
+.feature p{margin-top:5px;font-size:13px;line-height:1.8;color:var(--muted)}
+.key-row{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+
+/* Terminal */
+.terminal-layout{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);
+  gap:clamp(36px,6vw,78px);align-items:center;
+}
+.terminal-layout > *{min-width:0}
+.terminal-note{
+  margin-top:22px;padding-left:18px;
+  border-left:1px solid var(--line);
+  color:var(--muted);font-size:12.5px;line-height:1.8;
+}
+.shortcut-bar{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:10px;margin-top:44px;
+}
+.shortcut{
+  display:flex;flex-direction:column;align-items:flex-start;gap:8px;
+  padding:16px;
+  border:1px solid var(--line-soft);border-radius:12px;
+  background:linear-gradient(180deg,rgba(215,239,252,.035),rgba(215,239,252,.008));
+}
+.shortcut .keys{display:flex;align-items:center;gap:4px;flex-wrap:wrap;min-height:22px}
+.shortcut .label{font-size:12px;color:var(--muted)}
+
+/* New task */
+.drag-steps{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:18px;margin-top:8px;list-style:none;
+}
+.drag-step{
+  padding:18px;
+  border:1px solid var(--line-soft);border-radius:14px;
+  background:linear-gradient(180deg,rgba(215,239,252,.035),rgba(215,239,252,.008));
+}
+.mini-stage{
+  position:relative;height:104px;margin-bottom:14px;
+  border-radius:10px;overflow:hidden;
+  background:
+    radial-gradient(70% 80% at 50% 110%,rgba(74,44,104,.35),transparent 70%),
+    #090B10;
+  border:1px solid rgba(215,239,252,.07);
+}
+.mini-notch{
+  position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:56px;height:12px;border-radius:0 0 7px 7px;background:#000;
+}
+.mini-drop{
+  position:absolute;left:50%;width:9px;height:9px;border-radius:50%;
+  background:var(--ice);box-shadow:0 0 10px rgba(215,239,252,.55);
+  transform:translateX(-50%);
+}
+.mini-neck{
+  position:absolute;top:12px;left:50%;width:2px;
+  transform:translateX(-50%);
+  background:linear-gradient(180deg,rgba(215,239,252,.7),rgba(215,239,252,.15));
+}
+.step-a .mini-neck{height:40px}
+.step-a .mini-drop{top:52px}
+.step-b .mini-drop{top:66px;left:64%}
+.mini-bead{
+  position:absolute;top:14px;left:50%;transform:translateX(-50%);
+  width:4px;height:4px;border-radius:50%;background:var(--ice);opacity:.8;
+}
+.mini-dash{
+  position:absolute;top:22px;left:50%;width:1px;height:36px;
+  transform:translateX(-50%);
+  background:repeating-linear-gradient(180deg,rgba(215,239,252,.35) 0 3px,transparent 3px 7px);
+}
+.step-c .mini-ripple{
+  position:absolute;top:70px;left:50%;transform:translateX(-50%);
+  width:10px;height:10px;border-radius:50%;
+  border:1px solid rgba(215,239,252,.55);
+}
+.mini-composer{
+  position:absolute;left:50%;top:24px;transform:translateX(-50%);
+  width:92px;height:38px;border-radius:6px;
+  border:1px solid rgba(215,239,252,.22);
+  background:#12161D;
+  box-shadow:0 8px 24px rgba(0,0,0,.5);
+}
+.mini-composer::before{
+  content:"";position:absolute;left:7px;top:7px;width:38px;height:3px;border-radius:2px;
+  background:rgba(215,239,252,.28);
+}
+.mini-composer::after{
+  content:"";position:absolute;left:7px;top:15px;width:56px;height:3px;border-radius:2px;
+  background:rgba(215,239,252,.13);
+}
+.drag-step .step-kicker{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;color:var(--amber);
+}
+.drag-step h3{margin-top:6px;font-size:14px;font-weight:600}
+.drag-step p{margin-top:6px;font-size:12.5px;line-height:1.75;color:var(--muted)}
+
+.nudge-list{
+  display:grid;gap:0;margin:26px 0 0;
+  border-top:1px solid var(--line-soft);
+}
+.nudge{
+  display:grid;grid-template-columns:76px minmax(0,1fr);gap:14px;
+  padding:14px 0;border-bottom:1px solid var(--line-soft);
+  font-size:13px;line-height:1.8;
+}
+.nudge dt{color:var(--amber);font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding-top:4px}
+.nudge dd{margin:0;color:var(--muted)}
+
+/* Safety */
+.boundary-quote{
+  max-width:840px;margin:0 0 38px;padding-left:24px;
+  border-left:2px solid var(--amber);
+  font-size:clamp(22px,3vw,32px);line-height:1.5;letter-spacing:-.02em;
+}
+.boundary-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:14px;
+}
+.boundary{
+  padding:22px;
+  border:1px solid var(--line-soft);border-radius:14px;
+  background:linear-gradient(180deg,rgba(215,239,252,.04),rgba(215,239,252,.01));
+}
+.boundary .tag{
+  display:inline-flex;align-items:center;gap:7px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--amber);
+}
+.boundary .tag::before{content:"";width:14px;height:1px;background:var(--amber)}
+.boundary h3{margin-top:9px;font-size:15px;font-weight:600}
+.boundary p{margin-top:7px;font-size:13px;line-height:1.8;color:var(--muted)}
+.boundary-foot{
+  margin-top:20px;color:var(--muted-2);font-size:12px;line-height:1.8;
+}
+
+/* Install */
+.install{
+  display:grid;grid-template-columns:minmax(0,1.12fr) minmax(0,.88fr);
+  gap:clamp(36px,6vw,68px);align-items:start;
+}
+.install > *{min-width:0}
+.steps{list-style:none;margin:0;padding:0;counter-reset:step}
+.steps li{
+  position:relative;
+  padding:0 0 28px 46px;margin-left:13px;
+  border-left:1px solid var(--line-soft);
+  counter-increment:step;
+}
+.steps li:last-child{border-left-color:transparent;padding-bottom:0}
+.steps li::before{
+  content:counter(step);
+  position:absolute;left:-13px;top:-2px;
+  width:26px;height:26px;border-radius:50%;
+  display:grid;place-items:center;
+  border:1px solid var(--line);
+  background:#0C0E13;
+  color:var(--ice);font-family:var(--mono);font-size:10px;
+}
+.steps h3{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.steps p{margin-top:7px;font-size:13px;line-height:1.85;color:var(--muted)}
+.steps pre{
+  margin:10px 0 0;padding:12px 14px;
+  border:1px solid var(--line-soft);border-radius:9px;
+  background:#06070A;
+  overflow-x:auto;
+  font-family:var(--mono);font-size:11.5px;line-height:1.7;
+  color:#C9D6DD;
+}
+.steps pre code{font-family:inherit;font-size:inherit;color:inherit;background:none;padding:0}
+.callout{
+  margin-top:12px;padding:12px 14px;
+  border:1px solid rgba(255,178,36,.25);border-radius:10px;
+  background:rgba(255,178,36,.06);
+  color:#D9C7A6;font-size:12px;line-height:1.75;
+}
+.callout strong{color:#FFD27A;font-weight:600}
+.env-card{
+  position:relative;overflow:hidden;
+  padding:26px;
+  border:1px solid var(--line);border-radius:18px;
+  background:linear-gradient(180deg,#12151C 0%,#0B0D12 100%);
+  box-shadow:0 42px 110px -30px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.05);
+}
+.env-card h3{font-size:14px;font-weight:600;letter-spacing:.02em}
+.env-list{list-style:none;margin:16px 0 0;padding:0}
+.env-list li{
+  display:flex;gap:10px;align-items:flex-start;
+  padding:11px 0;border-bottom:1px solid var(--line-soft);
+  font-size:12.5px;line-height:1.7;color:var(--muted);
+}
+.env-list li:last-child{border-bottom:0}
+.env-list .check{color:var(--amber);font-family:var(--mono);font-size:11px;line-height:1.6;flex:none}
+.env-list b{color:var(--text);font-weight:600}
+.env-card .btn{width:100%;margin-top:18px}
+.env-note{margin-top:12px;font-size:11px;line-height:1.75;color:var(--muted-2)}
+.env-note a{color:var(--ice);text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(215,239,252,.3)}
+.watermark{
+  position:absolute;right:0;bottom:-28px;
+  width:230px;height:124px;
+  background:var(--ice);
+  -webkit-mask:url(assets/brand/mark.svg) no-repeat center/contain;
+  mask:url(assets/brand/mark.svg) no-repeat center/contain;
+  opacity:.055;pointer-events:none;
+}
+
+/* Footer */
+.footer{
+  position:relative;margin-top:120px;
+  padding:46px 0 40px;
+  border-top:1px solid var(--line-soft);
+  background:linear-gradient(180deg,transparent,rgba(215,239,252,.018));
+}
+.footer::before{
+  content:"";position:absolute;top:-1px;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,178,36,.4),transparent);
+}
+.footer-top{display:flex;justify-content:space-between;gap:32px;align-items:flex-start;flex-wrap:wrap}
+.footer-brand{display:flex;align-items:center;gap:14px}
+.footer-brand img{
+  width:38px;height:38px;border-radius:10px;
+  box-shadow:0 0 0 1px rgba(215,239,252,.14),0 10px 26px rgba(0,0,0,.45);
+}
+.footer-brand .name{font-size:14px;font-weight:650;letter-spacing:-.01em}
+.footer-brand p{margin-top:3px;font-size:12px;color:var(--muted)}
+.footer-links{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:12.5px}
+.footer-links a{color:var(--muted);transition:color .15s ease}
+.footer-links a:hover{color:var(--ice)}
+.footer-bottom{
+  display:flex;justify-content:space-between;gap:12px 24px;flex-wrap:wrap;
+  margin-top:30px;padding-top:18px;
+  border-top:1px solid var(--line-soft);
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.04em;
+  color:var(--muted-2);
+}
+.footer-bottom span{max-width:100%}
+
+/* Responsive */
+@media (max-width:1000px){
+  .section-head{grid-template-columns:160px minmax(0,1fr);gap:36px}
+  .stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stat-card:nth-child(2){margin-top:28px}
+  .stat-card:nth-child(3){margin-top:0;grid-column:2;margin-top:18px}
+}
+@media (max-width:900px){
+  .menubar-left{display:none}
+  .section{padding-top:90px}
+  .section-head{grid-template-columns:1fr;gap:14px;margin-bottom:38px}
+  .kicker{padding-top:0}
+  .split,.split.is-reverse,.terminal-layout,.install{grid-template-columns:1fr;gap:38px}
+  .figure--deck,.figure--terminal,.figure--window,.figure--drop{max-width:620px;margin-inline:auto;width:100%}
+  .shortcut-bar{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .stage{height:500px}
+}
+@media (max-width:860px){
+  .nav{gap:10px 16px}
+  .nav-links{order:3;width:100%;margin-left:0;gap:1px}
+  .nav-actions{margin-left:auto}
+  .nav .btn{min-height:34px;padding:0 11px}
+  html{scroll-padding-top:130px}
+}
+@media (max-width:680px){
+  .wrap{width:calc(100% - 32px)}
+  .section{padding-top:78px}
+  .hero{padding-top:44px}
+  .hero h1{font-size:clamp(36px,10.4vw,46px);letter-spacing:-.03em}
+  .hero-lead{font-size:15.5px;line-height:1.9}
+  .hero-cta{gap:10px}
+  .hero-cta .btn{min-height:42px;padding:0 15px;font-size:13px}
+  .hero-env{font-size:9.5px;line-height:1.9}
+  .stage-block{margin-top:38px}
+  .stage{height:440px;border-radius:18px}
+  .menubar-left,.menubar-right{display:none}
+  .island{width:min(334px,calc(100% - 20px));padding:0 14px}
+  .stage-bar{padding:0 12px;font-size:9.5px;gap:8px}
+  .plate-frame{padding:6px;border-radius:16px}
+  .plate{border-radius:9px}
+  .stat-grid{grid-template-columns:1fr;gap:44px}
+  .stat-card,.stat-card:nth-child(2),.stat-card:nth-child(3){margin-top:0;grid-column:auto;max-width:none}
+  .stat-card figcaption{padding-top:13px}
+  .drag-steps{grid-template-columns:1fr;gap:12px}
+  .drag-step{display:grid;grid-template-columns:130px minmax(0,1fr);gap:14px;align-items:center;padding:14px}
+  .mini-stage{height:96px;margin:0}
+  .drag-step .step-copy{min-width:0}
+  .boundary-grid{grid-template-columns:1fr}
+  .boundary{padding:18px}
+  .nudge{grid-template-columns:68px minmax(0,1fr)}
+  .footer{margin-top:90px}
+  .composer textarea,.dir select{font-size:16px}
+  .composer{width:min(344px,calc(100% - 24px))}
+  .composer-note{max-width:150px}
+}
+@media (max-width:480px){
+  .nav-links a{padding:7px 7px;font-size:12px}
+  .brand-name{font-size:13.5px}
+  .brand img{width:26px;height:26px}
+  .shortcut-bar{grid-template-columns:1fr}
+  .stage-bar .hint-left{max-width:62%}
+  .stage-meta{font-size:9px;letter-spacing:.03em}
+  .stat-card p,.figure p{font-size:12.5px}
+  .footer-top{gap:24px}
+}
+
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{
+    animation-duration:.001ms !important;
+    animation-iteration-count:1 !important;
+    transition-duration:.001ms !important;
+    scroll-behavior:auto !important;
+  }
+  .ripple{animation:ripple-fade .25s ease-out forwards !important;animation-duration:.25s !important}
+  @keyframes ripple-fade{from{opacity:.8}to{opacity:0}}
+}
+</style>
+<script src="../lang.js"></script>
+</head>
+<body>
+<a class="skip" href="#main">跳到主要内容</a>
+
+<header class="site-header" id="top">
+  <nav class="nav wrap" aria-label="主导航">
+    <a class="brand" href="#top">
+      <img src="../assets/brand/icon.svg" width="28" height="28" alt="">
+      <span class="brand-name">Herdr Island</span>
+    </a>
+    <div class="nav-links">
+      <a href="#install">安装</a>
+      <a href="#status">状态</a>
+      <a href="#deck">任务台</a>
+      <a href="#terminal">终端</a>
+      <a href="#new-task">新任务</a>
+      <a href="#window">窗口</a>
+      <a href="#safety">安全</a>
+    </div>
+    <div class="nav-actions">
+      <a class="lang-switch" href="../index.html" data-language="en" hreflang="en" lang="en">EN</a>
+      <a class="btn btn-ghost nav-github" href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">
+        GitHub
+        <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5h7v7M12.5 3.5 4 12"/></svg>
+      </a>
+      <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">
+        <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8m0 0 3.2-3.2M10 11 6.8 7.8M4 15.5h12"/></svg>
+        下载
+      </a>
+    </div>
+  </nav>
+</header>
+
+<main id="main">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="wrap">
+      <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span>Herdr 的 macOS 图形前端</p>
+      <h1 id="hero-title">刘海下，挂着你的 agent<span class="stop">。</span></h1>
+      <p class="hero-lead">
+        Herdr Island 把 Herdr 里每个 coding agent 的状态放进刘海两侧。左边是待处理，右边是运行、完成或空闲。拖动刘海下那滴水，输入框就出现在落点上方。它是 Herdr 的图形前端，Herdr 仍然是任务的执行者。
+      </p>
+      <div class="hero-cta">
+        <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">
+          <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8m0 0 3.2-3.2M10 11 6.8 7.8M4 15.5h12"/></svg>
+          下载 macOS 版
+        </a>
+        <a class="btn btn-ghost" href="#install">
+          安装说明
+          <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v10m0 0 3.4-3.4M8 13 4.6 9.6"/></svg>
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">
+          在 GitHub 看源码
+          <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5h7v7M12.5 3.5 4 12"/></svg>
+        </a>
+      </div>
+      <p class="hero-env">macOS 14+ · Herdr 0.9.5+ · Ghostty 可选 · Apple Silicon</p>
+
+      <div class="stage-block">
+        <div class="stage-meta">
+          <span class="meta-left"><span class="live-dot" aria-hidden="true"></span>刘海是舞台，水滴是入口</span>
+          <span class="meta-right">拖动水滴试试
+            <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v10m0 0 3.4-3.4M8 12.5 4.6 9.1"/></svg>
+          </span>
+        </div>
+
+        <div class="stage" id="stage" role="group" aria-label="刘海与水滴交互演示">
+          <div class="stage-light" aria-hidden="true"></div>
+          <div class="stage-grain" aria-hidden="true"></div>
+
+          <div class="menubar" aria-hidden="true">
+            <div class="menubar-left">
+              <span class="menu-item active">Finder</span>
+              <span class="menu-item">文件</span>
+              <span class="menu-item">编辑</span>
+              <span class="menu-item">显示</span>
+              <span class="menu-item">窗口</span>
+            </div>
+            <div class="menubar-right">
+              <span class="status-icons">
+                <svg class="mb-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 8.2a10 10 0 0 1 14 0M5.8 11a6 6 0 0 1 8.4 0M8.6 13.8a2 2 0 0 1 2.8 0"/><circle cx="10" cy="16.4" r=".8" fill="currentColor" stroke="none"/></svg>
+                <svg class="mb-icon" viewBox="0 0 24 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.2"><rect x="1" y="2.5" width="18" height="10" rx="2.4"/><rect x="3" y="4.5" width="12" height="6" rx="1" fill="currentColor" stroke="none" opacity=".85"/><path d="M21 6.5v3" stroke-linecap="round"/></svg>
+                <svg class="mb-icon" viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M4 7h12M4 13h12"/><circle cx="8" cy="7" r="1.7" fill="#0C0E13"/><circle cx="13" cy="13" r="1.7" fill="#0C0E13"/></svg>
+              </span>
+              <span class="clock" id="stageClock">12:04</span>
+            </div>
+          </div>
+
+          <div class="island" aria-hidden="true">
+            <span class="ear ear-left"><i class="dot"></i>1 待处理</span>
+            <span class="notch-cam"></span>
+            <span class="ear ear-right"><i class="dot"></i>2 运行</span>
+          </div>
+
+          <div class="thread" id="thread" aria-hidden="true"></div>
+
+          <svg class="neck" id="neckLayer" aria-hidden="true" focusable="false">
+            <defs>
+              <linearGradient id="neckGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#D7EFFC" stop-opacity=".82"/>
+                <stop offset=".55" stop-color="#BFE6F7" stop-opacity=".62"/>
+                <stop offset="1" stop-color="#9FD3EC" stop-opacity=".9"/>
+              </linearGradient>
+            </defs>
+            <path id="neckGlow" fill="rgba(215,239,252,.32)"></path>
+            <path id="neckFill" fill="url(#neckGrad)"></path>
+          </svg>
+
+          <div class="bead" id="bead" aria-hidden="true"></div>
+
+          <button class="droplet" id="droplet" type="button"
+                  aria-label="创建新任务：拖动水滴放下输入框，或按 Enter 打开输入框"
+                  aria-controls="composer" aria-expanded="false" aria-describedby="hintLeft">
+            <span class="core" aria-hidden="true"></span>
+          </button>
+
+          <div class="ripple-layer" id="rippleLayer" aria-hidden="true"></div>
+          <div class="tether" id="tether" aria-hidden="true"></div>
+
+          <div class="composer" id="composer" role="dialog" aria-modal="true" aria-labelledby="composerTitle" hidden>
+            <div class="composer-head">
+              <div class="composer-title" id="composerTitle">新任务</div>
+              <button class="icon-btn" id="composerClose" type="button" aria-label="关闭新任务输入框">
+                <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+              </button>
+            </div>
+            <form id="taskForm" novalidate>
+              <fieldset class="models">
+                <legend class="sr-only">选择模型</legend>
+                <label class="model" data-model="claude">
+                  <input type="radio" name="model" value="Claude" checked>
+                  <span><i aria-hidden="true"></i>Claude</span>
+                </label>
+                <label class="model" data-model="codex">
+                  <input type="radio" name="model" value="Codex">
+                  <span><i aria-hidden="true"></i>Codex</span>
+                </label>
+                <label class="model" data-model="cursor">
+                  <input type="radio" name="model" value="Cursor">
+                  <span><i aria-hidden="true"></i>Cursor</span>
+                </label>
+                <label class="model" data-model="gemini">
+                  <input type="radio" name="model" value="Gemini">
+                  <span><i aria-hidden="true"></i>Gemini</span>
+                </label>
+              </fieldset>
+
+              <label class="sr-only" for="taskText">任务内容</label>
+              <textarea id="taskText" name="task" rows="2" placeholder="例如：修掉 geometry 测试里的 flaky"></textarea>
+
+              <div class="composer-meta">
+                <div class="dir">
+                  <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M1.8 4.2h4l1.3 1.6h7.1v6.6H1.8z"/></svg>
+                  <label class="sr-only" for="taskDir">目录</label>
+                  <select id="taskDir">
+                    <option>herdr-island</option>
+                    <option>herdr-core</option>
+                  </select>
+                  <svg class="chev" viewBox="0 0 12 12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" id="worktree">
+                  <span class="track" aria-hidden="true"></span>
+                  <span>隔离 worktree</span>
+                </label>
+              </div>
+
+              <div class="composer-foot">
+                <span class="composer-note" id="composerMsg">演示，不会创建真实任务</span>
+                <button class="send" id="sendTask" type="submit">开始 <span class="kbd">⌘↵</span></button>
+              </div>
+            </form>
+          </div>
+
+          <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+          <div class="stage-bar">
+            <span class="hint-left" id="hintLeft" aria-live="polite">拖动水滴，松手放下任务</span>
+            <span class="hint-right" id="hintRight">点水滴或按 Enter</span>
+          </div>
+        </div>
+
+        <p class="demo-note">页面里的演示不连接 Herdr，也不会创建任务。</p>
+        <noscript><p class="noscript">水滴演示需要 JavaScript。下面的说明、截图和安装步骤不受影响。</p></noscript>
+
+        <ul class="spec-rail" aria-label="产品尺寸与节奏">
+          <li>96pt 脱离</li>
+          <li>400 × 248 peek</li>
+          <li>560 任务台</li>
+          <li>660 × 640 详情终端</li>
+          <li>1.5s 采样</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--install" id="install" aria-labelledby="install-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker"><span class="num">01</span>安装</p>
+        <div>
+          <h2 id="install-title">装好，挂上。</h2>
+          <p class="section-lead">预编译版本为 Apple Silicon 构建，要求 macOS 14 或更新版本。应用只有 ad-hoc 签名，首次打开需要手动放行。</p>
+        </div>
+      </div>
+
+      <div class="install">
+        <ol class="steps">
+          <li>
+            <h3>下载并校验</h3>
+            <p>下载 <code>HerdrIsland-&lt;版本&gt;.zip</code> 和同名 <code>.sha256</code>，放在同一目录后运行：</p>
+            <pre><code>shasum -a 256 -c HerdrIsland-&lt;版本&gt;.zip.sha256</code></pre>
+          </li>
+          <li>
+            <h3>放进应用程序</h3>
+            <p>解压，把 <code>HerdrIsland.app</code> 拖进 <code>/Applications</code>。</p>
+          </li>
+          <li>
+            <h3>首次打开要放行</h3>
+            <p>应用只有 ad-hoc 签名，没有经过 Apple 公证，Gatekeeper 会拦截。到 系统设置 → 隐私与安全性，在「安全性」一栏点「仍要打开」，再输入管理员密码。也可以在终端去掉下载隔离标记：</p>
+            <pre><code>xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
+            <div class="callout"><strong>每个新下载的版本可能都需要再放行一次。</strong>不要用 <code>sudo spctl --master-disable</code> 全局关闭 Gatekeeper。</div>
+          </li>
+          <li>
+            <h3>授予权限</h3>
+            <p>按提示授予 Screen Recording、Automation 和辅助功能权限。辅助功能只用于读取锁定窗口的上下文，不授权也不影响发送。替换应用后这些权限可能再次询问。</p>
+          </li>
+        </ol>
+
+        <aside class="env-card">
+          <h3>环境</h3>
+          <ul class="env-list">
+            <li><span class="check" aria-hidden="true">✓</span><span><b>macOS 14+</b>，Apple Silicon</span></li>
+            <li><span class="check" aria-hidden="true">✓</span><span><b>Herdr 0.9.5+</b>。详情终端通过 Herdr 的终端会话连接</span></li>
+            <li><span class="check" aria-hidden="true">✓</span><span><b>Ghostty</b>（可选）。精确跳转需要它；没有时仍会聚焦 Herdr pane</span></li>
+            <li><span class="check" aria-hidden="true">✓</span><span><b>Automation 权限</b>。首次 Jump 时 macOS 会询问是否可以控制 Ghostty</span></li>
+            <li><span class="check" aria-hidden="true">✓</span><span><b>Screen Recording 权限</b>。窗口截图需要它；授权后可能需要重启 app</span></li>
+            <li><span class="check" aria-hidden="true">✓</span><span><b>辅助功能权限</b>（可选）。锁定窗口时读取选中文本、URL 和文档路径；不授权则上下文为空</span></li>
+          </ul>
+          <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">
+            <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8m0 0 3.2-3.2M10 11 6.8 7.8M4 15.5h12"/></svg>
+            下载 macOS 版
+          </a>
+          <p class="env-note">版本与校验文件见 Releases。安装细节见 <a href="https://github.com/arronKler/herdr-island#安装" target="_blank" rel="noreferrer">README</a>。</p>
+          <span class="watermark" aria-hidden="true"></span>
+        </aside>
+      </div>
+    </div>
+  </section>
+  <section class="section" id="status" aria-labelledby="status-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker"><span class="num">02</span>状态</p>
+        <div>
+          <h2 id="status-title">状态就在刘海两侧。</h2>
+          <p class="section-lead">不用切窗口。左耳显示待处理或安静，右耳显示运行、完成或空闲。鼠标移到水滴或两耳上才接收事件，其他时候桌面照常点击。</p>
+        </div>
+      </div>
+
+      <div class="stat-grid">
+        <figure class="stat-card">
+          <div class="plate-frame">
+            <div class="plate plate--ears">
+              <img src="../assets/screens/collapsed.webp" width="1200" height="800" loading="lazy" decoding="async"
+                   alt="折叠态截图的局部：菜单栏中央的黑色岛，左耳显示安静，右耳显示 2 运行，刘海下挂着一滴水。">
+            </div>
+          </div>
+          <figcaption>
+            <span class="cap-label">01 / 两耳</span>
+            <h3>收起时只占菜单栏高度。</h3>
+            <p>左耳是待处理或安静，右耳是运行、完成或空闲。收起时它不改变刘海的形状，也不挡桌面点击。</p>
+          </figcaption>
+        </figure>
+
+        <figure class="stat-card">
+          <div class="plate-frame">
+            <div class="plate plate--peek">
+              <img src="../assets/screens/completed.webp" width="1200" height="800" loading="lazy" decoding="async"
+                   alt="完成提示截图的局部：400 × 248 的轻提示列出 Fix the flaky login test，底部有打开面板按钮。">
+            </div>
+          </div>
+          <figcaption>
+            <span class="cap-label">02 / 轻提示</span>
+            <h3>完成先给一条。</h3>
+            <p>一轮完成时出现 400 × 248 的 peek，只列一条完成结果。鼠标移入或点击，进入完整任务台。</p>
+          </figcaption>
+        </figure>
+
+        <figure class="stat-card">
+          <div class="plate-frame">
+            <div class="plate plate--deck">
+              <img src="../assets/screens/deck.webp" width="1200" height="800" loading="lazy" decoding="async"
+                   alt="任务台截图的局部：待处理、运行中、已完成、全部四个筛选，以及一条 Claude 任务 Write the release notes。">
+            </div>
+          </div>
+          <figcaption>
+            <span class="cap-label">03 / 任务台</span>
+            <h3>需要时再展开。</h3>
+            <p>宽 560，高 440 到 640。四个筛选，<code>/</code> 搜索，每行带 agent 图标、状态点和最近一行终端输出。</p>
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--deck" id="deck" aria-labelledby="deck-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker"><span class="num">03</span>任务台</p>
+        <div>
+          <h2 id="deck-title">该你处理的，排在前面。</h2>
+          <p class="section-lead">任务台按状态分组。运行中的 agent 显示最近一行终端输出；你可以先排一句话，等这一轮结束自动投递。</p>
+        </div>
+      </div>
+
+      <div class="split">
+        <div>
+          <div class="features">
+            <div class="feature">
+              <span class="feature-index">01</span>
+              <div>
+                <h3>四个筛选</h3>
+                <p>待处理、运行中、已完成、全部。每行带 agent 图标、状态点和最近一行终端输出。</p>
+              </div>
+            </div>
+            <div class="feature">
+              <span class="feature-index">02</span>
+              <div>
+                <h3>先排队，再投递</h3>
+                <p>运行中的行可以排一条消息。本轮结束且没有打开交互终端时自动投递，排队项可以取消。</p>
+              </div>
+            </div>
+            <div class="feature">
+              <span class="feature-index">03</span>
+              <div>
+                <h3>搜索和键盘</h3>
+                <p><code>/</code> 打开搜索。<span class="key-row"><span class="kbd">↑</span><span class="kbd">↓</span> 选择，<span class="kbd">R</span> 回复，<span class="kbd">S</span> 稍后，<span class="kbd">Return</span> 打开详情。</span></p>
+              </div>
+            </div>
+            <div class="feature">
+              <span class="feature-index">04</span>
+              <div>
+                <h3>状态来源</h3>
+                <p>Unix socket 直读 <code>agent.list</code> / <code>pane.list</code>，每 1.5 秒采样，状态事件即时更新。断线回退 CLI。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <figure class="figure figure--deck">
+          <div class="plate-frame">
+            <div class="plate plate--scene">
+              <img src="../assets/screens/running.webp" width="1200" height="800" loading="lazy" decoding="async"
+                   alt="任务台运行中截图：Refactor the parser 正在运行，下方有一条已排队的消息，提示本轮结束后自动发送。">
+            </div>
+          </div>
+          <figcaption>
+            <span class="cap-label">运行中与排队</span>
+            <div class="cap-body">
+              <p>运行中的行显示最近一行终端输出。排队的消息会等这一轮结束再发送。</p>
+            </div>
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--terminal" id="terminal" aria-labelledby="terminal-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker"><span class="num">04</span>终端</p>
+        <div>
+          <h2 id="terminal-title">要动手时，终端就在岛里。</h2>
+          <p class="section-lead">点开任务，在 660 × 640 的详情里直接接上这个 pane 的终端。键盘、中文输入、粘贴、鼠标报告、Shift + 拖动选择和滚轮历史都在，SwiftTerm 渲染，不需要 Ghostty。工作区、标签和分屏仍然在 Herdr 里。</p>
+        </div>
+      </div>
+
+      <div class="terminal-layout">
+        <div>
+          <p class="section-lead" style="margin-top:0">关闭详情只释放终端连接，不停止 Herdr server、shell 或 agent。需要完整工作区时点「在 Herdr 打开」，那里保留标签、分屏和菜单。</p>
+          <p class="terminal-note">终端按你实际键入的内容发送，不追加 Enter。键盘和粘贴按顺序等待 Herdr 确认；鼠标通道没有处理确认，跨通道的严格排序不保证。</p>
+        </div>
+
+        <figure class="figure figure--terminal">
+          <div class="plate-frame">
+            <div class="plate plate--scene">
+              <img src="../assets/screens/terminal.webp" width="1200" height="800" loading="lazy" decoding="async"
+                   alt="单任务详情截图：Codex 请求批准运行 npm test，终端里显示测试结果，底部有去终端、稍后和复制命令。">
+            </div>
+          </div>
+          <figcaption>
+            <span class="cap-label">660 × 640 详情</span>
+            <div class="cap-body">
+              <p>单任务详情里的终端输出。终端直接连到这个 pane，关闭详情不会停止 agent。</p>
+            </div>
+          </figcaption>
+        </figure>
+      </div>
+
+      <div class="shortcut-bar">
+        <div class="shortcut">
+          <span class="keys"><span class="kbd">⌘C</span><span class="kbd">⌘V</span></span>
+          <span class="label">复制粘贴</span>
+        </div>
+        <div class="shortcut">
+          <span class="keys"><span class="kbd">Shift</span><span>+</span><span>拖动</span></span>
+          <span class="label">选择文字</span>
+        </div>
+        <div class="shortcut">
+          <span class="keys"><span class="kbd">Esc</span><span class="kbd">Tab</span><span class="kbd">↑↓</span></span>
+          <span class="label">交给终端程序</span>
+        </div>
+        <div class="shortcut">
+          <span class="keys"><span class="kbd">⌘W</span></span>
+          <span class="label">返回任务台</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="new-task" aria-labelledby="new-task-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker"><span class="num">05</span>新任务</p>
+        <div>
+          <h2 id="new-task-title">把下一件事，拖到桌上。</h2>
+          <p class="section-lead">拖动水滴时，水滴和刘海之间先拉出液态颈部。超过 96pt 完全脱离，松手的位置出现涟漪，共享投递框锚定在落点上方：收件人、任务、模型、目录、worktree 和附件都在同一处。</p>
+        </div>
+      </div>
+
+      <ol class="drag-steps">
+        <li class="drag-step step-a">
+          <div class="mini-stage" aria-hidden="true">
+            <span class="mini-notch"></span>
+            <span class="mini-neck"></span>
+            <span class="mini-drop"></span>
+          </div>
+          <div class="step-copy">
+            <span class="step-kicker">01</span>
+            <h3>拉出颈部</h3>
+            <p>水滴还连在刘海上，颈部随指针变细。</p>
+          </div>
+        </li>
+        <li class="drag-step step-b">
+          <div class="mini-stage" aria-hidden="true">
+            <span class="mini-notch"></span>
+            <span class="mini-bead"></span>
+            <span class="mini-dash"></span>
+            <span class="mini-drop"></span>
+          </div>
+          <div class="step-copy">
+            <span class="step-kicker">02</span>
+            <h3>超过 96pt</h3>
+            <p>完全脱离，刘海下只留一个小水珠。</p>
+          </div>
+        </li>
+        <li class="drag-step step-c">
+          <div class="mini-stage" aria-hidden="true">
+            <span class="mini-notch"></span>
+            <span class="mini-composer"></span>
+            <span class="mini-ripple"></span>
+          </div>
+          <div class="step-copy">
+            <span class="step-kicker">03</span>
+            <h3>松手</h3>
+            <p>落点出现涟漪，输入框在落点上方展开。</p>
+          </div>
+        </li>
+      </ol>
+
+      <div class="split" style="margin-top:58px">
+        <div>
+          <dl class="nudge-list">
+            <div class="nudge">
+              <dt>收件人</dt>
+              <dd>默认是主 agent，也可以切换或新建。主 agent 忙时排队一条，blocked 时拒绝发送。</dd>
+            </div>
+            <div class="nudge">
+              <dt>模型</dt>
+              <dd>Claude、Codex、Cursor、Gemini、Copilot 等 12 种，按 agent 自己的图标显示。</dd>
+            </div>
+            <div class="nudge">
+              <dt>目录</dt>
+              <dd>沿用当前 pane 的前台目录，也可以另选。</dd>
+            </div>
+            <div class="nudge">
+              <dt>worktree</dt>
+              <dd>可选隔离，分支名是 <code>island/&lt;单词&gt;-&lt;随机后缀&gt;</code>。</dd>
+            </div>
+            <div class="nudge">
+              <dt>附件</dt>
+              <dd>最多 8 个绝对路径；只传路径，不复制文件。锁定窗口时还会自动带上窗口上下文。</dd>
+            </div>
+            <div class="nudge">
+              <dt>快捷键</dt>
+              <dd><span class="kbd">Control</span> + <span class="kbd">Option</span> + <span class="kbd">N</span> 唤起 420 × 196 快速框，沿用上次模型；快速框不提供收件人和附件。</dd>
+            </div>
+          </dl>
+        </div>
+
+        <figure class="figure figure--drop">
+          <div class="plate-frame">
+            <div class="plate plate--drop">
+              <img src="../assets/screens/drop.webp" width="1200" height="800" loading="lazy" decoding="async"
+                   alt="共享投递框截图：收件人是主 agent，任务和三个附件已经准备好发送。">
+            </div>
+          </div>
+          <figcaption>
+            <span class="cap-label">水滴输入框</span>
+            <div class="cap-body">
+              <p>收件人、任务、模型、目录、worktree 和附件在同一处。松手的位置决定它出现在哪里。</p>
+            </div>
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="window" aria-labelledby="window-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker"><span class="num">06</span>窗口</p>
+        <div>
+          <h2 id="window-title">有些任务，需要看见窗口。</h2>
+          <p class="section-lead">按住 Option 拖动水滴，锁定指针下的窗口。松手后打开共享投递框：收件人默认主 agent，自动读取选中文本、网页地址和文档路径，可加最多 8 个附件。按下发送时才用 ScreenCaptureKit 截一张窗口 PNG，连同这些内容一起拼进 prompt。</p>
+        </div>
+      </div>
+
+      <div class="split is-reverse">
+        <figure class="figure figure--window">
+          <div class="plate-frame">
+            <div class="plate plate--scene">
+              <img src="../assets/screens/window.webp" width="1200" height="800" loading="lazy" decoding="async"
+                   alt="窗口锁定截图：刘海旁显示锁定状态，共享投递框里是主 agent、任务和附件，发送时会附一张窗口截图。">
+            </div>
+          </div>
+          <figcaption>
+            <span class="cap-label">窗口锁定</span>
+            <div class="cap-body">
+              <p>锁定后窗口和岛之间有一条细线。截图只在按下发送时发生。</p>
+            </div>
+          </figcaption>
+        </figure>
+
+        <div>
+          <div class="features" style="margin-top:0">
+            <div class="feature">
+              <span class="feature-index">01</span>
+              <div>
+                <h3>锁定</h3>
+                <p>按住 Option 拖动水滴，锁定指针下的窗口。锁定只存在于本次运行期间。</p>
+              </div>
+            </div>
+            <div class="feature">
+              <span class="feature-index">02</span>
+              <div>
+                <h3>截图时机</h3>
+                <p>只在按下发送时截取，不会在锁定期间持续录屏。窗口和岛之间有一条跟随移动的细线。</p>
+              </div>
+            </div>
+            <div class="feature">
+              <span class="feature-index">03</span>
+              <div>
+                <h3>存放位置</h3>
+                <p>截图保存在本机 <code>~/Library/Application Support/HerdrIsland/Captures/</code>。prompt 带截图路径、窗口元数据、自动上下文和附件路径；截图和文件都不会被复制或上传。</p>
+              </div>
+            </div>
+            <div class="feature">
+              <span class="feature-index">04</span>
+              <div>
+                <h3>边界</h3>
+                <p>只能选当前 Space、当前屏幕上的窗口。窗口关闭再打开会换 windowID，需要重新锁定。受 DRM 或安全保护的窗口可能只能截到黑屏。</p>
+              </div>
+            </div>
+            <div class="feature">
+              <span class="feature-index">05</span>
+              <div>
+                <h3>权限缺失时的降级</h3>
+                <p>没有屏幕录制：不附截图。没有辅助功能：上下文字段为空。文字和文件仍然发送，不阻断投递。</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="safety" aria-labelledby="safety-title">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="kicker"><span class="num">07</span>安全</p>
+        <div>
+          <h2 id="safety-title">blocked 这件事，留给人。</h2>
+          <p class="section-lead">agent 卡在权限、信任或用量弹窗时，Island 把状态和终端画面交给你。blocked 不会被自动放行。</p>
+        </div>
+      </div>
+
+      <p class="boundary-quote">Island 不会自动批准，也不会替你点同意。</p>
+
+      <div class="boundary-grid">
+        <article class="boundary">
+          <span class="tag">人来处理</span>
+          <h3>blocked 必须由你确认</h3>
+          <p>可以直接在详情终端里阅读、选择并确认，也可以回到 Herdr 打开同一会话。自动派发仍然走会拒绝 blocked agent 的 <code>herdr agent prompt</code>。</p>
+        </article>
+        <article class="boundary">
+          <span class="tag">发前检查</span>
+          <h3>信任和用量弹窗</h3>
+          <p>Claude、Cursor、Codex 的信任弹窗和用量、模型选择弹窗必须由你处理。自动消息发送前也会检查这些弹窗。</p>
+        </article>
+        <article class="boundary">
+          <span class="tag">只在本机</span>
+          <h3>截图不上传</h3>
+          <p>窗口截图只保存在本机 Captures 目录。prompt 里是截图路径、窗口元数据、自动上下文和附件路径；截图和文件都不会上传到别处。</p>
+        </article>
+        <article class="boundary">
+          <span class="tag">只转发输入</span>
+          <h3>新任务只给新 workspace</h3>
+          <p>终端只转发你主动输入的按键和粘贴内容。新任务只提交给刚创建的 workspace 和 agent，不会向已有 blocked agent 发送。</p>
+        </article>
+      </div>
+
+      <p class="boundary-foot">新 agent 启动后如果进入 blocked，仍然需要你亲自处理。Cursor 的工作区信任弹窗由你确认，新任务的 worktree 也不会带 <code>--trust-repository</code>。</p>
+    </div>
+  </section>
+
+
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-top">
+      <div class="footer-brand">
+        <img src="../assets/brand/icon.svg" width="38" height="38" alt="">
+        <div>
+          <div class="name">Herdr Island</div>
+          <p>Herdr 的图形前端。Herdr 仍然是任务的执行者。</p>
+        </div>
+      </div>
+      <nav class="footer-links" aria-label="页脚链接">
+        <a href="https://github.com/arronKler/herdr-island" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">Releases</a>
+        <a href="https://github.com/arronKler/herdr-island#安装" target="_blank" rel="noreferrer">README</a>
+        <a href="faq.html">FAQ</a>
+        <a href="known-issues.html">已知问题</a>
+        <a href="what-it-reads.html">它读了什么</a>
+        <a href="uninstall.html">卸载</a>
+        <a href="../index.html" data-language="en" lang="en">English</a>
+        <a href="#top">回到顶部</a>
+      </nav>
+    </div>
+    <div class="footer-bottom">
+      <span>macOS 14+ · Herdr 0.9.5+ · Apple Silicon · 版本与 sha256 见 Releases</span>
+      <span>Reduce Motion：面板瞬时切换，水滴停止呼吸，涟漪只淡出。</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+  'use strict';
+  const root = document.documentElement;
+  root.dataset.js = '1';
+
+  const stage = document.getElementById('stage');
+  const droplet = document.getElementById('droplet');
+  const composer = document.getElementById('composer');
+  const taskForm = document.getElementById('taskForm');
+  const composerClose = document.getElementById('composerClose');
+  const taskText = document.getElementById('taskText');
+  const composerMsg = document.getElementById('composerMsg');
+  const toast = document.getElementById('toast');
+  const tether = document.getElementById('tether');
+  const rippleLayer = document.getElementById('rippleLayer');
+  const hintLeft = document.getElementById('hintLeft');
+  const hintRight = document.getElementById('hintRight');
+  const neckLayer = document.getElementById('neckLayer');
+  const neckGlow = document.getElementById('neckGlow');
+  const neckFill = document.getElementById('neckFill');
+  const thread = document.getElementById('thread');
+  const bead = document.getElementById('bead');
+  const stageClock = document.getElementById('stageClock');
+
+  const MENU_H = 40;
+  const THRESHOLD = 96;
+  const CORE_R = 10;
+  const MIN_MOVE = 6;
+
+  // One phase field keeps drag, drop, and composer from drifting into impossible combinations.
+  const state = {
+    phase: 'idle',
+    pointerId: null,
+    grabDX: 0,
+    grabDY: 0,
+    pos: { x: 0, y: 0 },
+    rest: { x: 0, y: 0 },
+    start: { x: 0, y: 0 },
+    drop: null,
+    source: null,
+    moved: false,
+    lastDragEnd: 0,
+    suppressClickUntil: 0,
+    hintTimer: 0,
+    toastTimer: 0
+  };
+
+  const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+  const stageSize = () => ({ w: stage.clientWidth, h: stage.clientHeight });
+  const isComposing = () => !composer.hidden;
+  const setText = (el, text) => {
+    if (el && el.textContent !== text) el.textContent = text;
+  };
+
+  function syncGeometry() {
+    const { w, h } = stageSize();
+    if (!w || !h) return;
+    state.rest = { x: w / 2, y: droplet.offsetTop + droplet.offsetHeight / 2 };
+    neckLayer.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    if (state.phase === 'idle') {
+      state.pos = { ...state.rest };
+      droplet.style.setProperty('--dx', '0px');
+      droplet.style.setProperty('--dy', '0px');
+    }
+  }
+
+  function updateHints(dist) {
+    if (state.phase === 'compose') {
+      setText(hintLeft, '输入任务，⌘↵ 交给 Herdr');
+      setText(hintRight, 'Esc 收起');
+      return;
+    }
+    if (state.phase === 'drag') {
+      const detached = dist >= THRESHOLD;
+      setText(hintLeft, detached ? '松手，输入框落在落点上方' : '继续拖，超过 96pt 脱离');
+      setText(hintRight, detached ? '已脱离' : `${Math.round(dist)} / 96pt`);
+      return;
+    }
+    setText(hintLeft, '拖动水滴，松手放下任务');
+    setText(hintRight, '点水滴或按 Enter');
+  }
+
+  function hideNeck() {
+    neckLayer.classList.remove('on');
+  }
+
+  function drawNeck(x, y, dist) {
+    const x0 = state.rest.x;
+    const y0 = MENU_H;
+    const x1 = x;
+    const y1 = y - CORE_R;
+    const h = y1 - y0;
+    if (h < 6) {
+      hideNeck();
+      return;
+    }
+    const t = clamp(dist / THRESHOLD, 0, 1);
+    const w0 = 7 * (1 - 0.3 * t);
+    const w1 = 4.2 * (1 - 0.45 * t);
+    const c1x = x0;
+    const c1y = y0 + h * 0.55;
+    const c2x = x1;
+    const c2y = y1 - h * 0.45;
+    const d = [
+      `M ${(x0 - w0).toFixed(2)} ${y0}`,
+      `C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${(x1 - w1).toFixed(2)} ${c2y.toFixed(2)}, ${(x1 - w1).toFixed(2)} ${y1}`,
+      `L ${(x1 + w1).toFixed(2)} ${y1}`,
+      `C ${(x1 + w1).toFixed(2)} ${c2y.toFixed(2)}, ${(x0 + w0).toFixed(2)} ${c1y.toFixed(2)}, ${(x0 + w0).toFixed(2)} ${y0}`,
+      'Z'
+    ].join(' ');
+    neckGlow.setAttribute('d', d);
+    neckFill.setAttribute('d', d);
+    neckLayer.classList.add('on');
+  }
+
+  function ripple(x, y) {
+    const el = document.createElement('span');
+    el.className = 'ripple';
+    el.style.left = `${x}px`;
+    el.style.top = `${y}px`;
+    rippleLayer.appendChild(el);
+    window.setTimeout(() => el.remove(), 900);
+  }
+
+  function resetDroplet() {
+    droplet.classList.remove('is-dragging', 'is-detached', 'is-away');
+    droplet.style.setProperty('--dx', '0px');
+    droplet.style.setProperty('--dy', '0px');
+    droplet.style.setProperty('--charge', '0');
+    state.pos = { ...state.rest };
+    thread.style.opacity = '';
+    bead.classList.remove('on');
+    hideNeck();
+  }
+
+  function placeComposer(point) {
+    const { w, h } = stageSize();
+    composer.hidden = false;
+    const cw = composer.offsetWidth;
+    const ch = composer.offsetHeight;
+    let left;
+    let top;
+
+    if (point) {
+      left = clamp(point.x - cw / 2, 14, w - cw - 14);
+      top = point.y - ch - 18;
+      if (top < MENU_H + 10) top = point.y + 18;
+      top = clamp(top, MENU_H + 10, h - ch - 50);
+      const gap = point.y - (top + ch);
+      if (gap > 4) {
+        tether.style.left = `${clamp(point.x, left + 10, left + cw - 10)}px`;
+        tether.style.top = `${top + ch}px`;
+        tether.style.height = `${gap - 4}px`;
+        tether.classList.add('on');
+      } else {
+        tether.classList.remove('on');
+      }
+    } else {
+      left = (w - cw) / 2;
+      top = clamp(112, MENU_H + 10, h - ch - 50);
+      tether.classList.remove('on');
+    }
+
+    composer.style.left = `${left}px`;
+    composer.style.top = `${top}px`;
+
+    if (state.source === 'trigger' || window.matchMedia('(pointer:fine)').matches) {
+      taskText.focus({ preventScroll: true });
+    }
+  }
+
+  function openComposerAt(point) {
+    placeComposer(point);
+    droplet.setAttribute('aria-expanded', 'true');
+    updateHints(0);
+  }
+
+  function closeComposer(restoreFocus = true) {
+    if (composer.hidden) return;
+    composer.hidden = true;
+    tether.classList.remove('on');
+    const wasDrag = state.source === 'drag';
+    state.phase = 'idle';
+    state.source = null;
+    state.drop = null;
+    clearTimeout(state.hintTimer);
+    droplet.setAttribute('aria-expanded', 'false');
+    if (wasDrag) {
+      resetDroplet();
+    } else {
+      droplet.classList.remove('is-detached');
+      droplet.style.setProperty('--charge', '0');
+    }
+    if (composer.contains(document.activeElement)) document.activeElement.blur();
+    updateHints(0);
+    if (restoreFocus) droplet.focus({ preventScroll: true });
+  }
+
+  function finishDrop(point) {
+    state.phase = 'compose';
+    state.source = 'drag';
+    state.drop = point;
+    droplet.classList.add('is-away');
+    thread.style.opacity = '0';
+    bead.classList.add('on');
+    ripple(point.x, point.y);
+    openComposerAt(point);
+  }
+
+  function flashHint(text) {
+    clearTimeout(state.hintTimer);
+    setText(hintLeft, text);
+    setText(hintRight, '');
+    state.hintTimer = window.setTimeout(() => {
+      if (state.phase === 'idle' && !isComposing()) updateHints(0);
+    }, 1500);
+  }
+
+  function showToast(message) {
+    clearTimeout(state.toastTimer);
+    toast.textContent = message;
+    toast.classList.add('on');
+    state.toastTimer = window.setTimeout(() => {
+      toast.classList.remove('on');
+      window.setTimeout(() => {
+        if (!toast.classList.contains('on')) toast.textContent = '';
+      }, 250);
+    }, 4200);
+  }
+
+  function onPointerDown(ev) {
+    if (ev.pointerType === 'mouse' && ev.button !== 0) return;
+    if (state.phase === 'compose') {
+      state.suppressClickUntil = performance.now() + 400;
+      closeComposer(false);
+    }
+
+    const stageRect = stage.getBoundingClientRect();
+    const dropRect = droplet.getBoundingClientRect();
+    const cx = dropRect.left - stageRect.left + dropRect.width / 2;
+    const cy = dropRect.top - stageRect.top + dropRect.height / 2;
+
+    state.phase = 'drag';
+    state.pointerId = ev.pointerId;
+    state.pos = { x: cx, y: cy };
+    state.start = { x: ev.clientX, y: ev.clientY };
+    state.grabDX = ev.clientX - (stageRect.left + cx);
+    state.grabDY = ev.clientY - (stageRect.top + cy);
+    state.moved = false;
+    state.drop = null;
+    state.source = null;
+
+    droplet.style.setProperty('--dx', `${cx - state.rest.x}px`);
+    droplet.style.setProperty('--dy', `${cy - state.rest.y}px`);
+    droplet.classList.add('is-dragging');
+    droplet.classList.remove('is-away', 'is-detached');
+    thread.style.opacity = '0';
+    bead.classList.remove('on');
+    document.body.classList.add('is-dragging');
+    droplet.focus({ preventScroll: true });
+    try { droplet.setPointerCapture(ev.pointerId); } catch (_) {}
+    updateHints(0);
+  }
+
+  function onPointerMove(ev) {
+    if (state.phase !== 'drag' || ev.pointerId !== state.pointerId) return;
+    const stageRect = stage.getBoundingClientRect();
+    const { w, h } = stageSize();
+    const x = clamp(ev.clientX - stageRect.left - state.grabDX, CORE_R + 5, w - CORE_R - 5);
+    const y = clamp(ev.clientY - stageRect.top - state.grabDY, MENU_H + CORE_R + 8, h - 52);
+    state.pos = { x, y };
+
+    const dx = x - state.rest.x;
+    const dy = y - state.rest.y;
+    droplet.style.setProperty('--dx', `${dx}px`);
+    droplet.style.setProperty('--dy', `${dy}px`);
+
+    const dist = Math.hypot(dx, dy);
+    if (Math.hypot(ev.clientX - state.start.x, ev.clientY - state.start.y) > MIN_MOVE) {
+      state.moved = true;
+    }
+    const detached = dist >= THRESHOLD;
+    droplet.classList.toggle('is-detached', detached);
+    droplet.style.setProperty('--charge', Math.min(dist / THRESHOLD, 1).toFixed(3));
+    if (detached) hideNeck();
+    else drawNeck(x, y, dist);
+    updateHints(dist);
+    if (ev.cancelable) ev.preventDefault();
+  }
+
+  function endPointer(ev, cancelled) {
+    if (state.phase !== 'drag' || ev.pointerId !== state.pointerId) return;
+    try { droplet.releasePointerCapture(ev.pointerId); } catch (_) {}
+    document.body.classList.remove('is-dragging');
+    droplet.classList.remove('is-dragging');
+    hideNeck();
+
+    const dist = Math.hypot(state.pos.x - state.rest.x, state.pos.y - state.rest.y);
+    const shouldDrop = !cancelled && state.moved && dist >= THRESHOLD;
+    const moved = state.moved;
+
+    state.pointerId = null;
+    if (moved) state.lastDragEnd = performance.now();
+
+    if (shouldDrop) {
+      finishDrop({ ...state.pos });
+    } else {
+      resetDroplet();
+      state.phase = 'idle';
+      if (moved && !cancelled) flashHint('还差一点，再拖远一些');
+      else updateHints(0);
+    }
+  }
+
+  droplet.addEventListener('pointerdown', onPointerDown);
+  document.addEventListener('pointermove', onPointerMove, { passive: false });
+  document.addEventListener('pointerup', (ev) => endPointer(ev, false));
+  document.addEventListener('pointercancel', (ev) => endPointer(ev, true));
+
+  droplet.addEventListener('click', () => {
+    if (performance.now() < state.suppressClickUntil) return;
+    if (performance.now() - state.lastDragEnd < 350) return;
+    if (state.phase === 'compose' && state.source === 'trigger') {
+      closeComposer();
+      return;
+    }
+    if (state.phase !== 'idle') return;
+    state.phase = 'compose';
+    state.source = 'trigger';
+    state.drop = null;
+    openComposerAt(null);
+  });
+
+  stage.addEventListener('pointerdown', (ev) => {
+    if (state.phase !== 'compose') return;
+    if (composer.contains(ev.target) || droplet.contains(ev.target)) return;
+    closeComposer();
+  });
+
+  document.addEventListener('pointerdown', (ev) => {
+    if (state.phase !== 'compose') return;
+    if (stage.contains(ev.target)) return;
+    closeComposer(false);
+  });
+
+  function submitTask() {
+    const text = taskText.value.trim();
+    if (!text) {
+      taskText.setAttribute('aria-invalid', 'true');
+      composerMsg.classList.add('is-error');
+      setText(composerMsg, '先写一句任务');
+      taskText.focus({ preventScroll: true });
+      return;
+    }
+    closeComposer(true);
+    taskText.value = '';
+    taskText.removeAttribute('aria-invalid');
+    composerMsg.classList.remove('is-error');
+    setText(composerMsg, '演示，不会创建真实任务');
+    showToast('演示完成。真实应用会把这条任务交给 Herdr。');
+  }
+
+  taskForm.addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    submitTask();
+  });
+
+  composerClose.addEventListener('click', () => closeComposer());
+
+  taskText.addEventListener('input', () => {
+    if (taskText.getAttribute('aria-invalid') === 'true') {
+      taskText.removeAttribute('aria-invalid');
+      composerMsg.classList.remove('is-error');
+      setText(composerMsg, '演示，不会创建真实任务');
+    }
+  });
+
+  composer.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Tab') return;
+    const nodes = [...composer.querySelectorAll(
+      'a[href], button:not([disabled]), textarea, select, input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    )].filter((el) => el.offsetParent !== null || el === document.activeElement);
+    if (!nodes.length) return;
+    const first = nodes[0];
+    const last = nodes[nodes.length - 1];
+    if (ev.shiftKey && document.activeElement === first) {
+      ev.preventDefault();
+      last.focus();
+    } else if (!ev.shiftKey && document.activeElement === last) {
+      ev.preventDefault();
+      first.focus();
+    }
+  });
+
+  document.addEventListener('keydown', (ev) => {
+    if (state.phase !== 'compose') return;
+    if (ev.key === 'Escape') {
+      ev.preventDefault();
+      closeComposer();
+    } else if ((ev.metaKey || ev.ctrlKey) && ev.key === 'Enter') {
+      ev.preventDefault();
+      submitTask();
+    }
+  });
+
+  function tickClock() {
+    if (!stageClock) return;
+    const now = new Date();
+    stageClock.textContent = now.toLocaleTimeString('zh-CN', {
+      hour: '2-digit', minute: '2-digit', hour12: false
+    });
+  }
+  tickClock();
+  window.setInterval(tickClock, 20000);
+
+  let lastWidth = stage.clientWidth;
+  function handleResize() {
+    const width = stage.clientWidth;
+    if (lastWidth && Math.abs(width - lastWidth) > 2) {
+      if (state.phase === 'drag') {
+        document.body.classList.remove('is-dragging');
+        state.pointerId = null;
+        resetDroplet();
+        state.phase = 'idle';
+      } else if (state.phase === 'compose') {
+        closeComposer(false);
+      }
+    }
+    lastWidth = width;
+    syncGeometry();
+  }
+
+  if ('ResizeObserver' in window) {
+    new ResizeObserver(handleResize).observe(stage);
+  } else {
+    window.addEventListener('resize', handleResize);
+  }
+
+  syncGeometry();
+  updateHints(0);
+  window.requestAnimationFrame(() => {
+    syncGeometry();
+    root.dataset.ready = '1';
+  });
+})();
+</script>
+</body>
+</html>
