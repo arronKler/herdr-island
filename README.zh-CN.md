@@ -4,10 +4,10 @@
 
 # Herdr Island
 
-**刘海下，挂着你的 agent。**
+**屏幕凹口下，你的 agent 在值班。**
 
 [Herdr](https://github.com/herdrdev/herdr) 的原生 macOS 图形前端。Herdr 负责运行 agent；
-Island 把状态放进摄像头刘海两侧，提供任务台、真实终端，以及一个可以拖到任意位置的投递框。
+Island 把状态放进屏幕顶部的凹口两侧，提供任务台、真实终端，以及一个可以拖到任意位置的投递框。
 
 [English](README.md) · **简体中文**
 
@@ -28,7 +28,7 @@ Island 把状态放进摄像头刘海两侧，提供任务台、真实终端，�
 
 Herdr 是执行层：创建 workspace、启动 agent、提交任务、维护终端会话。Island 是它之上的另一个界面，围绕你本来就会瞥一眼的那块屏幕区域设计。
 
-- **刘海就是状态栏。** 收起时 Island 只占菜单栏高度。左耳告诉你有人需要你处理；右耳显示运行、完成或空闲。
+- **屏幕顶端就是状态栏。** 收起时 Island 只占菜单栏高度。左耳告诉你有人需要你处理；右耳显示运行、完成或空闲。
 - **Herdr 仍然是执行者。** Island 不替代 Herdr，不包裹 agent，也不直接连接模型厂商。它读取 Herdr 的状态，再通过 Herdr 派发任务。
 - **本地优先。** 没有账号、遥测、分析或常驻后台服务。任务、截图和附件都留在这台 Mac 上。唯一的网络请求是每天检查更新并从 GitHub 下载新版本。
 - **需要时，终端是真的。** 详情视图连接 agent 的实际 pane，不是日志查看器，也不是输出的副本。
@@ -66,7 +66,7 @@ Herdr 是执行层：创建 workspace、启动 agent、提交任务、维护终�
 
 ### 随处投递
 
-把水滴拖到刘海下方。液态颈部跟随指针，超过 96pt 后完全脱离成一颗小水珠。松手后，共享投递框出现在落点上方：
+把水滴拖到岛下方。液态颈部跟随指针，超过 96pt 后完全脱离成一颗小水珠。松手后，共享投递框出现在落点上方：
 
 - **收件人。** 默认是持久化的主 agent。可以通过收件人按钮切换，或新建 agent。身份按 pane、workspace 和 agent kind 三者一起校验。
 - **任务。** 多行任务、模型、目录，以及可选的隔离 worktree。
@@ -110,7 +110,7 @@ Herdr 能识别的 agent 都会出现在 Island 里。新任务可以启动以�
 
 详情终端目前只适配 Herdr 0.9.5 的单 pane 二进制协议 22。其他协议版本会显示明确的不兼容提示；任务台、投递和跳转仍然可用。
 
-没有刘海的 Mac 上，Island 作为菜单栏项目运行。`⌃⌥H`、`⌃⌥N`、任务台、详情终端和投递仍然可用；水滴和窗口锁定不可用。
+没有屏幕凹口的 Mac 上，Island 作为菜单栏项目运行。`⌃⌥H`、`⌃⌥N`、任务台、详情终端和投递仍然可用；水滴和窗口锁定不可用。
 
 ## 安装
 
@@ -247,7 +247,7 @@ python3 Scripts/check-site.py site
 <details>
 <summary><strong>设计资源</strong></summary>
 
-应用图标采用“负形之岛”：冰蓝色底板上的刘海轮廓，用水滴负形留出开口。[SVG 源文件](Sources/IslandApp/Resources/Brand/HerdrIsland.svg) 是唯一手工维护的图稿；菜单栏、任务台、设置页和渲染页共用从它派生的标记。菜单栏始终使用无底板、透明镂空的单色模板，由 macOS 按背景自动显示为白色或深色，不随任务状态变色。
+应用图标采用“负形之岛”：冰蓝色底板上的凹口轮廓，用水滴负形留出开口。[SVG 源文件](Sources/IslandApp/Resources/Brand/HerdrIsland.svg) 是唯一手工维护的图稿；菜单栏、任务台、设置页和渲染页共用从它派生的标记。菜单栏始终使用无底板、透明镂空的单色模板，由 macOS 按背景自动显示为白色或深色，不随任务状态变色。
 
 修改 SVG 后运行 `Scripts/make-icons.sh`，生成原生矢量 PDF、透明标记 SVG 和 `Resources/HerdrIsland.icns`。脚本需要 `rsvg-convert`（`brew install librsvg`）、Python 3 和 macOS 自带的 `iconutil`。生成物已随源码保存，正常构建无需安装图像工具。
 
@@ -306,7 +306,7 @@ ISLAND_BENCHMARK_CREATE=1 swift test --filter TaskCreationPerformanceTests/testL
 
 欢迎提 issue 和 pull request。
 
-- 报告 bug 时，请附上 **设置 → 环境** 里的 Island 版本、macOS 版本、Mac 型号和是否有刘海、Herdr 版本、协议提示、复现步骤，以及用 `--log <路径>` 生成的日志。
+- 报告 bug 时，请附上 **设置 → 环境** 里的 Island 版本、macOS 版本、Mac 型号和是否有屏幕凹口、Herdr 版本、协议提示、复现步骤，以及用 `--log <路径>` 生成的日志。
 - 不要在 issue 里粘贴 token、私有源码或完整窗口截图。脱敏后只保留最小复现所需的内容。
 - 提交 pull request 前先运行 `swift test`。保持 `IslandCore` 不依赖 AppKit 和 Herdr，把 Herdr 事实留在 `HerdrKit` 边界，不要添加 Sparkle 更新之外的网络请求、遥测或后台服务。
 

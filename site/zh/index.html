@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="color-scheme" content="dark">
 <meta name="theme-color" content="#08090C">
-<title>Herdr Island · 刘海下，挂着你的 agent</title>
-<meta name="description" content="Herdr Island 是 Herdr 的 macOS 图形前端。把多个 coding agent 的状态放进刘海两侧，拖动水滴在任意位置创建任务。">
+<title>Herdr Island · 屏幕凹口下，你的 agent 在值班</title>
+<meta name="description" content="Herdr Island 是 Herdr 的 macOS 图形前端。把多个 coding agent 的状态放进屏幕顶部的凹口两侧，拖动水滴在任意位置创建任务。">
 <link rel="canonical" href="https://arronkler.github.io/herdr-island/zh/">
 <link rel="alternate" hreflang="en" href="https://arronkler.github.io/herdr-island/">
 <link rel="alternate" hreflang="zh-Hans" href="https://arronkler.github.io/herdr-island/zh/">
@@ -14,16 +14,16 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="Herdr Island">
 <meta property="og:locale" content="zh_CN">
-<meta property="og:title" content="Herdr Island · 刘海下，挂着你的 agent">
-<meta property="og:description" content="Herdr Island 是 Herdr 的 macOS 图形前端。把多个 coding agent 的状态放进刘海两侧，拖动水滴在任意位置创建任务。">
+<meta property="og:title" content="Herdr Island · 屏幕凹口下，你的 agent 在值班">
+<meta property="og:description" content="Herdr Island 是 Herdr 的 macOS 图形前端。把多个 coding agent 的状态放进屏幕顶部的凹口两侧，拖动水滴在任意位置创建任务。">
 <meta property="og:url" content="https://arronkler.github.io/herdr-island/zh/">
 <meta property="og:image" content="https://arronkler.github.io/herdr-island/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:alt" content="Herdr Island 产品页分享卡片">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Herdr Island · 刘海下，挂着你的 agent">
-<meta name="twitter:description" content="Herdr Island 是 Herdr 的 macOS 图形前端。把多个 coding agent 的状态放进刘海两侧，拖动水滴在任意位置创建任务。">
+<meta name="twitter:title" content="Herdr Island · 屏幕凹口下，你的 agent 在值班">
+<meta name="twitter:description" content="Herdr Island 是 Herdr 的 macOS 图形前端。把多个 coding agent 的状态放进屏幕顶部的凹口两侧，拖动水滴在任意位置创建任务。">
 <meta name="twitter:image" content="https://arronkler.github.io/herdr-island/assets/og.png">
 <link rel="icon" href="../assets/brand/icon.svg" type="image/svg+xml">
 <link rel="icon" href="../assets/brand/favicon-32.png" sizes="32x32" type="image/png">
@@ -1056,9 +1056,9 @@ ul,ol{padding:0}
   <section class="hero" aria-labelledby="hero-title">
     <div class="wrap">
       <p class="eyebrow"><span class="live-dot" aria-hidden="true"></span>Herdr 的 macOS 图形前端</p>
-      <h1 id="hero-title">刘海下，挂着你的 agent<span class="stop">。</span></h1>
+      <h1 id="hero-title">屏幕凹口下，你的 agent 在值班<span class="stop">。</span></h1>
       <p class="hero-lead">
-        Herdr Island 把 Herdr 里每个 coding agent 的状态放进刘海两侧。左边是待处理，右边是运行、完成或空闲。拖动刘海下那滴水，输入框就出现在落点上方。它是 Herdr 的图形前端，Herdr 仍然是任务的执行者。
+        Herdr Island 把每个 coding agent 的状态放进屏幕顶部的凹口两侧。左边是待处理，右边是运行、完成或空闲。拖动岛下那滴水，输入框就出现在落点上方。它是 Herdr 的图形前端，Herdr 仍然负责执行。
       </p>
       <div class="hero-cta">
         <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">
@@ -1078,13 +1078,13 @@ ul,ol{padding:0}
 
       <div class="stage-block">
         <div class="stage-meta">
-          <span class="meta-left"><span class="live-dot" aria-hidden="true"></span>刘海是舞台，水滴是入口</span>
+          <span class="meta-left"><span class="live-dot" aria-hidden="true"></span>屏幕凹口是舞台，水滴是入口</span>
           <span class="meta-right">拖动水滴试试
             <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.5v10m0 0 3.4-3.4M8 12.5 4.6 9.1"/></svg>
           </span>
         </div>
 
-        <div class="stage" id="stage" role="group" aria-label="刘海与水滴交互演示">
+        <div class="stage" id="stage" role="group" aria-label="岛与水滴交互演示">
           <div class="stage-light" aria-hidden="true"></div>
           <div class="stage-grain" aria-hidden="true"></div>
 
@@ -1219,7 +1219,7 @@ ul,ol{padding:0}
       <div class="section-head">
         <p class="kicker"><span class="num">01</span>安装</p>
         <div>
-          <h2 id="install-title">装好，挂上。</h2>
+          <h2 id="install-title">装好，就位。</h2>
           <p class="section-lead">预编译版本为 Apple Silicon 构建，要求 macOS 14 或更新版本。应用只有 ad-hoc 签名，首次打开需要手动放行。</p>
         </div>
       </div>
@@ -1275,7 +1275,7 @@ ul,ol{padding:0}
       <div class="section-head">
         <p class="kicker"><span class="num">02</span>状态</p>
         <div>
-          <h2 id="status-title">状态就在刘海两侧。</h2>
+          <h2 id="status-title">状态就在岛的两侧。</h2>
           <p class="section-lead">不用切窗口。左耳显示待处理或安静，右耳显示运行、完成或空闲。鼠标移到水滴或两耳上才接收事件，其他时候桌面照常点击。</p>
         </div>
       </div>
@@ -1285,13 +1285,13 @@ ul,ol{padding:0}
           <div class="plate-frame">
             <div class="plate plate--ears">
               <img src="../assets/screens/collapsed.webp" width="1200" height="800" loading="lazy" decoding="async"
-                   alt="折叠态截图的局部：菜单栏中央的黑色岛，左耳显示安静，右耳显示 2 运行，刘海下挂着一滴水。">
+                   alt="折叠态截图的局部：菜单栏中央的黑色岛，左耳显示安静，右耳显示 2 运行，岛下挂着一滴水。">
             </div>
           </div>
           <figcaption>
             <span class="cap-label">01 / 两耳</span>
             <h3>收起时只占菜单栏高度。</h3>
-            <p>左耳是待处理或安静，右耳是运行、完成或空闲。收起时它不改变刘海的形状，也不挡桌面点击。</p>
+            <p>左耳是待处理或安静，右耳是运行、完成或空闲。收起时它不改变屏幕凹口的形状，也不挡桌面点击。</p>
           </figcaption>
         </figure>
 
@@ -1332,7 +1332,7 @@ ul,ol{padding:0}
         <p class="kicker"><span class="num">03</span>任务台</p>
         <div>
           <h2 id="deck-title">该你处理的，排在前面。</h2>
-          <p class="section-lead">任务台按状态分组。运行中的 agent 显示最近一行终端输出；你可以先排一句话，等这一轮结束自动投递。</p>
+          <p class="section-lead">任务台按状态分组。运行中的 agent 显示最近一行终端输出；你可以先排一条消息，等这一轮结束自动投递。</p>
         </div>
       </div>
 
@@ -1394,7 +1394,7 @@ ul,ol{padding:0}
         <p class="kicker"><span class="num">04</span>终端</p>
         <div>
           <h2 id="terminal-title">要动手时，终端就在岛里。</h2>
-          <p class="section-lead">点开任务，在 660 × 640 的详情里直接接上这个 pane 的终端。键盘、中文输入、粘贴、鼠标报告、Shift + 拖动选择和滚轮历史都在，SwiftTerm 渲染，不需要 Ghostty。工作区、标签和分屏仍然在 Herdr 里。</p>
+          <p class="section-lead">点开任务，在 660 × 640 的详情里直接连接这个 pane 的终端。键盘、中文输入、粘贴、鼠标报告、Shift + 拖动选择和滚轮历史都在，SwiftTerm 渲染，不需要 Ghostty。工作区、标签和分屏仍然在 Herdr 里。</p>
         </div>
       </div>
 
@@ -1446,8 +1446,8 @@ ul,ol{padding:0}
       <div class="section-head">
         <p class="kicker"><span class="num">05</span>新任务</p>
         <div>
-          <h2 id="new-task-title">把下一件事，拖到桌上。</h2>
-          <p class="section-lead">拖动水滴时，水滴和刘海之间先拉出液态颈部。超过 96pt 完全脱离，松手的位置出现涟漪，共享投递框锚定在落点上方：收件人、任务、模型、目录、worktree 和附件都在同一处。</p>
+          <h2 id="new-task-title">把下一件事，拖到任意位置。</h2>
+          <p class="section-lead">拖动水滴时，水滴和岛之间先拉出液态颈部。超过 96pt 完全脱离，松手的位置出现涟漪，共享投递框锚定在落点上方：收件人、任务、模型、目录、worktree 和附件都在同一处。</p>
         </div>
       </div>
 
@@ -1461,7 +1461,7 @@ ul,ol{padding:0}
           <div class="step-copy">
             <span class="step-kicker">01</span>
             <h3>拉出颈部</h3>
-            <p>水滴还连在刘海上，颈部随指针变细。</p>
+            <p>水滴还连在岛上，颈部随指针变细。</p>
           </div>
         </li>
         <li class="drag-step step-b">
@@ -1474,7 +1474,7 @@ ul,ol{padding:0}
           <div class="step-copy">
             <span class="step-kicker">02</span>
             <h3>超过 96pt</h3>
-            <p>完全脱离，刘海下只留一个小水珠。</p>
+            <p>完全脱离，岛上只留一个小水珠。</p>
           </div>
         </li>
         <li class="drag-step step-c">
@@ -1554,7 +1554,7 @@ ul,ol{padding:0}
           <div class="plate-frame">
             <div class="plate plate--scene">
               <img src="../assets/screens/window.webp" width="1200" height="800" loading="lazy" decoding="async"
-                   alt="窗口锁定截图：刘海旁显示锁定状态，共享投递框里是主 agent、任务和附件，发送时会附一张窗口截图。">
+                   alt="窗口锁定截图：岛旁显示锁定状态，共享投递框里是主 agent、任务和附件，发送时会附一张窗口截图。">
             </div>
           </div>
           <figcaption>
