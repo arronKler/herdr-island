@@ -109,6 +109,8 @@ Herdr 能识别的 agent 都会出现在 Island 里。新任务可以启动以�
 
 详情终端目前只适配 Herdr 0.9.5 的单 pane 二进制协议 22。其他协议版本会显示明确的不兼容提示；任务台、投递和跳转仍然可用。
 
+没有刘海的 Mac 上，Island 作为菜单栏项目运行。`⌃⌥H`、`⌃⌥N`、任务台、详情终端和投递仍然可用；水滴和窗口锁定不可用。
+
 ## 安装
 
 预编译版本发布在 [GitHub Releases](https://github.com/arronKler/herdr-island/releases)。

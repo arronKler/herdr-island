@@ -140,6 +140,9 @@ Cursor's workspace-trust dialog and Codex's usage/model picker are always yours 
 The detail terminal currently speaks Herdr's single-pane binary protocol 22. Other protocol
 versions show an explicit incompatibility message; the deck, delivery, and jumps still work.
 
+On a Mac without a notch, Island appears as a menu-bar item. `⌃⌥H`, `⌃⌥N`, the deck, the detail
+terminal, and delivery still work; the droplet and window lock are unavailable.
+
 ## Install
 
 Prebuilt releases are on [GitHub Releases](https://github.com/arronKler/herdr-island/releases).
