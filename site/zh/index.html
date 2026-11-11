@@ -1228,8 +1228,7 @@ ul,ol{padding:0}
         <ol class="steps">
           <li>
             <h3>下载</h3>
-            <p>从 Releases 下载 <code>HerdrIsland-&lt;版本&gt;.zip</code>。同名 <code>.sha256</code> 是可选的，只用于发现下载损坏；自动更新由签名验证。想校验下载可以运行：</p>
-            <pre><code>shasum -a 256 -c HerdrIsland-&lt;版本&gt;.zip.sha256</code></pre>
+            <p>从 Releases 下载 <code>HerdrIsland-&lt;版本&gt;.zip</code> 并解压。Release 里还有一个 <code>.sha256</code>，想检查下载是否损坏时可以用；自动更新由签名验证。</p>
           </li>
           <li>
             <h3>放进应用程序</h3>
@@ -1239,7 +1238,7 @@ ul,ol{padding:0}
             <h3>首次打开要放行</h3>
             <p>应用只有 ad-hoc 签名，没有经过 Apple 公证，Gatekeeper 会拦截。到 系统设置 → 隐私与安全性，在「安全性」一栏点「仍要打开」，再输入管理员密码。也可以在终端去掉下载隔离标记：</p>
             <pre><code>xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
-            <div class="callout"><strong>手动下载的新版本可能还需要再放行一次。</strong>不要用 <code>sudo spctl --master-disable</code> 全局关闭 Gatekeeper。</div>
+            <p>自动更新不会重复这一步。手动下载的新版本可能需要，所以不要用 <code>sudo spctl --master-disable</code> 全局关闭 Gatekeeper。</p>
           </li>
           <li>
             <h3>授予权限</h3>

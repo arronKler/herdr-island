@@ -1228,8 +1228,7 @@ ul,ol{padding:0}
         <ol class="steps">
           <li>
             <h3>Download</h3>
-            <p>Download <code>HerdrIsland-&lt;version&gt;.zip</code> from Releases. The matching <code>.sha256</code> is optional. It only checks the download for corruption; automatic updates are signature-verified. To check the download, run:</p>
-            <pre><code>shasum -a 256 -c HerdrIsland-&lt;version&gt;.zip.sha256</code></pre>
+            <p>Download <code>HerdrIsland-&lt;version&gt;.zip</code> from Releases and unzip it. The release also includes a <code>.sha256</code> if you want to check the download for corruption; automatic updates are signature-verified.</p>
           </li>
           <li>
             <h3>Move it to Applications</h3>
@@ -1239,7 +1238,7 @@ ul,ol{padding:0}
             <h3>Approve the first launch</h3>
             <p>The app is ad-hoc signed and not notarized by Apple, so Gatekeeper blocks it. Go to System Settings → Privacy &amp; Security, click "Open Anyway" in the Security section, and enter your admin password. You can also remove the quarantine flag in Terminal:</p>
             <pre><code>xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
-            <div class="callout"><strong>A manually downloaded new version may need approval again.</strong> Do not disable Gatekeeper globally with <code>sudo spctl --master-disable</code>.</div>
+            <p>Automatic updates do not repeat this. A manually downloaded build might, so do not disable Gatekeeper globally with <code>sudo spctl --master-disable</code>.</p>
           </li>
           <li>
             <h3>Grant permissions</h3>

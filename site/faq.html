@@ -310,10 +310,8 @@
             <details class="qa">
               <summary>How do I install it?</summary>
               <div class="qa-body">
-                <p>Download <code>HerdrIsland-&lt;version&gt;.zip</code>, unzip it, and drag <code>HerdrIsland.app</code> into <code>/Applications</code>. The matching <code>.sha256</code> is optional and only checks the download for corruption; automatic updates are signature-verified.</p>
-                <pre><code># optional download check
-shasum -a 256 -c HerdrIsland-&lt;version&gt;.zip.sha256
-# only if you prefer Terminal over System Settings
+                <p>Download <code>HerdrIsland-&lt;version&gt;.zip</code>, unzip it, and drag <code>HerdrIsland.app</code> into <code>/Applications</code>. The release also includes a <code>.sha256</code> if you want to check the download for corruption; automatic updates are signature-verified.</p>
+                <pre><code># only if you prefer Terminal over System Settings
 xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
                 <p>You can also click "Open Anyway" in System Settings → Privacy &amp; Security. The full walkthrough is in <a href="index.html#install">Install</a>.</p>
               </div>

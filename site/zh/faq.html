@@ -310,10 +310,8 @@
             <details class="qa">
               <summary>怎么安装？</summary>
               <div class="qa-body">
-                <p>下载 <code>HerdrIsland-&lt;版本&gt;.zip</code>，解压后把 <code>HerdrIsland.app</code> 拖进 <code>/Applications</code>。同名 <code>.sha256</code> 是可选的，只用于发现下载损坏；自动更新由签名验证。</p>
-                <pre><code># 可选的下载校验
-shasum -a 256 -c HerdrIsland-&lt;版本&gt;.zip.sha256
-# 如果不想用系统设置，也可以在这里去掉隔离标记
+                <p>下载 <code>HerdrIsland-&lt;版本&gt;.zip</code>，解压后把 <code>HerdrIsland.app</code> 拖进 <code>/Applications</code>。Release 里还有一个 <code>.sha256</code>，想检查下载是否损坏时可以用；自动更新由签名验证。</p>
+                <pre><code># 如果不想用系统设置，也可以在这里去掉隔离标记
 xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
                 <p>也可以在系统设置 → 隐私与安全性里点「仍要打开」。具体步骤见<a href="index.html#install">安装</a>。</p>
               </div>
