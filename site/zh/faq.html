@@ -276,7 +276,7 @@
               <summary>截图、代码和 prompt 会离开本机吗？</summary>
               <div class="qa-body">
                 <p>不会。截图保存在本机 <code>~/Library/Application Support/HerdrIsland/Captures/</code>，prompt 里只有绝对路径、窗口元数据、自动上下文和任务。附件只传绝对路径，不复制文件。</p>
-                <p>Island 没有账号、遥测、分析或网络请求；更新通过 GitHub Releases 手动下载。完整清单见<a href="what-it-reads.html">它读了什么</a>。</p>
+                <p>Island 没有账号、遥测或分析。唯一的网络请求是每天检查更新并从 GitHub 下载新版本。完整清单见<a href="what-it-reads.html">它读了什么</a>。</p>
               </div>
             </details>
 
@@ -335,7 +335,15 @@ xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
             <details class="qa">
               <summary>有自动更新吗？</summary>
               <div class="qa-body">
-                <p>没有。Island 不主动联网检查更新，也不会在后台下载。新版本发布在 <a href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">GitHub Releases</a>，需要手动下载替换。</p>
+                <p>有，从第一个集成 Sparkle 的版本开始。Island 每天检查一次签名 appcast，发现新版本后在后台下载，并在退出或选择重启时安装。菜单栏的 <strong>检查更新…</strong> 可以随时手动触发。</p>
+                <p><code>0.1.0</code> 及更早版本没有更新器，需要手动安装一次。之后就可以自动更新。appcast 和更新包都使用 EdDSA 签名，未签名的更新会被拒绝。</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>更新器会发送什么数据？</summary>
+              <div class="qa-body">
+                <p>只会通过 HTTPS 向 GitHub 请求 <code>appcast.xml</code>，有更新时再下载新版本。不上传账号、标识、prompt 或使用数据。除这次检查外，Island 不发起网络请求。</p>
               </div>
             </details>
 

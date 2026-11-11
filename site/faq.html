@@ -276,7 +276,7 @@
               <summary>Do screenshots, code, or prompts leave this Mac?</summary>
               <div class="qa-body">
                 <p>No. Screenshots are stored locally in <code>~/Library/Application Support/HerdrIsland/Captures/</code>. The prompt contains absolute paths, window metadata, automatic context, and the task. Attachments are absolute paths; files are not copied.</p>
-                <p>Island has no account, telemetry, analytics, or network requests; updates are manual downloads from GitHub Releases. The full inventory is in <a href="what-it-reads.html">What it reads</a>.</p>
+                <p>Island has no account, telemetry, or analytics. Its only network requests are the daily update check and update download from GitHub. The full inventory is in <a href="what-it-reads.html">What it reads</a>.</p>
               </div>
             </details>
 
@@ -335,7 +335,15 @@ xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
             <details class="qa">
               <summary>Is there auto-update?</summary>
               <div class="qa-body">
-                <p>No. Island does not check for updates over the network or download anything in the background. New versions are published on <a href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">GitHub Releases</a>; download and replace manually.</p>
+                <p>Yes, starting with the first Sparkle-enabled release. Island checks the signed appcast once a day, downloads a new version in the background, and installs it when you quit or choose to restart. <strong>Check for Updates…</strong> in the menu bar triggers a check at any time.</p>
+                <p><code>0.1.0</code> and earlier have no updater, so they need one manual install. After that, updates are automatic. The appcast and archive are EdDSA-signed; the app rejects unsigned updates.</p>
+              </div>
+            </details>
+
+            <details class="qa">
+              <summary>What does the updater send?</summary>
+              <div class="qa-body">
+                <p>An HTTPS request to GitHub for <code>appcast.xml</code>, and a download of the new archive when one exists. It sends no account, identifier, prompt, or usage data. Other than this check, Island makes no network requests.</p>
               </div>
             </details>
 

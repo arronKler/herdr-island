@@ -28,5 +28,21 @@
 	<string>Herdr Island focuses the Ghostty terminal that hosts Herdr.</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUFeedURL</key>
+	<string>https://github.com/arronKler/herdr-island/releases/latest/download/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>hKymeSOcKmkJO7UjogbOOZgyTOWCkAuMij6Oh56IarU=</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUAutomaticallyUpdate</key>
+	<true/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<true/>
+	<key>SUScheduledCheckInterval</key>
+	<integer>86400</integer>
+	<key>SURequireSignedFeed</key>
+	<true/>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 </dict>
 </plist>

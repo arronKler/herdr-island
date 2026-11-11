@@ -29,7 +29,7 @@ Herdr 是执行层：创建 workspace、启动 agent、提交任务、维护终�
 
 - **刘海就是状态栏。** 收起时 Island 只占菜单栏高度。左耳告诉你有人需要你处理；右耳显示运行、完成或空闲。
 - **Herdr 仍然是执行者。** Island 不替代 Herdr，不包裹 agent，也不直接连接模型厂商。它读取 Herdr 的状态，再通过 Herdr 派发任务。
-- **本地优先。** 没有账号、遥测、分析或后台服务。任务、截图和附件都留在这台 Mac 上。
+- **本地优先。** 没有账号、遥测、分析或常驻后台服务。任务、截图和附件都留在这台 Mac 上。唯一的网络请求是每天检查更新并从 GitHub 下载新版本。
 - **需要时，终端是真的。** 详情视图连接 agent 的实际 pane，不是日志查看器，也不是输出的副本。
 
 ## 界面
@@ -137,6 +137,14 @@ Herdr 能识别的 agent 都会出现在 Island 里。新任务可以启动以�
 
 从源码构建的 app 没有 quarantine 标记，不需要上面的放行步骤。
 
+### 更新
+
+`0.1.0` 及更早版本没有更新器，第一个集成 Sparkle 的版本仍要手动安装一次。之后 Island 每天检查一次签名 appcast，发现新版本后在后台下载，并在退出或选择重启时安装。菜单栏的 **检查更新…** 可以随时手动触发。
+
+appcast 和更新包都使用 EdDSA 签名。公钥在 `Resources/Info.plist`，私钥放在 GitHub Actions 的 `SPARKLE_ED_PRIVATE_KEY` secret。请备份私钥。ad-hoc 签名下它是唯一的更新信任链，丢失后现有安装无法再自动更新。
+
+更新器只通过 HTTPS 访问 GitHub，不上传账号、标识、任务或使用数据。由于应用是 ad-hoc 签名，更新后 macOS 可能再次询问 Screen Recording 或 Automation 权限。
+
 ## 快捷键
 
 | 快捷键 | 作用 |
@@ -166,7 +174,7 @@ Island 不会自动批准 blocked agent。它不会代发 `y`、Enter 或任何�
 | 辅助功能 | 读取锁定窗口的选中文本、网页地址和文档路径 | 这些字段为空；仍可发送 |
 | Automation | 在 Ghostty 中把 Herdr pane 带到前台 | 无法精确跳转；仍会聚焦 pane |
 
-没有账号、遥测、分析或后台服务。任务、截图和附件都留在这台 Mac 上。磁盘上的数据只有：
+没有账号、遥测或分析。任务、截图和附件都留在这台 Mac 上。唯一的网络请求是每天检查 appcast 和从 GitHub 下载更新。磁盘上的数据只有：
 
 - **截图：** `~/Library/Application Support/HerdrIsland/Captures/`，保留最新 50 张。
 - **粘贴图片：** `~/Library/Caches/HerdrIsland/TerminalImages/`，目录 `0700`、文件 `0600`，单张最多 16 MB / 4000 万像素，超过 7 天后在下次打开终端或粘贴时清理。
@@ -211,6 +219,8 @@ Scripts/make-release.sh 0.1.0
 
 脚本把版本写入 `Info.plist`，重新签名，并在 `build/release/` 生成 `HerdrIsland-<版本>.zip` 和同名 `.sha256`。推送 `v<版本>` 标签会触发 `.github/workflows/release.yml`；带 `-` 的版本（例如 `0.1.0-beta.1`）会发布为 prerelease。
 
+release 工作流还会生成签名 `appcast.xml` 并作为 Release 资产上传。应用读取稳定地址 `https://github.com/arronKler/herdr-island/releases/latest/download/appcast.xml`，所以发布 Release 就够了，不需要改站点。`latest` 不包含 prerelease，因此 prerelease 版本需要手动下载。
+
 站点由 `.github/workflows/pages.yml` 发布。推送 `site/` 下的改动后，工作流先用 `Scripts/check-site.py` 检查本地链接与页内锚点，再把 `site/` 上传到 GitHub Pages。本地预览：
 
 ```bash
@@ -231,6 +241,7 @@ python3 Scripts/check-site.py site
 | `--new-task <text>` | 打开快速任务框并预填文本。 |
 | `--new-task-send` | 与 `--new-task` 一起用，预填后自动提交。会创建真实 agent。 |
 | `--open-pane <pane-id>` | 首次发现该 agent 后打开详情终端。遵循 `HERDR_SOCKET_PATH`。 |
+| `--check-updates` | 启动后立即检查一次更新，测试 Sparkle 配置用。 |
 
 </details>
 
@@ -270,6 +281,7 @@ ISLAND_BENCHMARK_CREATE=1 swift test --filter TaskCreationPerformanceTests/testL
 - 应用界面目前只有简体中文，还没有 in-app 英文本地化。
 - 详情终端只支持 Herdr 0.9.5 的协议 22。其他版本会显示明确的不兼容错误，任务台和投递仍然可用。
 - 预编译版本只支持 Apple Silicon，且为 ad-hoc 签名、未公证。首次启动需要手动放行，更新后权限可能再次询问。
+- 自动更新从第一个集成 Sparkle 的版本开始。`0.1.0` 及更早版本没有更新器，需要手动替换一次。feed 使用 `releases/latest`，prerelease 不会被自动推送。
 - 窗口锁定只覆盖当前 Space 和当前屏幕。最小化、切换 Space 或重新打开窗口都会导致截图失败；受 DRM 保护的窗口可能只能截到黑屏。
 - 忙碌的 agent 只接受一条排队消息。blocked 或状态未知的 agent 不能接收自动消息。
 - 附件是绝对路径，最多 8 个，不会复制。缺失文件会在发送前被移除；粘贴图片限制为 16 MB / 4000 万像素，7 天后过期。
@@ -297,7 +309,7 @@ ISLAND_BENCHMARK_CREATE=1 swift test --filter TaskCreationPerformanceTests/testL
 
 - 报告 bug 时，请附上 **设置 → 环境** 里的 Island 版本、macOS 版本、Mac 型号和是否有刘海、Herdr 版本、协议提示、复现步骤，以及用 `--log <路径>` 生成的日志。
 - 不要在 issue 里粘贴 token、私有源码或完整窗口截图。脱敏后只保留最小复现所需的内容。
-- 提交 pull request 前先运行 `swift test`。保持 `IslandCore` 不依赖 AppKit 和 Herdr，把 Herdr 事实留在 `HerdrKit` 边界，不要添加网络请求、遥测或后台服务。
+- 提交 pull request 前先运行 `swift test`。保持 `IslandCore` 不依赖 AppKit 和 Herdr，把 Herdr 事实留在 `HerdrKit` 边界，不要添加 Sparkle 更新之外的网络请求、遥测或后台服务。
 
 Agent 名称和图标归各自所有者所有。
 
@@ -305,6 +317,7 @@ Agent 名称和图标归各自所有者所有。
 
 - [Herdr](https://github.com/herdrdev/herdr)：创建 workspace、运行 agent、维护终端会话的执行层。
 - [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm)：详情视图使用的终端渲染器。
+- [Sparkle](https://github.com/sparkle-project/Sparkle)：签名 appcast 自动更新。
 - 为任务台每一行提供官方标记的各 agent 厂商。
 
 ## 许可

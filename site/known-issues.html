@@ -254,7 +254,7 @@
           </section>
 
           <section id="install">
-            <h2><span class="idx">04 / Install &amp; updates</span>No notarization, no auto-update</h2>
+            <h2><span class="idx">04 / Install &amp; updates</span>Not notarized, but updates are signed</h2>
 
             <div class="issue">
               <div class="issue-head">
@@ -274,10 +274,11 @@
 
             <div class="issue">
               <div class="issue-head">
-                <h3>No auto-update</h3>
-                <span class="pill pill--unverified">Known</span>
+                <h3>Auto-update starts with the first Sparkle release</h3>
+                <span class="pill pill--limit">Limit</span>
               </div>
-              <p>Island does not check for updates over the network or download in the background. New versions are published only on GitHub Releases and must be downloaded and replaced manually. Version and sha256 are in Releases.</p>
+              <p><code>0.1.0</code> and earlier have no updater, so they need one manual install. From the first Sparkle-enabled release, Island checks a signed appcast daily, downloads in the background, and installs when you quit or choose to restart. The feed uses <code>releases/latest</code>, so prereleases are not offered automatically.</p>
+              <p>The updater's only requests are the appcast fetch and the signed archive download from GitHub. It sends no account, identifier, prompt, or usage data.</p>
             </div>
           </section>
 

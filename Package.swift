@@ -11,13 +11,19 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/migueldeicaza/SwiftTerm.git", exact: "1.20.0"),
+        .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.10.1"),
     ],
     targets: [
         .target(name: "IslandCore", path: "Sources/IslandCore"),
         .target(name: "HerdrKit", dependencies: ["IslandCore"], path: "Sources/HerdrKit"),
         .executableTarget(
             name: "HerdrIsland",
-            dependencies: ["IslandCore", "HerdrKit", .product(name: "SwiftTerm", package: "SwiftTerm")],
+            dependencies: [
+                "IslandCore",
+                "HerdrKit",
+                .product(name: "SwiftTerm", package: "SwiftTerm"),
+                .product(name: "Sparkle", package: "Sparkle"),
+            ],
             path: "Sources/IslandApp",
             resources: [.copy("Resources/Brand")]
         ),

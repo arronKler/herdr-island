@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  SPARKLE_TOOLS_VERSION: "2.10.1"
+
 jobs:
   release:
     runs-on: macos-15
@@ -23,6 +26,26 @@ jobs:
       - name: Package
         run: Scripts/make-release.sh "${GITHUB_REF_NAME#v}"
 
+      - name: Build appcast
+        env:
+          SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          tools="$RUNNER_TEMP/sparkle-tools"
+          mkdir -p "$tools" build/appcast
+          curl -fsSL \
+            "https://github.com/sparkle-project/Sparkle/releases/download/${SPARKLE_TOOLS_VERSION}/Sparkle-${SPARKLE_TOOLS_VERSION}.tar.xz" \
+            -o "$tools/sparkle.tar.xz"
+          tar -xf "$tools/sparkle.tar.xz" -C "$tools"
+          cp "build/release/HerdrIsland-$version.zip" build/appcast/
+          printf '%s' "$SPARKLE_ED_PRIVATE_KEY" | "$tools/bin/generate_appcast" \
+            --ed-key-file - \
+            --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/" \
+            --link "https://arronkler.github.io/herdr-island/" \
+            build/appcast
+          cp build/appcast/appcast.xml build/release/appcast.xml
+
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
@@ -35,6 +58,7 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             "build/release/HerdrIsland-$version.zip" \
             "build/release/HerdrIsland-$version.zip.sha256" \
+            "build/release/appcast.xml" \
             --title "Herdr Island $version" \
             --generate-notes \
             $prerelease

@@ -2,7 +2,7 @@ import AppKit
 import IslandCore
 
 @MainActor
-final class StatusItemController: NSObject {
+final class StatusItemController: NSObject, NSMenuItemValidation {
     private let statusItem: NSStatusItem
     private var presentation: IslandPresentation?
     private var showHideItem: NSMenuItem?
@@ -10,6 +10,8 @@ final class StatusItemController: NSObject {
     var onToggle: (() -> Void)?
     var onNewTask: (() -> Void)?
     var onSettings: (() -> Void)?
+    var onCheckForUpdates: (() -> Void)?
+    var canCheckForUpdates: (() -> Bool)?
     var onQuit: (() -> Void)?
 
     override init() {
@@ -46,6 +48,14 @@ final class StatusItemController: NSObject {
         )
         settings.target = self
         menu.addItem(settings)
+
+        let updates = NSMenuItem(
+            title: "检查更新…",
+            action: #selector(checkForUpdates),
+            keyEquivalent: ""
+        )
+        updates.target = self
+        menu.addItem(updates)
 
         menu.addItem(.separator())
 
@@ -96,6 +106,17 @@ final class StatusItemController: NSObject {
 
     @objc private func openSettings() {
         onSettings?()
+    }
+
+    @objc private func checkForUpdates() {
+        onCheckForUpdates?()
+    }
+
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(checkForUpdates) {
+            return canCheckForUpdates?() ?? false
+        }
+        return true
     }
 
     @objc private func quit() {

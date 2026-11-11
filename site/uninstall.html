@@ -112,7 +112,7 @@ rm -rf /Applications/HerdrIsland.app</code></pre>
           </section>
 
           <section id="data">
-            <h2><span class="idx">03 / Remove local data</span>Screenshots, images, preferences</h2>
+            <h2><span class="idx">03 / Remove local data</span>Screenshots, images, preferences, updates</h2>
             <p>These are the only places Island writes to. The app is safe to delete first; the directories do not affect anything else.</p>
             <div class="table-wrap">
               <table>
@@ -131,6 +131,11 @@ rm -rf /Applications/HerdrIsland.app</code></pre>
                     <td><code>rm -rf ~/Library/Caches/HerdrIsland</code></td>
                   </tr>
                   <tr>
+                    <td><strong>Update downloads</strong><br>a pending update archive and the appcast request cache</td>
+                    <td><code>~/Library/Caches/local.herdr.island/</code></td>
+                    <td><code>rm -rf ~/Library/Caches/local.herdr.island</code></td>
+                  </tr>
+                  <tr>
                     <td><strong>Preferences</strong><br>main-agent identity, directories, sounds, toggles</td>
                     <td>UserDefaults <code>local.herdr.island</code></td>
                     <td><code>defaults delete local.herdr.island</code></td>
@@ -140,6 +145,7 @@ rm -rf /Applications/HerdrIsland.app</code></pre>
             </div>
             <pre><code>rm -rf ~/Library/Application\ Support/HerdrIsland
 rm -rf ~/Library/Caches/HerdrIsland
+rm -rf ~/Library/Caches/local.herdr.island
 defaults delete local.herdr.island 2>/dev/null || true</code></pre>
             <p class="table-note">If <code>defaults delete</code> says the domain does not exist, the preference was already absent. Nothing else needs cleaning.</p>
           </section>
@@ -170,6 +176,7 @@ pgrep -fl HerdrIsland || echo "no process"
 # No local data
 ls ~/Library/Application\ Support/HerdrIsland 2>/dev/null || echo "no app support"
 ls ~/Library/Caches/HerdrIsland 2>/dev/null || echo "no cache"
+ls ~/Library/Caches/local.herdr.island 2>/dev/null || echo "no update cache"
 
 # No preference domain
 defaults read local.herdr.island 2>/dev/null || echo "no preferences"

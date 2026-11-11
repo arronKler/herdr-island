@@ -1239,11 +1239,15 @@ ul,ol{padding:0}
             <h3>Approve the first launch</h3>
             <p>The app is ad-hoc signed and not notarized by Apple, so Gatekeeper blocks it. Go to System Settings → Privacy &amp; Security, click "Open Anyway" in the Security section, and enter your admin password. You can also remove the quarantine flag in Terminal:</p>
             <pre><code>xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
-            <div class="callout"><strong>Every new download may need approval again.</strong> Do not disable Gatekeeper globally with <code>sudo spctl --master-disable</code>.</div>
+            <div class="callout"><strong>A manually downloaded new version may need approval again.</strong> Do not disable Gatekeeper globally with <code>sudo spctl --master-disable</code>.</div>
           </li>
           <li>
             <h3>Grant permissions</h3>
             <p>Grant Screen Recording, Automation, and Accessibility when prompted. Accessibility is only for reading context from a locked window; denying it does not block sending. Replacing the app may prompt for these again.</p>
+          </li>
+          <li>
+            <h3>Updates from then on</h3>
+            <p>Island checks GitHub for a signed update once a day, downloads it in the background, and installs it when you quit or restart. Builds released before the updater existed need one manual install.</p>
           </li>
         </ol>
 

@@ -11,6 +11,7 @@ struct LaunchOptions {
     var newTaskText: String?
     var newTaskSend = false
     var settings = false
+    var checkUpdates = false
     var openPane: String?
     var captureProbeWindow: UInt32?
 }
@@ -45,6 +46,8 @@ func parseLaunchOptions(_ arguments: [String]) -> LaunchOptions {
             options.newTaskSend = true
         case "--settings":
             options.settings = true
+        case "--check-updates":
+            options.checkUpdates = true
         case "--open-pane":
             index += 1
             if index < arguments.count { options.openPane = arguments[index] }

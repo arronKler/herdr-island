@@ -56,11 +56,11 @@
     <div class="page-hero">
       <p class="eyebrow">Data · Auditable inventory</p>
       <h1>What it reads.</h1>
-      <p class="lede">Island is a local tool: no account, telemetry, or network requests. Below is every piece of data it reads from Herdr and macOS, writes to Herdr, and keeps on this Mac. Last checked 2026-11-11 against Herdr 0.9.5 and single-pane protocol 22.</p>
+      <p class="lede">Island is a local tool: no account or telemetry. Its only network requests are the update check and update download from GitHub. Below is every piece of data it reads from Herdr and macOS, writes to Herdr, and keeps on this Mac. Last checked 2026-11-12 against Herdr 0.9.5 and single-pane protocol 22.</p>
       <div class="meta-row">
         <span class="meta"><b>Account</b> None</span>
         <span class="meta"><b>Telemetry</b> None</span>
-        <span class="meta"><b>Network requests</b> None</span>
+        <span class="meta"><b>Network requests</b> GitHub updates only</span>
         <span class="meta"><b>Uploads</b> None</span>
       </div>
     </div>
@@ -104,7 +104,7 @@
             </div>
             <div class="callout">
               <span class="mark" aria-hidden="true"></span>
-              <p><strong>The only path off this Mac:</strong> there isn't one. Island makes no network requests. Herdr itself, the agents you use, and macOS may have their own network behavior; that is not Island reading or writing.</p>
+              <p><strong>The only path off this Mac:</strong> the update check. Sparkle requests a signed <code>appcast.xml</code> from GitHub over HTTPS once a day and downloads a new archive when one exists. It sends no account, identifier, prompt, or usage data. Herdr itself, the agents you use, and macOS may have their own network behavior; that is not Island reading or writing.</p>
             </div>
           </section>
 
@@ -241,8 +241,14 @@
                     <td>Delete the directory, or clean it during uninstall</td>
                   </tr>
                   <tr>
+                    <td><code>~/Library/Caches/local.herdr.island/</code></td>
+                    <td>Sparkle's downloaded update archive while an update is pending, plus the appcast request cache</td>
+                    <td>Cleared after the update installs; Sparkle prunes old downloads</td>
+                    <td>Delete the directory, or clean it during uninstall</td>
+                  </tr>
+                  <tr>
                     <td>UserDefaults <code>local.herdr.island</code></td>
-                    <td>Main-agent identity (pane / kind / name / project / workspace), last model, last / default directory, auto-expand toggles, completion hold, two alert sounds</td>
+                    <td>Main-agent identity (pane / kind / name / project / workspace), last model, last / default directory, auto-expand toggles, completion hold, two alert sounds, Sparkle update state (last check time, group identifier)</td>
                     <td>Until the preference is deleted</td>
                     <td><code>defaults delete local.herdr.island</code></td>
                   </tr>
@@ -279,7 +285,7 @@
             <h2><span class="idx">06 / What it does not do</span>The explicit no-list</h2>
             <ul class="checklist checklist--no">
               <li>No account, cloud sync, telemetry, analytics, or crash upload.</li>
-              <li>No network requests; no update check and no background download.</li>
+              <li>No network requests beyond the daily signed appcast check and update download from GitHub.</li>
               <li>No continuous recording while locked, no whole-screen capture, no reading of other windows.</li>
               <li>No clipboard history and no background clipboard reads.</li>
               <li>No copying attachments; the prompt contains absolute paths only.</li>
@@ -305,6 +311,7 @@
               <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/TerminalPasteboard.swift" target="_blank" rel="noreferrer">TerminalPasteboard.swift</a>: pasted-image cache, 0700 / 0600, and 7-day cleanup.</li>
               <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/MainAgentStore.swift" target="_blank" rel="noreferrer">MainAgentStore.swift</a>: the main agent stores identity only.</li>
               <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/IslandSettings.swift" target="_blank" rel="noreferrer">IslandSettings.swift</a>: preferences and alert sounds.</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/UpdateController.swift" target="_blank" rel="noreferrer">UpdateController.swift</a>: Sparkle auto-update, the only network entry point.</li>
             </ul>
             <h3>Check on this Mac</h3>
             <pre><code># Preferences (main agent, directories, sounds, and so on)
@@ -318,13 +325,13 @@ ls -la ~/Library/Caches/HerdrIsland/TerminalImages/
 codesign -dv /Applications/HerdrIsland.app
 defaults read /Applications/HerdrIsland.app/Contents/Info.plist CFBundleShortVersionString
 
-# Network: watch with Little Snitch / nettop, or search the source for network clients
-grep -rnE 'URLSession|URLRequest|NWConnection' Sources</code></pre>
-            <p>Without a development environment, watch Activity Monitor → Network or Little Snitch: Island should make no network connections while idle or while sending.</p>
+# Network: the only client is Sparkle's updater; watch with Little Snitch / nettop
+grep -rn 'Sparkle' Package.swift Sources/IslandApp/UpdateController.swift</code></pre>
+            <p>Without a development environment, watch Activity Monitor → Network or Little Snitch: expect a connection to <code>github.com</code> around the daily update check, and only when a new version is downloaded. Island makes no other network connections while idle or while sending.</p>
           </section>
 
           <div class="page-end">
-            <span>Last checked: 2026-11-11 · Herdr 0.9.5 · Protocol 22</span>
+            <span>Last checked: 2026-11-12 · Herdr 0.9.5 · Protocol 22</span>
             <span><a href="uninstall.html">Next: Uninstall →</a></span>
           </div>
         </div>

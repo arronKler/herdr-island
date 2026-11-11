@@ -1239,11 +1239,15 @@ ul,ol{padding:0}
             <h3>首次打开要放行</h3>
             <p>应用只有 ad-hoc 签名，没有经过 Apple 公证，Gatekeeper 会拦截。到 系统设置 → 隐私与安全性，在「安全性」一栏点「仍要打开」，再输入管理员密码。也可以在终端去掉下载隔离标记：</p>
             <pre><code>xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
-            <div class="callout"><strong>每个新下载的版本可能都需要再放行一次。</strong>不要用 <code>sudo spctl --master-disable</code> 全局关闭 Gatekeeper。</div>
+            <div class="callout"><strong>手动下载的新版本可能还需要再放行一次。</strong>不要用 <code>sudo spctl --master-disable</code> 全局关闭 Gatekeeper。</div>
           </li>
           <li>
             <h3>授予权限</h3>
             <p>按提示授予 Screen Recording、Automation 和辅助功能权限。辅助功能只用于读取锁定窗口的上下文，不授权也不影响发送。替换应用后这些权限可能再次询问。</p>
+          </li>
+          <li>
+            <h3>之后的更新</h3>
+            <p>Island 每天从 GitHub 检查一次签名更新，在后台下载，并在你退出或重启时安装。更新器出现之前发布的版本需要手动安装一次。</p>
           </li>
         </ol>
 

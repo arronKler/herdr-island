@@ -34,8 +34,9 @@ of the screen you already glance at.
   ear tells you something needs a person; the right ear covers running, done, and idle.
 - **Herdr stays in charge.** Island does not replace Herdr, wrap the agents, or talk to model
   vendors directly. It reads Herdr's state and dispatches work back through Herdr.
-- **Local by design.** No account, telemetry, analytics, or background service. Prompts,
-  screenshots, and attachments stay on this Mac.
+- **Local by design.** No account, telemetry, analytics, or persistent background service.
+  Prompts, screenshots, and attachments stay on this Mac. The only network requests are the
+  daily update check and update download from GitHub.
 - **A real terminal when you need it.** The detail view attaches to the agent's actual pane,
   not a log viewer or a copy of the output.
 
@@ -173,6 +174,21 @@ Prebuilt releases are on [GitHub Releases](https://github.com/arronKler/herdr-is
 
 Apps built from source carry no quarantine flag and skip the Gatekeeper step.
 
+### Updates
+
+`0.1.0` and earlier have no updater, so the first Sparkle-enabled release has to be installed by
+hand. After that, Island checks the signed appcast once a day, downloads a new version in the
+background, and installs it when you quit or choose to restart. **Check for Updates…** in the
+menu bar triggers a check at any time.
+
+The appcast and archive are EdDSA-signed. The public key ships in `Resources/Info.plist`; the
+private key lives in the `SPARKLE_ED_PRIVATE_KEY` GitHub Actions secret. Back that key up. With
+an ad-hoc signature it is the only update trust path, and losing it strands existing installs.
+
+The updater talks only to GitHub over HTTPS. It sends no account, identifier, prompt, or usage
+data. Because the app is ad-hoc signed, macOS may ask again for Screen Recording or Automation
+after an update.
+
 ## Usage
 
 | Shortcut | Action |
@@ -208,8 +224,9 @@ and answer in the detail terminal or in Herdr.
 | Accessibility | Selected text, page URL, and document path from the locked window | Those fields are empty; sending still works |
 | Automation | Bringing the Herdr pane forward in Ghostty | The exact jump is unavailable; the pane is still focused |
 
-There is no account, telemetry, analytics, or background service. Prompts, screenshots, and
-attachments stay on this Mac. Data on disk is limited to:
+There is no account, telemetry, or analytics. Prompts, screenshots, and attachments stay on this
+Mac. Island's only network requests are the daily appcast check and update download from GitHub.
+Data on disk is limited to:
 
 - **Screenshots:** `~/Library/Application Support/HerdrIsland/Captures/`, newest 50.
 - **Pasted images:** `~/Library/Caches/HerdrIsland/TerminalImages/`, directory `0700`, files
@@ -266,6 +283,12 @@ its `.sha256` under `build/release/`. Pushing a `v<version>` tag runs
 `.github/workflows/release.yml`; versions containing `-` (for example `0.1.0-beta.1`) are published
 as prereleases.
 
+The release workflow also generates a signed `appcast.xml` and uploads it as a release asset. The
+app reads the stable feed at
+`https://github.com/arronKler/herdr-island/releases/latest/download/appcast.xml`, so publishing a
+release is enough; the site does not need to change. `latest` excludes prereleases, which means
+prereleases are manual downloads.
+
 The site is deployed by `.github/workflows/pages.yml`. Push changes under `site/` and the workflow
 checks local links and same-page anchors with `Scripts/check-site.py`, then uploads `site/` to
 GitHub Pages. Preview locally with:
@@ -288,6 +311,7 @@ python3 Scripts/check-site.py site
 | `--new-task <text>` | Open the quick-task panel with text prefilled. |
 | `--new-task-send` | With `--new-task`, submit automatically. Creates a real agent. |
 | `--open-pane <pane-id>` | Open the detail terminal once that agent is discovered. Honors `HERDR_SOCKET_PATH`. |
+| `--check-updates` | Trigger an update check on launch; useful for testing Sparkle setup. |
 
 </details>
 
@@ -341,6 +365,9 @@ is in [Known issues](https://arronkler.github.io/herdr-island/known-issues.html)
   incompatibility error, while the deck and delivery continue to work.
 - Prebuilt releases are Apple Silicon only and ad-hoc signed, not notarized. Gatekeeper needs a
   manual approval, and permissions may be requested again after an update.
+- Automatic updates begin with the first Sparkle-enabled release. `0.1.0` and earlier have no
+  updater and must be replaced manually once. The feed uses `releases/latest`, so prereleases are
+  not offered automatically.
 - Window lock only covers the current Space and display. Minimizing, switching Spaces, or
   reopening a window breaks capture; DRM-protected windows may capture as black.
 - A busy agent accepts only one queued message. Blocked or unknown-state agents cannot receive
@@ -381,7 +408,7 @@ Issues and pull requests are welcome.
   anything sensitive and keep only a minimal reproduction.
 - Before sending a pull request, run `swift test`. Keep `IslandCore` free of AppKit and Herdr
   dependencies, keep Herdr facts at the `HerdrKit` boundary, and do not add network requests,
-  telemetry, or background services.
+  telemetry, or background services beyond the Sparkle update check.
 
 Agent names and logos are trademarks of their respective owners.
 
@@ -391,6 +418,7 @@ Agent names and logos are trademarks of their respective owners.
   and owns the terminal sessions.
 - [SwiftTerm](https://github.com/migueldeicaza/SwiftTerm) — the terminal renderer used by the
   detail view.
+- [Sparkle](https://github.com/sparkle-project/Sparkle) — signed appcast updates.
 - The agent vendors whose official marks identify each row in the deck.
 
 ## License

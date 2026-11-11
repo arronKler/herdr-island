@@ -56,11 +56,11 @@
     <div class="page-hero">
       <p class="eyebrow">Data · 可审计清单</p>
       <h1>它读了什么。</h1>
-      <p class="lede">Island 是本地工具：没有账号、遥测或网络请求。下面是它从 Herdr 和 macOS 读取、向 Herdr 写入、在本机保留的全部数据。最近核对：2026-11-11，对应 Herdr 0.9.5 与单 pane 协议 22。</p>
+      <p class="lede">Island 是本地工具：没有账号或遥测，唯一的网络请求是从 GitHub 检查更新和下载更新。下面是它从 Herdr 和 macOS 读取、向 Herdr 写入、在本机保留的全部数据。最近核对：2026-11-12，对应 Herdr 0.9.5 与单 pane 协议 22。</p>
       <div class="meta-row">
         <span class="meta"><b>账号</b> 无</span>
         <span class="meta"><b>遥测</b> 无</span>
-        <span class="meta"><b>网络请求</b> 无</span>
+        <span class="meta"><b>网络请求</b> 仅 GitHub 更新</span>
         <span class="meta"><b>上传</b> 无</span>
       </div>
     </div>
@@ -104,7 +104,7 @@
             </div>
             <div class="callout">
               <span class="mark" aria-hidden="true"></span>
-              <p><strong>唯一离开本机的路径：</strong>没有。Island 不发起网络请求。Herdr 本身、你使用的 agent 和 macOS 系统可能有自己的网络行为，那些不属于 Island 的读取或写入。</p>
+              <p><strong>唯一离开本机的路径：</strong>更新检查。Sparkle 每天通过 HTTPS 从 GitHub 请求签名的 <code>appcast.xml</code>，有新版本时下载归档。不发送账号、标识、prompt 或使用数据。Herdr 本身、你使用的 agent 和 macOS 系统可能有自己的网络行为，那些不属于 Island 的读取或写入。</p>
             </div>
           </section>
 
@@ -241,8 +241,14 @@
                     <td>删除目录；或卸载时清理</td>
                   </tr>
                   <tr>
+                    <td><code>~/Library/Caches/local.herdr.island/</code></td>
+                    <td>更新待安装时 Sparkle 下载的更新包，以及 appcast 请求缓存</td>
+                    <td>更新安装后清理；Sparkle 会删除旧下载</td>
+                    <td>删除目录；或卸载时清理</td>
+                  </tr>
+                  <tr>
                     <td>UserDefaults <code>local.herdr.island</code></td>
-                    <td>主 agent 身份（pane / kind / name / project / workspace）、上次模型、上次 / 默认目录、自动展开开关、完成停留、两类提示音</td>
+                    <td>主 agent 身份（pane / kind / name / project / workspace）、上次模型、上次 / 默认目录、自动展开开关、完成停留、两类提示音、Sparkle 更新状态（最近检查时间、更新分组标识）</td>
                     <td>直到删除偏好</td>
                     <td><code>defaults delete local.herdr.island</code></td>
                   </tr>
@@ -279,7 +285,7 @@
             <h2><span class="idx">06 / 不做什么</span>明确的不做清单</h2>
             <ul class="checklist checklist--no">
               <li>没有账号、云同步、遥测、分析或崩溃上传。</li>
-              <li>不发起网络请求；没有自动更新检查，也没有后台下载。</li>
+              <li>除每日从 GitHub 检查签名 appcast 和下载更新外，不发起网络请求。</li>
               <li>不在锁定期间持续录屏，不截整个屏幕，不读其他窗口。</li>
               <li>没有剪贴板历史，不在后台读取剪贴板。</li>
               <li>不复制附件；prompt 里只有绝对路径。</li>
@@ -305,6 +311,7 @@
               <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/TerminalPasteboard.swift" target="_blank" rel="noreferrer">TerminalPasteboard.swift</a>：粘贴图片缓存、0700 / 0600 和 7 天清理。</li>
               <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/MainAgentStore.swift" target="_blank" rel="noreferrer">MainAgentStore.swift</a>：主 agent 身份只存标识。</li>
               <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/IslandSettings.swift" target="_blank" rel="noreferrer">IslandSettings.swift</a>：偏好和提示音。</li>
+              <li><a href="https://github.com/arronKler/herdr-island/blob/main/Sources/IslandApp/UpdateController.swift" target="_blank" rel="noreferrer">UpdateController.swift</a>：Sparkle 自动更新，唯一的网络入口。</li>
             </ul>
             <h3>在本机核对</h3>
             <pre><code># 偏好（主 agent、目录、声音等）
@@ -318,13 +325,13 @@ ls -la ~/Library/Caches/HerdrIsland/TerminalImages/
 codesign -dv /Applications/HerdrIsland.app
 defaults read /Applications/HerdrIsland.app/Contents/Info.plist CFBundleShortVersionString
 
-# 网络：用 Little Snitch / nettop 观察，或直接搜索源码里的网络客户端
-grep -rnE 'URLSession|URLRequest|NWConnection' Sources</code></pre>
-            <p>如果你没有开发环境，也可以用 macOS 的「活动监视器 → 网络」或 Little Snitch 观察：Island 在空闲和发送时都不应该产生网络连接。</p>
+# 网络：唯一的客户端是 Sparkle 更新器，用 Little Snitch / nettop 观察
+grep -rn 'Sparkle' Package.swift Sources/IslandApp/UpdateController.swift</code></pre>
+            <p>如果你没有开发环境，也可以用 macOS 的「活动监视器 → 网络」或 Little Snitch 观察：每日更新检查前后会连到 <code>github.com</code>，只有下载新版本时才会传输归档。Island 在空闲和发送时不产生其他网络连接。</p>
           </section>
 
           <div class="page-end">
-            <span>最近核对：2026-11-11 · Herdr 0.9.5 · 协议 22</span>
+            <span>最近核对：2026-11-12 · Herdr 0.9.5 · 协议 22</span>
             <span><a href="uninstall.html">下一步：卸载 →</a></span>
           </div>
         </div>

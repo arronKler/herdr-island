@@ -112,7 +112,7 @@ rm -rf /Applications/HerdrIsland.app</code></pre>
           </section>
 
           <section id="data">
-            <h2><span class="idx">03 / 删除本地数据</span>截图、图片、偏好</h2>
+            <h2><span class="idx">03 / 删除本地数据</span>截图、图片、偏好、更新</h2>
             <p>Island 只写这几个位置。先删应用不影响它们，删除它们也不影响其他 app。</p>
             <div class="table-wrap">
               <table>
@@ -131,6 +131,11 @@ rm -rf /Applications/HerdrIsland.app</code></pre>
                     <td><code>rm -rf ~/Library/Caches/HerdrIsland</code></td>
                   </tr>
                   <tr>
+                    <td><strong>更新下载</strong><br>待安装的更新包和 appcast 请求缓存</td>
+                    <td><code>~/Library/Caches/local.herdr.island/</code></td>
+                    <td><code>rm -rf ~/Library/Caches/local.herdr.island</code></td>
+                  </tr>
+                  <tr>
                     <td><strong>偏好</strong><br>主 agent 身份、目录、声音、开关</td>
                     <td>UserDefaults <code>local.herdr.island</code></td>
                     <td><code>defaults delete local.herdr.island</code></td>
@@ -140,6 +145,7 @@ rm -rf /Applications/HerdrIsland.app</code></pre>
             </div>
             <pre><code>rm -rf ~/Library/Application\ Support/HerdrIsland
 rm -rf ~/Library/Caches/HerdrIsland
+rm -rf ~/Library/Caches/local.herdr.island
 defaults delete local.herdr.island 2>/dev/null || true</code></pre>
             <p class="table-note">如果 <code>defaults delete</code> 提示 domain 不存在，说明偏好已经不在了，不需要再清理。</p>
           </section>
@@ -170,6 +176,7 @@ pgrep -fl HerdrIsland || echo "no process"
 # 没有本地数据
 ls ~/Library/Application\ Support/HerdrIsland 2>/dev/null || echo "no app support"
 ls ~/Library/Caches/HerdrIsland 2>/dev/null || echo "no cache"
+ls ~/Library/Caches/local.herdr.island 2>/dev/null || echo "no update cache"
 
 # 没有偏好域
 defaults read local.herdr.island 2>/dev/null || echo "no preferences"

@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKey: GlobalHotKey?
     private var quickTaskHotKey: GlobalHotKey?
     private var settingsWindow: SettingsWindowController?
+    private var updateController: UpdateController?
     private var environment: HerdrEnvironment?
     private var pollActivity: NSObjectProtocol?
     private var dragCoordinator: WindowDragCoordinator?
@@ -103,6 +104,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         statusItemController.onSettings = { [weak self] in self?.showSettings() }
         statusItemController.onQuit = { NSApp.terminate(nil) }
+
+        if !options.demo {
+            let updateController = UpdateController()
+            self.updateController = updateController
+            statusItemController.onCheckForUpdates = { [weak updateController] in
+                updateController?.checkForUpdates()
+            }
+            statusItemController.canCheckForUpdates = { [weak updateController] in
+                updateController?.canCheckForUpdates ?? false
+            }
+            appLog("sparkle: updater ready, checkUpdates=\(options.checkUpdates)")
+            if options.checkUpdates {
+                DispatchQueue.main.async { [weak updateController] in
+                    guard let updateController else {
+                        appLog("sparkle: updater released before check")
+                        return
+                    }
+                    updateController.checkForUpdates()
+                }
+            }
+        }
         panelController.statusItemFrameProvider = { [weak statusItemController] in
             statusItemController?.frame
         }

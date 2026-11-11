@@ -40,6 +40,12 @@ cp "$ROOT/Resources/HerdrIsland.icns" "$APP/Contents/Resources/HerdrIsland.icns"
 cp -R "$BIN_PATH/HerdrIsland_HerdrIsland.bundle" "$APP/Contents/Resources/"
 cp -R "$BIN_PATH/SwiftTerm_SwiftTerm.bundle" "$APP/Contents/Resources/"
 
+mkdir -p "$APP/Contents/Frameworks"
+ditto "$BIN_PATH/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
+if ! otool -l "$APP/Contents/MacOS/HerdrIsland" | grep -q '@executable_path/../Frameworks'; then
+  install_name_tool -add_rpath @executable_path/../Frameworks "$APP/Contents/MacOS/HerdrIsland"
+fi
+
 if [ -n "$VERSION" ]; then
   /usr/libexec/PlistBuddy -c "Set :CFBundleShortVersionString $VERSION" "$APP/Contents/Info.plist"
 fi
@@ -47,6 +53,8 @@ if [ -n "$BUILD_NUMBER" ]; then
   /usr/libexec/PlistBuddy -c "Set :CFBundleVersion $BUILD_NUMBER" "$APP/Contents/Info.plist"
 fi
 
+SPARKLE="$APP/Contents/Frameworks/Sparkle.framework"
+codesign --force --deep --sign - "$SPARKLE"
 codesign --force --deep --sign - "$APP"
 
 echo "$APP"

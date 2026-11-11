@@ -254,7 +254,7 @@
           </section>
 
           <section id="install">
-            <h2><span class="idx">04 / 安装与升级</span>没有公证，也没有自动更新</h2>
+            <h2><span class="idx">04 / 安装与升级</span>没有公证，但更新有签名</h2>
 
             <div class="issue">
               <div class="issue-head">
@@ -274,10 +274,11 @@
 
             <div class="issue">
               <div class="issue-head">
-                <h3>没有自动更新</h3>
-                <span class="pill pill--unverified">已知</span>
+                <h3>自动更新从第一个 Sparkle 版本开始</h3>
+                <span class="pill pill--limit">限制</span>
               </div>
-              <p>Island 不联网检查更新，也不在后台下载。新版本只在 GitHub Releases 发布，需要手动下载替换。版本和 sha256 见 Releases。</p>
+              <p><code>0.1.0</code> 及更早版本没有更新器，需要手动安装一次。从第一个集成 Sparkle 的版本开始，Island 每天检查一次签名 appcast，发现新版本后在后台下载，并在退出或选择重启时安装。feed 使用 <code>releases/latest</code>，prerelease 不会被自动推送。</p>
+              <p>更新器只向 GitHub 请求 appcast 并下载签名更新包，不上传账号、标识、prompt 或使用数据。</p>
             </div>
           </section>
 
