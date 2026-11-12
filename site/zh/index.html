@@ -864,6 +864,8 @@ ul,ol{padding:0}
 }
 .steps h3{font-size:15px;font-weight:600;letter-spacing:-.01em}
 .steps p{margin-top:7px;font-size:13px;line-height:1.85;color:var(--muted)}
+.steps p a{color:var(--ice);text-decoration:underline;text-underline-offset:3px;text-decoration-color:rgba(215,239,252,.3)}
+.steps p a:hover{text-decoration-color:var(--ice)}
 .steps pre{
   margin:10px 0 0;padding:12px 14px;
   border:1px solid var(--line-soft);border-radius:9px;
@@ -1044,7 +1046,7 @@ ul,ol{padding:0}
         GitHub
         <svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5.5 3.5h7v7M12.5 3.5 4 12"/></svg>
       </a>
-      <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">
+      <a class="btn btn-primary" href="download.html">
         <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8m0 0 3.2-3.2M10 11 6.8 7.8M4 15.5h12"/></svg>
         下载
       </a>
@@ -1061,7 +1063,7 @@ ul,ol{padding:0}
         Herdr Island 把每个 coding agent 的状态放进屏幕顶部的凹口两侧。左边是待处理，右边是运行、完成或空闲。拖动岛下那滴水，输入框就出现在落点上方。它是 Herdr 的图形前端，Herdr 仍然负责执行。
       </p>
       <div class="hero-cta">
-        <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">
+        <a class="btn btn-primary" href="download.html">
           <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8m0 0 3.2-3.2M10 11 6.8 7.8M4 15.5h12"/></svg>
           下载 macOS 版
         </a>
@@ -1228,7 +1230,7 @@ ul,ol{padding:0}
         <ol class="steps">
           <li>
             <h3>下载</h3>
-            <p>从 Releases 下载 <code>HerdrIsland-&lt;版本&gt;.zip</code> 并解压。Release 里还有一个 <code>.sha256</code>，想检查下载是否损坏时可以用；自动更新由签名验证。</p>
+            <p>从<a href="download.html">下载页</a>获取 <code>HerdrIsland.zip</code> 并解压。想检查下载是否损坏时，Release 里有对应的 <code>.sha256</code>；自动更新由签名验证。</p>
           </li>
           <li>
             <h3>放进应用程序</h3>
@@ -1260,11 +1262,11 @@ ul,ol{padding:0}
             <li><span class="check" aria-hidden="true">✓</span><span><b>Screen Recording 权限</b>。窗口截图需要它；授权后可能需要重启 app</span></li>
             <li><span class="check" aria-hidden="true">✓</span><span><b>辅助功能权限</b>（可选）。锁定窗口时读取选中文本、URL 和文档路径；不授权则上下文为空</span></li>
           </ul>
-          <a class="btn btn-primary" href="https://github.com/arronKler/herdr-island/releases" target="_blank" rel="noreferrer">
+          <a class="btn btn-primary" href="download.html">
             <svg viewBox="0 0 20 20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3v8m0 0 3.2-3.2M10 11 6.8 7.8M4 15.5h12"/></svg>
             下载 macOS 版
           </a>
-          <p class="env-note">版本与校验文件见 Releases。安装细节见 <a href="https://github.com/arronKler/herdr-island/blob/main/README.zh-CN.md#安装" target="_blank" rel="noreferrer">README</a>。</p>
+          <p class="env-note">版本与校验文件见 <a href="download.html">下载页</a>。安装细节见 <a href="https://github.com/arronKler/herdr-island/blob/main/README.zh-CN.md#安装" target="_blank" rel="noreferrer">README</a>。</p>
           <span class="watermark" aria-hidden="true"></span>
         </aside>
       </div>

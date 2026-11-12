@@ -298,6 +298,40 @@ code,pre{font-family:var(--mono)}
 .card--amber{border-color:rgba(255,178,36,.16);background:rgba(255,178,36,.045)}
 .card--mint{border-color:rgba(61,220,151,.15);background:rgba(61,220,151,.04)}
 
+/* Download page */
+.download-panel{
+  margin-top:40px;padding:22px;
+  border:1px solid var(--line);border-radius:var(--radius);
+  background:
+    radial-gradient(560px 200px at 12% 0%,rgba(255,178,36,.075),transparent 70%),
+    linear-gradient(180deg,rgba(215,239,252,.045),rgba(215,239,252,.012));
+}
+.download-panel-main{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.download-icon{
+  width:56px;height:56px;border-radius:14px;flex:none;
+  box-shadow:0 0 0 1px rgba(215,239,252,.14),0 12px 28px rgba(0,0,0,.45);
+}
+.download-copy{flex:1 1 280px;min-width:0}
+.download-name{font-size:17px;font-weight:650;letter-spacing:-.01em}
+.download-meta{
+  margin:4px 0 0;
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.03em;
+  color:var(--muted-2);
+}
+.download-button{min-height:46px;padding:0 22px;font-size:14px}
+.download-sub{
+  display:flex;flex-wrap:wrap;gap:6px 18px;
+  margin-top:18px;padding-top:14px;
+  border-top:1px solid var(--line-soft);
+  font-size:12px;
+}
+.download-sub a{
+  color:var(--muted);text-decoration:underline;
+  text-underline-offset:3px;text-decoration-color:rgba(215,239,252,.25);
+}
+.download-sub a:hover{color:var(--ice);text-decoration-color:var(--ice)}
+.download-panel + .layout{margin-top:48px}
+
 /* Issue list */
 .issue{
   display:grid;gap:6px;
@@ -512,6 +546,11 @@ details.qa summary:hover{color:#fff}
   .qa-body{padding:0 13px 13px 38px}
   .table-wrap{border-radius:11px}
   th,td{padding:9px 11px}
+  .download-panel{margin-top:30px;padding:18px}
+  .download-panel-main{gap:14px}
+  .download-icon{width:48px;height:48px;border-radius:12px}
+  .download-button{width:100%}
+  .download-panel + .layout{margin-top:38px}
 }
 @media (prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}

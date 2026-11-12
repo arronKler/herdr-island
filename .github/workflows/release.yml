@@ -80,6 +80,8 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             "build/release/HerdrIsland-$version.zip" \
             "build/release/HerdrIsland-$version.zip.sha256" \
+            "build/release/HerdrIsland.zip" \
+            "build/release/HerdrIsland.zip.sha256" \
             "build/release/appcast.xml" \
             --title "Herdr Island $version" \
             --generate-notes \

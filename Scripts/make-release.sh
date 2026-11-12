@@ -27,9 +27,11 @@ OUT="$ROOT/build/release"
 APP="$ROOT/build/HerdrIsland.app"
 ZIP_NAME="HerdrIsland-$VERSION.zip"
 ZIP="$OUT/$ZIP_NAME"
+STABLE_NAME="HerdrIsland.zip"
+STABLE="$OUT/$STABLE_NAME"
 
 mkdir -p "$OUT"
-rm -f "$ZIP" "$ZIP.sha256"
+rm -f "$ZIP" "$ZIP.sha256" "$STABLE" "$STABLE.sha256"
 
 Scripts/make-app.sh --version "$VERSION" --build "$BUILD_NUMBER"
 
@@ -38,7 +40,12 @@ codesign --verify --deep --strict "$APP"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ZIP"
 (cd "$OUT" && shasum -a 256 "$ZIP_NAME" > "$ZIP_NAME.sha256")
 
+cp "$ZIP" "$STABLE"
+(cd "$OUT" && shasum -a 256 "$STABLE_NAME" > "$STABLE_NAME.sha256")
+
 echo
 echo "Herdr Island $VERSION ($BUILD_NUMBER, $COMMIT)"
 echo "  $ZIP"
 echo "  $ZIP.sha256"
+echo "  $STABLE"
+echo "  $STABLE.sha256"
