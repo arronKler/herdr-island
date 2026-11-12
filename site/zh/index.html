@@ -657,18 +657,8 @@ ul,ol{padding:0}
   position:relative;overflow:hidden;
   border-radius:11px;background:#0A0B0F;
 }
-.plate img{max-width:none}
-/* The 1200 × 800 renders are cropped in place so real UI text stays crisp. */
-.plate--ears{aspect-ratio:380/230}
-.plate--ears img{position:absolute;top:0;left:50%;width:1200px;height:auto;transform:translateX(-50%)}
-.plate--peek{aspect-ratio:380/285}
-.plate--peek img{position:absolute;top:0;left:-100%;width:300%;height:auto}
-.plate--deck{aspect-ratio:380/320}
-.plate--deck img{position:absolute;top:0;left:-57%;width:214%;height:auto}
-.plate--drop{aspect-ratio:500/420}
-.plate--drop img{position:absolute;top:0;left:50%;width:1200px;height:auto;transform:translateX(-50%)}
-.plate--scene{aspect-ratio:1/1}
-.plate--scene img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
+.plate img{display:block;width:100%;height:auto}
+/* Each plate holds a 2x crop, so the image sets the plate's own ratio. */
 .stat-card figcaption{padding:16px 2px 0}
 .cap-label{
   display:block;
@@ -1288,7 +1278,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="stat-card">
           <div class="plate-frame">
             <div class="plate plate--ears">
-              <img src="../assets/screens/collapsed.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="../assets/screens/collapsed.webp" width="770" height="368" loading="lazy" decoding="async"
                    alt="折叠态截图的局部：菜单栏中央的黑色岛，左耳显示安静，右耳显示 2 运行，岛下挂着一滴水。">
             </div>
           </div>
@@ -1302,7 +1292,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="stat-card">
           <div class="plate-frame">
             <div class="plate plate--peek">
-              <img src="../assets/screens/completed.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="../assets/screens/completed.webp" width="912" height="616" loading="lazy" decoding="async"
                    alt="完成提示截图的局部：400 × 248 的轻提示列出 Fix the flaky login test，底部有打开面板按钮。">
             </div>
           </div>
@@ -1316,7 +1306,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="stat-card">
           <div class="plate-frame">
             <div class="plate plate--deck">
-              <img src="../assets/screens/deck.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="../assets/screens/deck.webp" width="1232" height="760" loading="lazy" decoding="async"
                    alt="任务台截图的局部：待处理、运行中、已完成、全部四个筛选，以及一条 Claude 任务 Write the release notes。">
             </div>
           </div>
@@ -1377,7 +1367,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="figure figure--deck">
           <div class="plate-frame">
             <div class="plate plate--scene">
-              <img src="../assets/screens/running.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="../assets/screens/running.webp" width="1232" height="1000" loading="lazy" decoding="async"
                    alt="任务台运行中截图：Refactor the parser 正在运行，下方有一条已排队的消息，提示本轮结束后自动发送。">
             </div>
           </div>
@@ -1411,7 +1401,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="figure figure--terminal">
           <div class="plate-frame">
             <div class="plate plate--scene">
-              <img src="../assets/screens/terminal.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="../assets/screens/terminal.webp" width="1432" height="1400" loading="lazy" decoding="async"
                    alt="单任务详情截图：Codex 请求批准运行 npm test，终端里显示测试结果，底部有去终端、稍后和复制命令。">
             </div>
           </div>
@@ -1520,7 +1510,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
             </div>
             <div class="nudge">
               <dt>快捷键</dt>
-              <dd><span class="kbd">Control</span> + <span class="kbd">Option</span> + <span class="kbd">N</span> 唤起 420 × 196 快速框，沿用上次模型；快速框不提供收件人和附件。</dd>
+              <dd><span class="kbd">Control</span> + <span class="kbd">Option</span> + <span class="kbd">N</span> 唤起 420 × 196 快速框，沿用上次模型；快速框不提供收件人和附件。<span class="kbd">Control</span> + <span class="kbd">Option</span> + <span class="kbd">Return</span> 在指针处打开投递框，自动带上最前窗口和选中内容。</dd>
             </div>
           </dl>
         </div>
@@ -1528,7 +1518,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="figure figure--drop">
           <div class="plate-frame">
             <div class="plate plate--drop">
-              <img src="../assets/screens/drop.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="../assets/screens/drop.webp" width="1552" height="1400" loading="lazy" decoding="async"
                    alt="共享投递框截图：收件人是主 agent，任务和三个附件已经准备好发送。">
             </div>
           </div>
@@ -1557,7 +1547,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="figure figure--window">
           <div class="plate-frame">
             <div class="plate plate--scene">
-              <img src="../assets/screens/window.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="../assets/screens/window.webp" width="872" height="720" loading="lazy" decoding="async"
                    alt="窗口锁定截图：岛旁显示锁定状态，共享投递框里是主 agent、任务和附件，发送时会附一张窗口截图。">
             </div>
           </div>

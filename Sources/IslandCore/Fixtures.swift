@@ -28,6 +28,16 @@ public enum FixtureName: String, CaseIterable, Sendable {
     case setupMissing
     case setupInstalling
     case setupFailed
+    case summon
+    case summonNoContext
+
+    /// The summon has its own panel, so it renders outside the island scene.
+    public var isSummon: Bool {
+        switch self {
+        case .summon, .summonNoContext: true
+        default: false
+        }
+    }
 }
 
 public enum Fixtures {
@@ -145,6 +155,41 @@ public enum Fixtures {
             _ = IslandReducer.reduce(
                 &state,
                 .setup(.failed(SetupFailure(.checksumMismatch))),
+                now: now
+            )
+        case .summon:
+            _ = IslandReducer.reduce(&state, .accessibilityPermission(true), now: now)
+            _ = IslandReducer.reduce(
+                &state,
+                .openSummon(
+                    target: target,
+                    context: ContextLimits.context(
+                        selectedText: "The rollout plan needs a second review before Friday.",
+                        url: "https://example.com/q4-plan",
+                        documentPath: "/Users/bytedance/projects/github/herdr-island/docs/q4-plan.md"
+                    ),
+                    at: CGPoint(x: 640, y: 420),
+                    cwd: "/Users/bytedance/projects/github/herdr-island",
+                    kind: .claude
+                ),
+                now: now
+            )
+            _ = IslandReducer.reduce(
+                &state,
+                .setSummonDraft("Summarize the selected paragraph and list the open risks."),
+                now: now
+            )
+        case .summonNoContext:
+            _ = IslandReducer.reduce(&state, .accessibilityPermission(false), now: now)
+            _ = IslandReducer.reduce(
+                &state,
+                .openSummon(
+                    target: nil,
+                    context: .empty,
+                    at: CGPoint(x: 640, y: 420),
+                    cwd: "/Users/bytedance/projects/github/herdr-island",
+                    kind: .claude
+                ),
                 now: now
             )
         case .mainAgentLock:
@@ -399,6 +444,8 @@ public enum Fixtures {
                 ]
             )
         case .quickTask, .quickTaskCreating, .quickTaskFailed, .dropCreating:
+            return snapshot(for: .collapsed)
+        case .summon, .summonNoContext:
             return snapshot(for: .collapsed)
         case .windowLocked, .mainAgentLock:
             return snapshot(for: .collapsed)

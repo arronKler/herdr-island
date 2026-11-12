@@ -23,7 +23,7 @@ enum RenderHarness {
         var scenes: [[String: Any]] = []
         var failures = 0
 
-        for name in FixtureName.allCases {
+        for name in FixtureName.allCases where !name.isSummon {
             let presentation = Fixtures.presentation(named: name)
             let hosting = NSHostingView(rootView: RenderScene(presentation: presentation))
             hosting.frame = NSRect(x: 0, y: 0, width: width, height: height)
@@ -81,6 +81,14 @@ enum RenderHarness {
             scenes.append(scene)
         } else {
             failures += 1
+        }
+
+        for name in [FixtureName.summon, .summonNoContext] {
+            if let scene = renderSummon(Fixtures.presentation(named: name), into: directoryURL) {
+                scenes.append(scene)
+            } else {
+                failures += 1
+            }
         }
 
         if !renderSettings(into: directoryURL) {
@@ -172,6 +180,29 @@ enum RenderHarness {
             "expanded": true,
             "headline": "drop",
         ]
+    }
+
+    /// The summon lives in its own panel, so it is not part of the island
+    /// scene. Render it on a desktop backdrop at the size its panel would take.
+    @MainActor
+    private static func renderSummon(
+        _ presentation: IslandPresentation,
+        into directoryURL: URL
+    ) -> [String: Any]? {
+        guard let summon = presentation.summon else {
+            appLog("render: summon fixture has no summon presentation")
+            return nil
+        }
+        let width = 720
+        let height = 520
+        let view = SummonRenderScene(summon: summon)
+        return rasterize(
+            view,
+            width: width,
+            height: height,
+            name: "summon-\(summon.composer.hasWindow ? "context" : "plain")",
+            into: directoryURL
+        )
     }
 
     @MainActor
@@ -513,6 +544,30 @@ struct ExternalDropScene: View {
                 .stroke(Color.white.opacity(0.08), lineWidth: 1)
         )
         .position(x: frame.midX, y: frame.midY)
+    }
+}
+
+/// The summon panel on a desktop backdrop, at the size its own panel takes.
+struct SummonRenderScene: View {
+    let summon: SummonPresentation
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            LinearGradient(
+                colors: [
+                    Color(red: 0.07, green: 0.10, blue: 0.17),
+                    Color(red: 0.16, green: 0.10, blue: 0.22),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+
+            SummonRootView(summon: summon, actions: .noop, onClose: {})
+                .frame(width: 392, height: summon.height)
+                .padding(24)
+        }
+        .frame(width: 720, height: 520)
+        .clipped()
     }
 }
 

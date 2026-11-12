@@ -261,6 +261,8 @@ struct SettingsView: View {
                 shortcutRow("显示 / 收起岛", keys: ["⌃", "⌥", "H"])
                 SettingsRowDivider()
                 shortcutRow("新建 agent 任务", keys: ["⌃", "⌥", "N"])
+                SettingsRowDivider()
+                shortcutRow("鼠标处发起任务", keys: ["⌃", "⌥", "⏎"])
             }
         }
     }

@@ -90,4 +90,32 @@ final class FixtureTests: XCTestCase {
         XCTAssertNotEqual(expanded, completed)
         XCTAssertNotEqual(blocked, completed)
     }
+
+    func testSummonFixturesCarryContextAndDegradeWithoutIt() throws {
+        let summon = Fixtures.presentation(named: .summon)
+        let composer = try XCTUnwrap(summon.summon?.composer)
+        XCTAssertEqual(composer.surface, .summon)
+        XCTAssertEqual(composer.hasWindow, true)
+        XCTAssertEqual(composer.text, "Summarize the selected paragraph and list the open risks.")
+        XCTAssertEqual(composer.send.canSubmit, true)
+        XCTAssertEqual(
+            composer.contextSummary,
+            "Feishu · Q4 planning review · 已选 53 字 · 链接 · 文件 · 窗口截图"
+        )
+        XCTAssertFalse(composer.notices.contains { $0.action == .openAccessibility })
+        XCTAssertGreaterThan(summon.summon?.height ?? 0, 180)
+
+        let plain = Fixtures.presentation(named: .summonNoContext)
+        let plainComposer = try XCTUnwrap(plain.summon?.composer)
+        XCTAssertEqual(plainComposer.hasWindow, false)
+        XCTAssertEqual(plainComposer.contextSummary, "仅文字")
+        XCTAssertTrue(plainComposer.notices.contains { $0.action == .openAccessibility })
+        XCTAssertTrue(plainComposer.notices.contains { $0.text == "未授权辅助功能 · 只发文字和文件" })
+
+        // The summon is its own panel: the island surface stays untouched.
+        XCTAssertEqual(summon.surface, .ambient)
+        XCTAssertFalse(summon.isExpanded)
+        XCTAssertNil(summon.windowTask)
+        XCTAssertNil(summon.drop)
+    }
 }

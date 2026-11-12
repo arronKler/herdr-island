@@ -50,6 +50,7 @@ of the screen you already glance at.
 | Deck | `⌃⌥H` | 560 × 440–640 | All agents, filters, search, queueing, and actions |
 | Detail terminal | `Return` on a row | 660 × 640 | The selected agent's real pane |
 | Quick task | `⌃⌥N` | 420 × 196 | A small new-task form in the current directory |
+| Summon composer | `⌃⌥⏎` | 392 × auto | A composer at the pointer, carrying the frontmost window and its selection |
 | Drop composer | drag the droplet | 720 × 640 canvas | Shared composer anchored where you release |
 | Window composer | `⌥`-drag the droplet | 380 × 510 | A composer locked to one window, with capture |
 
@@ -203,6 +204,7 @@ after an update.
 | --- | --- |
 | `⌃⌥H` | Open or collapse Island |
 | `⌃⌥N` | Open the quick-task panel |
+| `⌃⌥⏎` | Open the summon composer at the pointer |
 | Drag the droplet | Create a task at the drop point |
 | `⌥` + drag the droplet | Lock the window under the pointer |
 | `/` | Open the deck and search |
