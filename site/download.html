@@ -105,6 +105,9 @@
               <li><strong>Move it into Applications.</strong> Drag <code>HerdrIsland.app</code> into <code>/Applications</code>.</li>
               <li><strong>Approve the first launch.</strong> The app is ad-hoc signed and not notarized by Apple, so Gatekeeper blocks it. Open System Settings → Privacy &amp; Security, click <em>Open Anyway</em> in the Security section, then enter an administrator password.</li>
             </ol>
+            <p>If you use Homebrew, the project ships its own tap. It unzips the release and moves the app into <code>/Applications</code>, but it does not clear the quarantine flag, so the first-launch approval above still applies:</p>
+            <pre><code>brew install --cask arronKler/tap/herdr-island</code></pre>
+            <p>Updates stay with the app's own updater. <code>brew uninstall --cask --zap herdr-island</code> removes the app and its saved state.</p>
             <p>Alternatively, run both commands on a freshly extracted copy before its first launch, then move it into /Applications:</p>
             <pre><code>chmod -R u+w ~/Downloads/HerdrIsland.app/Contents/Resources
 xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>

@@ -117,6 +117,14 @@ Herdr 能识别的 agent 都会出现在 Island 里。新任务可以启动以�
 
 预编译版本发布在 [GitHub Releases](https://github.com/arronKler/herdr-island/releases)。
 
+用 Homebrew 的话，项目自带一个 tap：
+
+```bash
+brew install --cask arronKler/tap/herdr-island
+```
+
+Homebrew 会解压 release 并把 `HerdrIsland.app` 放进 `/Applications`。它不会去掉 quarantine 标记，所以下面第 2 步的首次放行仍然需要。更新交给应用自己的更新器，`brew uninstall --cask --zap herdr-island` 会同时删除应用和保存的状态。
+
 1. 下载 `HerdrIsland-<版本>.zip`，解压后把 `HerdrIsland.app` 放进 `/Applications`。
 
    Release 里还有一个 `.sha256` 文件。校验它是可选的，只用于发现下载损坏。自动更新由 EdDSA 签名验证，不需要手动校验。想校验第一次下载可以运行：

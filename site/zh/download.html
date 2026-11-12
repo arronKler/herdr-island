@@ -105,6 +105,9 @@
               <li><strong>放进应用程序。</strong>把 <code>HerdrIsland.app</code> 拖进 <code>/Applications</code>。</li>
               <li><strong>放行首次启动。</strong>应用只有 ad-hoc 签名，没有经过 Apple 公证，Gatekeeper 会拦截。到 系统设置 → 隐私与安全性，在「安全性」一栏点「仍要打开」，再输入管理员密码。</li>
             </ol>
+            <p>用 Homebrew 的话，项目自带一个 tap。它会解压 release 并把应用放进 <code>/Applications</code>，但不会去掉 quarantine 标记，所以上面的首次放行仍然需要：</p>
+            <pre><code>brew install --cask arronKler/tap/herdr-island</code></pre>
+            <p>更新交给应用自己的更新器。<code>brew uninstall --cask --zap herdr-island</code> 会同时删除应用和保存的状态。</p>
             <p>也可以在新解压副本首次打开前执行以下两条命令，再把它移动到 /Applications：</p>
             <pre><code>chmod -R u+w ~/Downloads/HerdrIsland.app/Contents/Resources
 xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>

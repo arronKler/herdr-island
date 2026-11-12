@@ -150,6 +150,17 @@ terminal, and delivery still work; the droplet and window lock are unavailable.
 
 Prebuilt releases are on [GitHub Releases](https://github.com/arronKler/herdr-island/releases).
 
+If you use Homebrew, the project ships its own tap:
+
+```bash
+brew install --cask arronKler/tap/herdr-island
+```
+
+Homebrew unzips the release and moves `HerdrIsland.app` into `/Applications`. It still leaves the
+quarantine flag on the app, so the first-launch approval in step 2 below applies. Updates are left
+to the app's own updater, and `brew uninstall --cask --zap herdr-island` removes the app and its
+saved state.
+
 1. Download `HerdrIsland-<version>.zip`, unzip it, and move `HerdrIsland.app` into
    `/Applications`.
 
