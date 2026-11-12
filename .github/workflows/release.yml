@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,7 +13,28 @@ env:
   SPARKLE_TOOLS_VERSION: "2.10.1"
 
 jobs:
+  verify-intel:
+    runs-on: macos-15-intel
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Test
+        run: swift test
+
+      - name: Package
+        run: Scripts/make-app.sh --version 0.0.0 --build 0
+
+      - name: Smoke the packaged app
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/render"
+          build/HerdrIsland.app/Contents/MacOS/HerdrIsland --render "$RUNNER_TEMP/render"
+          [ -s "$RUNNER_TEMP/render/setupMissing.png" ]
+
   release:
+    needs: verify-intel
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: macos-15
     steps:
       - name: Check out

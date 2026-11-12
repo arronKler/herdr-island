@@ -27,14 +27,20 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-swift build -c release
-BIN_PATH="$(swift build -c release --show-bin-path)"
+BUILD_FLAGS=(-c release --arch arm64 --arch x86_64)
+swift build "${BUILD_FLAGS[@]}"
+BIN_PATH="$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)"
 
 APP="$ROOT/build/HerdrIsland.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
 cp "$BIN_PATH/HerdrIsland" "$APP/Contents/MacOS/HerdrIsland"
+if ! lipo -verify_arch arm64 "$APP/Contents/MacOS/HerdrIsland" \
+  || ! lipo -verify_arch x86_64 "$APP/Contents/MacOS/HerdrIsland"; then
+  echo "packaged app is missing an arm64 or x86_64 slice" >&2
+  exit 1
+fi
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/HerdrIsland.icns" "$APP/Contents/Resources/HerdrIsland.icns"
 cp -R "$BIN_PATH/HerdrIsland_HerdrIsland.bundle" "$APP/Contents/Resources/"

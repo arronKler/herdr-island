@@ -14,7 +14,7 @@ a real pane terminal, and a composer you can drop anywhere.
 
 [![Latest release](https://img.shields.io/github/v/release/arronKler/herdr-island?include_prereleases&style=flat-square&label=release&color=FFB224)](https://github.com/arronKler/herdr-island/releases)
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-08090C?style=flat-square)
-![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-arm64-08090C?style=flat-square)
+![Universal macOS](https://img.shields.io/badge/macOS-arm64%20%7C%20x86__64-08090C?style=flat-square)
 ![Herdr 0.9.5](https://img.shields.io/badge/Herdr-0.9.5-08090C?style=flat-square)
 [![License: MIT](https://img.shields.io/badge/license-MIT-FFB224?style=flat-square)](LICENSE)
 [![Website](https://img.shields.io/badge/website-live-FFB224?style=flat-square)](https://arronkler.github.io/herdr-island/)
@@ -133,7 +133,7 @@ Cursor's workspace-trust dialog and Codex's usage/model picker are always yours 
 
 | Requirement | Notes |
 | --- | --- |
-| macOS 14 or later | The release build targets Apple Silicon. The source has not been fully validated on Intel. |
+| macOS 14 or later | Universal release. The app ships arm64 and x86_64 slices, and CI tests and smoke-renders it on an Intel runner. |
 | Herdr 0.9.5 | Default CLI: `~/.local/bin/herdr`. Default socket: `~/.config/herdr/herdr.sock`. Override with `HERDR_SOCKET_PATH` or `HERDR_SOCKET`. |
 | Ghostty | Optional. Exact jumps into Ghostty use Automation; without it, Island still focuses the Herdr pane. |
 | Screen Recording | Optional. Used only for the window screenshot at send time. |
@@ -364,8 +364,9 @@ is in [Known issues](https://arronkler.github.io/herdr-island/known-issues.html)
 - The app UI is Simplified Chinese only; there is no in-app English localization yet.
 - The detail terminal supports Herdr 0.9.5's protocol 22 only. Other versions show an explicit
   incompatibility error, while the deck and delivery continue to work.
-- Prebuilt releases are Apple Silicon only and ad-hoc signed, not notarized. Gatekeeper needs a
-  manual approval, and permissions may be requested again after an update.
+- Prebuilt releases are universal, covering Apple Silicon and Intel, and ad-hoc signed, not
+  notarized. Gatekeeper needs a manual approval, and permissions may be requested again after an
+  update.
 - The update feed uses `releases/latest`, so prereleases are not offered automatically.
 - Window lock only covers the current Space and display. Minimizing, switching Spaces, or
   reopening a window breaks capture; DRM-protected windows may capture as black.

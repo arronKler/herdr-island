@@ -13,7 +13,7 @@ Island 把状态放进屏幕顶部的凹口两侧，提供任务台、真实终�
 
 [![最新版本](https://img.shields.io/github/v/release/arronKler/herdr-island?include_prereleases&style=flat-square&label=release&color=FFB224)](https://github.com/arronKler/herdr-island/releases)
 ![macOS 14+](https://img.shields.io/badge/macOS-14%2B-08090C?style=flat-square)
-![Apple Silicon](https://img.shields.io/badge/Apple%20Silicon-arm64-08090C?style=flat-square)
+![Universal macOS](https://img.shields.io/badge/macOS-arm64%20%7C%20x86__64-08090C?style=flat-square)
 ![Herdr 0.9.5](https://img.shields.io/badge/Herdr-0.9.5-08090C?style=flat-square)
 [![License: MIT](https://img.shields.io/badge/license-MIT-FFB224?style=flat-square)](LICENSE)
 [![产品页](https://img.shields.io/badge/website-live-FFB224?style=flat-square)](https://arronkler.github.io/herdr-island/zh/)
@@ -102,7 +102,7 @@ Herdr 能识别的 agent 都会出现在 Island 里。新任务可以启动以�
 
 | 要求 | 说明 |
 | --- | --- |
-| macOS 14 或更新版本 | 预编译版本面向 Apple Silicon。源码尚未在 Intel 上完整验证。 |
+| macOS 14 或更新版本 | 通用二进制。发布包含 arm64 与 x86_64 切片，CI 会在 Intel runner 上运行测试和渲染冒烟。 |
 | Herdr 0.9.5 | 默认 CLI：`~/.local/bin/herdr`。默认 socket：`~/.config/herdr/herdr.sock`。可用 `HERDR_SOCKET_PATH` 或 `HERDR_SOCKET` 覆盖。 |
 | Ghostty | 可选。精确跳转 Ghostty 需要 Automation 权限；没有 Ghostty 时仍会聚焦 Herdr pane。 |
 | Screen Recording | 可选。只在发送窗口任务时截取一张图。 |
@@ -279,7 +279,7 @@ ISLAND_BENCHMARK_CREATE=1 swift test --filter TaskCreationPerformanceTests/testL
 
 - 应用界面目前只有简体中文，还没有 in-app 英文本地化。
 - 详情终端只支持 Herdr 0.9.5 的协议 22。其他版本会显示明确的不兼容错误，任务台和投递仍然可用。
-- 预编译版本只支持 Apple Silicon，且为 ad-hoc 签名、未公证。首次启动需要手动放行，更新后权限可能再次询问。
+- 预编译版本为通用二进制，支持 Apple Silicon 与 Intel，且为 ad-hoc 签名、未公证。首次启动需要手动放行，更新后权限可能再次询问。
 - feed 使用 `releases/latest`，prerelease 不会被自动推送。
 - 窗口锁定只覆盖当前 Space 和当前屏幕。最小化、切换 Space 或重新打开窗口都会导致截图失败；受 DRM 保护的窗口可能只能截到黑屏。
 - 忙碌的 agent 只接受一条排队消息。blocked 或状态未知的 agent 不能接收自动消息。
