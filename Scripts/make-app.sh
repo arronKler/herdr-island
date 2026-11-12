@@ -44,8 +44,8 @@ lipo -create \
   "$ARM64_BIN/HerdrIsland" \
   "$X86_64_BIN/HerdrIsland" \
   -output "$APP/Contents/MacOS/HerdrIsland"
-if ! lipo -verify_arch arm64 "$APP/Contents/MacOS/HerdrIsland" \
-  || ! lipo -verify_arch x86_64 "$APP/Contents/MacOS/HerdrIsland"; then
+if ! lipo "$APP/Contents/MacOS/HerdrIsland" -verify_arch arm64 \
+  || ! lipo "$APP/Contents/MacOS/HerdrIsland" -verify_arch x86_64; then
   echo "packaged app is missing an arm64 or x86_64 slice" >&2
   exit 1
 fi
