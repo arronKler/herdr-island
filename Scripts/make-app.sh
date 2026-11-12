@@ -27,15 +27,23 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-BUILD_FLAGS=(-c release --arch arm64 --arch x86_64)
-swift build "${BUILD_FLAGS[@]}"
-BIN_PATH="$(swift build "${BUILD_FLAGS[@]}" --show-bin-path)"
+# A multi-arch `swift build --arch` trips SwiftTerm's build-tool plugin on
+# Xcode 16 (swiftlang/swift-package-manager#7442); build each slice instead.
+ARM64_TRIPLE="arm64-apple-macosx14.0"
+X86_64_TRIPLE="x86_64-apple-macosx14.0"
+ARM64_BIN="$(swift build -c release --triple "$ARM64_TRIPLE" --scratch-path .build/arm64 --show-bin-path)"
+X86_64_BIN="$(swift build -c release --triple "$X86_64_TRIPLE" --scratch-path .build/x86_64 --show-bin-path)"
+swift build -c release --triple "$ARM64_TRIPLE" --scratch-path .build/arm64
+swift build -c release --triple "$X86_64_TRIPLE" --scratch-path .build/x86_64
 
 APP="$ROOT/build/HerdrIsland.app"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 
-cp "$BIN_PATH/HerdrIsland" "$APP/Contents/MacOS/HerdrIsland"
+lipo -create \
+  "$ARM64_BIN/HerdrIsland" \
+  "$X86_64_BIN/HerdrIsland" \
+  -output "$APP/Contents/MacOS/HerdrIsland"
 if ! lipo -verify_arch arm64 "$APP/Contents/MacOS/HerdrIsland" \
   || ! lipo -verify_arch x86_64 "$APP/Contents/MacOS/HerdrIsland"; then
   echo "packaged app is missing an arm64 or x86_64 slice" >&2
@@ -43,11 +51,11 @@ if ! lipo -verify_arch arm64 "$APP/Contents/MacOS/HerdrIsland" \
 fi
 cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/HerdrIsland.icns" "$APP/Contents/Resources/HerdrIsland.icns"
-cp -R "$BIN_PATH/HerdrIsland_HerdrIsland.bundle" "$APP/Contents/Resources/"
-cp -R "$BIN_PATH/SwiftTerm_SwiftTerm.bundle" "$APP/Contents/Resources/"
+cp -R "$ARM64_BIN/HerdrIsland_HerdrIsland.bundle" "$APP/Contents/Resources/"
+cp -R "$ARM64_BIN/SwiftTerm_SwiftTerm.bundle" "$APP/Contents/Resources/"
 
 mkdir -p "$APP/Contents/Frameworks"
-ditto "$BIN_PATH/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
+ditto "$ARM64_BIN/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
 if ! otool -l "$APP/Contents/MacOS/HerdrIsland" | grep -q '@executable_path/../Frameworks'; then
   install_name_tool -add_rpath @executable_path/../Frameworks "$APP/Contents/MacOS/HerdrIsland"
 fi
