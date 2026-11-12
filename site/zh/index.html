@@ -1238,8 +1238,9 @@ ul,ol{padding:0}
           </li>
           <li>
             <h3>首次打开要放行</h3>
-            <p>应用只有 ad-hoc 签名，没有经过 Apple 公证，Gatekeeper 会拦截。到 系统设置 → 隐私与安全性，在「安全性」一栏点「仍要打开」，再输入管理员密码。也可以在终端去掉下载隔离标记：</p>
-            <pre><code>xattr -dr com.apple.quarantine /Applications/HerdrIsland.app</code></pre>
+            <p>应用只有 ad-hoc 签名，没有经过 Apple 公证，Gatekeeper 会拦截。到 系统设置 → 隐私与安全性，在「安全性」一栏点「仍要打开」，再输入管理员密码。也可以在把应用移进 /Applications 之前去掉隔离标记：</p>
+            <pre><code>xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
+            <p>要对解压出来的副本执行，不要对 <code>/Applications/HerdrIsland.app</code> 执行：macOS 14 及更新版本会用应用管理保护已安装的应用，会报 "Operation not permitted"。</p>
             <p>自动更新不会重复这一步。手动下载的新版本可能需要，所以不要用 <code>sudo spctl --master-disable</code> 全局关闭 Gatekeeper。</p>
           </li>
           <li>

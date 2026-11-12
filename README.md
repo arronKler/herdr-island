@@ -162,11 +162,15 @@ Prebuilt releases are on [GitHub Releases](https://github.com/arronKler/herdr-is
 
 2. The first launch is blocked by Gatekeeper: the app is ad-hoc signed and not notarized, so macOS
    does not show an identified developer. Go to **System Settings → Privacy & Security**, click
-   **Open Anyway**, and authenticate. Or remove the quarantine flag:
+   **Open Anyway**, and authenticate. Or remove the quarantine flag from the downloaded copy before
+   moving it:
 
    ```bash
-   xattr -dr com.apple.quarantine /Applications/HerdrIsland.app
+   xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app
    ```
+
+   This fails on `/Applications/HerdrIsland.app`: macOS 14 and later protect installed apps with
+   App Management, which reports “Operation not permitted”.
 
    A manually downloaded build may need this again. Automatic updates do not. Do not disable
    Gatekeeper globally with `sudo spctl --master-disable`.
