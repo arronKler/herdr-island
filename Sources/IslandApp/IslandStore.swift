@@ -28,6 +28,8 @@ final class IslandStore: ObservableObject {
     private var cachedFocusedCwd: String?
     private var quickTaskCwdChosen = false
     private var dropCwdChosen = false
+    private var summonCwdChosen = false
+    private var summonCloseTask: Task<Void, Never>?
     private var branchIndex = Int.random(in: 0..<8)
 
     var onPresentationChange: ((IslandPresentation) -> Void)?
@@ -186,6 +188,7 @@ final class IslandStore: ObservableObject {
             mainAgentStore.save(mainAgent)
         }
         publish()
+        scheduleSummonCloseIfSent()
         if let target = state.drop?.window ?? state.windowLock,
            target.windowID != previousWindow?.windowID || target.ownerPID != previousWindow?.ownerPID {
             Task { [weak self] in
@@ -252,7 +255,7 @@ final class IslandStore: ObservableObject {
         refreshFocusedCwd(updateOpenTask: true)
     }
 
-    private func refreshFocusedCwd(updateOpenTask: Bool, updateDrop: Bool = false) {
+    private func refreshFocusedCwd(updateOpenTask: Bool, updateDrop: Bool = false, updateSummon: Bool = false) {
         let actions = self.actions
         Task { [weak self] in
             let cwd = await actions.focusedPaneCwd()
@@ -268,6 +271,11 @@ final class IslandStore: ObservableObject {
                    !self.dropCwdChosen,
                    self.state.drop?.phase == .composing {
                     self.handle(.setDropCwd(cwd))
+                }
+                if updateSummon,
+                   !self.summonCwdChosen,
+                   self.state.summon?.phase == .editing {
+                    self.handle(.setSummonCwd(cwd))
                 }
             }
         }
@@ -433,6 +441,79 @@ final class IslandStore: ObservableObject {
     func setWindowTaskCwd(_ path: String) { handle(.setWindowTaskCwd(path)) }
 
     func submitWindowTask() { submitDelivery(.lock) }
+
+    /// Opens the composer at the pointer. The context is read synchronously,
+    /// before the panel becomes key: focusing our own window can clear the
+    /// frontmost app's AX selection, and a stored selection survives the
+    /// empty re-read at submit time.
+    func summonComposer() {
+        guard state.setup.isReady else {
+            appLog("summon: setup not ready")
+            return
+        }
+        if state.summon != nil {
+            closeSummon()
+            return
+        }
+        let kind = AgentKindOption(
+            rawValue: UserDefaults.standard.string(forKey: Self.quickTaskKindKey) ?? ""
+        ) ?? .claude
+        let directory = cachedFocusedCwd
+            ?? FileManager.default.homeDirectoryForCurrentUser.path
+        summonCwdChosen = state.summonDraftRecovery != nil
+        summonCloseTask?.cancel()
+        summonCloseTask = nil
+        let capture = SummonContext.capture()
+        handle(.accessibilityPermission(capture.accessibilityTrusted))
+        handle(.openSummon(
+            target: capture.target,
+            context: capture.context,
+            at: capture.point,
+            cwd: directory,
+            kind: kind
+        ))
+        refreshFocusedCwd(updateOpenTask: false, updateSummon: true)
+    }
+
+    func closeSummon() { handle(.closeSummon) }
+    func setSummonDraft(_ text: String) { handle(.setSummonDraft(text)) }
+
+    func setSummonKind(_ kind: AgentKindOption) {
+        UserDefaults.standard.set(kind.rawValue, forKey: Self.quickTaskKindKey)
+        handle(.setSummonKind(kind))
+    }
+
+    func setSummonCwd(_ path: String) {
+        summonCwdChosen = true
+        handle(.setSummonCwd(path))
+    }
+
+    /// A sent summon shows its outcome for a beat, then leaves. The delay lives
+    /// here, not in the reducer, so the state machine stays clock-free.
+    private func scheduleSummonCloseIfSent() {
+        guard let outcome = state.summon?.delivery.outcome else { return }
+        switch outcome {
+        case .sent, .created:
+            break
+        case .queued:
+            return
+        }
+        guard summonCloseTask == nil else { return }
+        summonCloseTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: 1_100_000_000)
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self else { return }
+                self.summonCloseTask = nil
+                // Typing after a send clears the outcome, so the beat is over
+                // and the draft must survive the timer.
+                switch self.state.summon?.delivery.outcome {
+                case .sent, .created: self.handle(.closeSummon)
+                default: break
+                }
+            }
+        }
+    }
 
     func confirmJump() { handle(.confirmJump) }
     func jump(_ pane: PaneID) { handle(.jump(pane)) }

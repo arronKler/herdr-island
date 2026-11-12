@@ -1,3 +1,4 @@
+import AppKit
 import ApplicationServices
 import Foundation
 import IslandCore
@@ -22,11 +23,29 @@ enum WindowContextService {
     }
 
     private static func readSync(_ target: WindowTarget) -> WindowContext {
-        let app = AXUIElementCreateApplication(pid_t(target.ownerPID))
-        AXUIElementSetMessagingTimeout(app, 0.25)
+        readSync(target: target, timeout: 0.25)
+    }
+
+    /// A bounded read for the summon, which runs on the main thread before its
+    /// panel takes key. A hung app hits the timeout per call and returns nil
+    /// instead of stalling the hotkey.
+    static func snapshot(target: WindowTarget?, timeout: Float) -> WindowContext {
+        guard isTrusted else { return .empty }
+        let pid = target?.ownerPID ?? NSWorkspace.shared.frontmostApplication?.processIdentifier
+        guard let pid else { return .empty }
+        return readSync(pid: pid, target: target, timeout: timeout)
+    }
+
+    private static func readSync(target: WindowTarget, timeout: Float) -> WindowContext {
+        readSync(pid: target.ownerPID, target: target, timeout: timeout)
+    }
+
+    private static func readSync(pid: pid_t, target: WindowTarget?, timeout: Float) -> WindowContext {
+        let app = AXUIElementCreateApplication(pid)
+        AXUIElementSetMessagingTimeout(app, timeout)
 
         let focused = element(app, kAXFocusedUIElementAttribute as CFString)
-        let window = matchingWindow(of: app, target: target)
+        let window = target.flatMap { matchingWindow(of: app, target: $0) }
         let selected = focused.flatMap { string($0, kAXSelectedTextAttribute as CFString) }
         let url = focused.flatMap { urlString($0, kAXURLAttribute as CFString) }
             ?? window.flatMap { urlString($0, kAXURLAttribute as CFString) }

@@ -24,6 +24,10 @@ struct DeliveryComposerCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             header
+            if let summary = composer.contextSummary {
+                contextLine(summary)
+                    .padding(.top, 6)
+            }
             input
                 .padding(.top, 8)
             if !composer.attachments.isEmpty {
@@ -247,6 +251,26 @@ struct DeliveryComposerCard: View {
     }
 
     // MARK: - Input
+
+    /// What the summon carries, in one muted line. It is a readout, not a
+    /// control: the context is captured before the panel takes key and cannot
+    /// be edited here.
+    private func contextLine(_ summary: String) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: "sparkles")
+                .font(.system(size: 8.5, weight: .medium))
+                .foregroundStyle(Theme.textTertiary)
+            Text(summary)
+                .font(Theme.sans(11))
+                .foregroundStyle(Theme.textTertiary)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 2)
+        .frame(height: 16)
+        .accessibilityLabel("自动携带：\(summary)")
+    }
 
     private var input: some View {
         TextField("", text: draftBinding, axis: .vertical)
@@ -529,6 +553,9 @@ struct DeliveryComposerCard: View {
         case .openScreenRecording:
             Button("去开启") { actions.openScreenRecordingSettings() }
                 .buttonStyle(NoticeButtonStyle(color: Theme.amber))
+        case .openAccessibility:
+            Button("去授权") { actions.openAccessibilitySettings() }
+                .buttonStyle(NoticeButtonStyle(color: Theme.textSecondary))
         case .jump(let pane):
             Button("去终端") { actions.jump(pane) }
                 .buttonStyle(NoticeButtonStyle(color: Theme.amber, filled: true))
@@ -716,7 +743,7 @@ struct DeliveryComposerCard: View {
         switch surface {
         case .lock: actions.windowTaskKind(kind)
         case .drop: actions.dropKind(kind)
-        case .summon: break
+        case .summon: actions.summonKind(kind)
         }
     }
 
@@ -724,7 +751,7 @@ struct DeliveryComposerCard: View {
         switch surface {
         case .lock: actions.setWindowTaskCwd(path)
         case .drop: actions.selectDropCwd(path)
-        case .summon: break
+        case .summon: actions.summonCwd(path)
         }
     }
 
@@ -732,7 +759,7 @@ struct DeliveryComposerCard: View {
         switch surface {
         case .lock: actions.chooseWindowTaskCwd()
         case .drop: actions.chooseDropCwd()
-        case .summon: break
+        case .summon: actions.chooseSummonCwd()
         }
     }
 
@@ -821,13 +848,14 @@ struct DeliveryComposerCard: View {
                 RoundedRectangle(cornerRadius: 16)
                     .stroke(Theme.hairlineHigh, lineWidth: 1)
             )
-            // The lock panel only leaves a 20pt gutter, so its shadow stays
-            // small enough to render without clipping at the window edge.
+            // The lock and summon panels only leave a 16pt gutter, so their
+            // shadow stays small enough to render without clipping at the
+            // window edge. The drop canvas has the whole screen.
             .shadow(
                 color: .black.opacity(0.6),
-                radius: surface == .lock ? 12 : 35,
+                radius: surface == .drop ? 35 : 12,
                 x: 0,
-                y: surface == .lock ? 6 : 24
+                y: surface == .drop ? 24 : 6
             )
     }
 
@@ -865,7 +893,7 @@ struct DeliveryComposerCard: View {
                 switch surface {
                 case .lock: actions.windowTaskDraft(text)
                 case .drop: actions.dropDraft(text)
-                case .summon: break
+                case .summon: actions.summonDraft(text)
                 }
             }
         )

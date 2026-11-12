@@ -67,7 +67,12 @@ struct IslandViewActions {
     var clearDeliveryOutcome: (DeliverySurface) -> Void = { _ in }
     var chooseDeliveryAttachments: (DeliverySurface) -> Void = { _ in }
     var submitDelivery: (DeliverySurface) -> Void = { _ in }
+    var summonDraft: (String) -> Void = { _ in }
+    var summonKind: (AgentKindOption) -> Void = { _ in }
+    var summonCwd: (String) -> Void = { _ in }
+    var chooseSummonCwd: () -> Void = {}
     var openScreenRecordingSettings: () -> Void = {}
+    var openAccessibilitySettings: () -> Void = {}
 
     static let noop = IslandViewActions()
 }

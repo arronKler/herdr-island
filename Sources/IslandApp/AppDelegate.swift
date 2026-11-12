@@ -12,6 +12,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItemController: StatusItemController?
     private var hotKey: GlobalHotKey?
     private var quickTaskHotKey: GlobalHotKey?
+    private var summonHotKey: GlobalHotKey?
+    private var summonController: SummonPanelController?
     private var settingsWindow: SettingsWindowController?
     private var updateController: UpdateController?
     private var pollActivity: NSObjectProtocol?
@@ -67,7 +69,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         self.panelController = panelController
         panelController.onEvent = { [weak store] event in store?.handle(event) }
-        panelController.onLostFocus = { [weak store] in store?.lostFocus() }
+        panelController.onLostFocus = { [weak store] in
+            // The summon owns its own panel and its own close. A resign here
+            // while it is up is the summon taking key, not a click away.
+            guard store?.presentation.summon == nil else { return }
+            store?.lostFocus()
+        }
+
+        let summonController = SummonPanelController(actions: viewActions)
+        summonController.onEvent = { [weak store] event in store?.handle(event) }
+        self.summonController = summonController
 
         let dragCoordinator = WindowDragCoordinator(
             excludingPID: ProcessInfo.processInfo.processIdentifier
@@ -128,6 +139,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 return
             }
             self.panelController?.apply(presentation)
+            self.summonController?.apply(presentation.summon)
             self.statusItemController?.update(presentation)
             self.settingsWindow?.apply(environment: presentation.environment)
             self.syncTether(presentation)
@@ -163,6 +175,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             quickTaskRegistered
                 ? "hotkey Control+Option+N registered"
                 : "hotkey Control+Option+N registration failed"
+        )
+
+        let summonHotKey = GlobalHotKey(
+            keyCode: UInt32(kVK_Return),
+            modifiers: UInt32(controlKey | optionKey),
+            id: 3
+        )
+        self.summonHotKey = summonHotKey
+        let summonRegistered = summonHotKey.register { [weak self] in
+            MainActor.assumeIsolated {
+                appLog("hotkey Control+Option+Return pressed")
+                self?.store?.summonComposer()
+            }
+        }
+        appLog(
+            summonRegistered
+                ? "hotkey Control+Option+Return registered"
+                : "hotkey Control+Option+Return registration failed"
         )
 
         NotificationCenter.default.addObserver(
@@ -206,6 +236,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         hotKey = nil
         quickTaskHotKey?.unregister()
         quickTaskHotKey = nil
+        summonHotKey?.unregister()
+        summonHotKey = nil
         if let pollActivity {
             ProcessInfo.processInfo.endActivity(pollActivity)
             self.pollActivity = nil
@@ -217,6 +249,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func screenParametersChanged() {
         panelController?.screenParametersChanged()
+        summonController?.screenParametersChanged()
         tetherController?.screenParametersChanged()
     }
 
@@ -355,6 +388,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         actions.openScreenRecordingSettings = {
             SettingsWindowController.openScreenRecordingSettings()
         }
+        actions.openAccessibilitySettings = {
+            SettingsWindowController.openAccessibilitySettings()
+        }
+        actions.summonDraft = { [weak store] text in store?.setSummonDraft(text) }
+        actions.summonKind = { [weak store] kind in store?.setSummonKind(kind) }
+        actions.summonCwd = { [weak store] path in store?.setSummonCwd(path) }
+        actions.chooseSummonCwd = { [weak self] in self?.chooseSummonCwd() }
         return actions
     }
 
@@ -399,9 +439,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         panel.canChooseFiles = true
         panel.canChooseDirectories = false
         panel.allowsMultipleSelection = true
-        panelController?.beginPicker()
+        if surface == .summon {
+            summonController?.beginPicker()
+        } else {
+            panelController?.beginPicker()
+        }
         panel.begin { [weak self] response in
-            defer { self?.panelController?.endPicker() }
+            if surface == .summon {
+                self?.summonController?.endPicker()
+            } else {
+                self?.panelController?.endPicker()
+            }
             guard response == .OK else { return }
             store.addDeliveryAttachments(surface, panel.urls.map(\.path))
         }
@@ -438,6 +486,23 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             defer { self?.panelController?.endPicker() }
             guard response == .OK, let url = panel.url else { return }
             store.setDropCwd(url.path)
+        }
+    }
+
+    private func chooseSummonCwd() {
+        guard let store else { return }
+        let panel = NSOpenPanel()
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.allowsMultipleSelection = false
+        panel.directoryURL = URL(
+            fileURLWithPath: store.presentation.summon?.composer.cwd ?? NSHomeDirectory()
+        )
+        summonController?.beginPicker()
+        panel.begin { [weak self] response in
+            self?.summonController?.endPicker()
+            guard response == .OK, let url = panel.url else { return }
+            store.setSummonCwd(url.path)
         }
     }
 
