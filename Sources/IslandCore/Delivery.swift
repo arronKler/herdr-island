@@ -69,6 +69,7 @@ public enum MainAgentResolver {
 public enum DeliverySurface: String, Sendable, Equatable, Codable {
     case lock
     case drop
+    case summon
 }
 
 public enum DeliveryRecipientMode: String, Sendable, Equatable, Codable {

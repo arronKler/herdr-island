@@ -738,6 +738,8 @@ public enum IslandReducer {
             guard var drop = state.drop else { return }
             body(&drop.delivery)
             state.drop = drop
+        case .summon:
+            break
         }
     }
 
@@ -748,6 +750,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: state.windowTask?.delivery
         case .drop: state.drop?.delivery
+        case .summon: nil
         }
     }
 
@@ -799,6 +802,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: phaseIsEditable = state.windowTask?.phase == .editing
         case .drop: phaseIsEditable = state.drop?.phase == .composing
+        case .summon: phaseIsEditable = false
         }
         guard phaseIsEditable else { return [] }
         if creation(state, surface: surface)?.canRetry == false { return [] }
@@ -1171,6 +1175,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: state.windowLock
         case .drop: state.drop?.window
+        case .summon: nil
         }
     }
 
@@ -1193,6 +1198,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: state.windowTask?.delivery = draft
         case .drop: state.drop?.delivery = draft
+        case .summon: break
         }
     }
 
@@ -1231,6 +1237,8 @@ public enum IslandReducer {
             case .preparing: state.drop?.phase = .preparing
             case .sending: state.drop?.phase = .sending
             }
+        case .summon:
+            break
         }
     }
 
@@ -1251,6 +1259,8 @@ public enum IslandReducer {
                 state.drop?.phase = .sending
                 state.drop?.creation = nil
             }
+        case .summon:
+            break
         }
     }
 
@@ -1261,6 +1271,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: state.windowTask?.creation
         case .drop: state.drop?.creation
+        case .summon: nil
         }
     }
 
@@ -1272,6 +1283,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: state.windowTask?.creation = creation
         case .drop: state.drop?.creation = creation
+        case .summon: break
         }
     }
 

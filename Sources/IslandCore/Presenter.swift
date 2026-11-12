@@ -341,6 +341,8 @@ public enum IslandPresenter {
             draft = task.delivery
             phaseBusy = task.phase != .composing
             hasWindow = task.window != nil
+        case .summon:
+            return nil
         }
 
         let recipient = DeliveryPolicy.resolve(

@@ -160,45 +160,7 @@ final class WindowDragCoordinator {
     }
 
     nonisolated private static func readWindows(excludingPID: Int32) -> [WindowInfo] {
-        let displayHeight = CGDisplayBounds(CGMainDisplayID()).height
-        guard displayHeight > 0 else { return [] }
-
-        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
-        guard let entries = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
-            return []
-        }
-
-        var windows: [WindowInfo] = []
-        windows.reserveCapacity(entries.count)
-
-        for entry in entries {
-            guard let windowID = (entry[kCGWindowNumber as String] as? NSNumber)?.uint32Value,
-                  let ownerPID = (entry[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value,
-                  let dictionary = entry[kCGWindowBounds as String] as? NSDictionary,
-                  let quartzBounds = CGRect(dictionaryRepresentation: dictionary as CFDictionary),
-                  ownerPID != excludingPID else { continue }
-
-            let ownerName = entry[kCGWindowOwnerName as String] as? String ?? ""
-            let title = entry[kCGWindowName as String] as? String
-            let layer = (entry[kCGWindowLayer as String] as? NSNumber)?.intValue ?? 0
-            let alpha = CGFloat((entry[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 1)
-
-            let bounds = ScreenCoordinates.appKitRect(
-                fromQuartz: quartzBounds,
-                primaryDisplayHeight: displayHeight
-            )
-            windows.append(WindowInfo(
-                windowID: windowID,
-                ownerPID: ownerPID,
-                appName: ownerName,
-                title: title,
-                bounds: bounds,
-                layer: layer,
-                alpha: alpha
-            ))
-        }
-
-        return windows
+        WindowEnumerator.windows(excludingPID: excludingPID)
     }
 
     private func quartzBounds(from entry: [String: Any]) -> CGRect? {

@@ -716,6 +716,7 @@ struct DeliveryComposerCard: View {
         switch surface {
         case .lock: actions.windowTaskKind(kind)
         case .drop: actions.dropKind(kind)
+        case .summon: break
         }
     }
 
@@ -723,6 +724,7 @@ struct DeliveryComposerCard: View {
         switch surface {
         case .lock: actions.setWindowTaskCwd(path)
         case .drop: actions.selectDropCwd(path)
+        case .summon: break
         }
     }
 
@@ -730,6 +732,7 @@ struct DeliveryComposerCard: View {
         switch surface {
         case .lock: actions.chooseWindowTaskCwd()
         case .drop: actions.chooseDropCwd()
+        case .summon: break
         }
     }
 
@@ -862,6 +865,7 @@ struct DeliveryComposerCard: View {
                 switch surface {
                 case .lock: actions.windowTaskDraft(text)
                 case .drop: actions.dropDraft(text)
+                case .summon: break
                 }
             }
         )
