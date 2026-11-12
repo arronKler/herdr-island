@@ -6,6 +6,9 @@ import SwiftUI
 enum RenderHarness {
     static let width = 1200
     static let height = 800
+    /// Rasterize at 2x so the site can show the panels at their real size on a
+    /// Retina display. Layout stays at the logical size above.
+    static let scale = 2
 
     @MainActor
     static func run(directory: String) -> Int32 {
@@ -31,8 +34,8 @@ enum RenderHarness {
 
             guard let rep = NSBitmapImageRep(
                 bitmapDataPlanes: nil,
-                pixelsWide: width,
-                pixelsHigh: height,
+                pixelsWide: width * scale,
+                pixelsHigh: height * scale,
                 bitsPerSample: 8,
                 samplesPerPixel: 4,
                 hasAlpha: true,
@@ -71,6 +74,7 @@ enum RenderHarness {
                 "bytes": png.count,
                 "expanded": presentation.isExpanded,
                 "headline": headlineName(presentation.headline),
+                "panel": panelFrame(presentation),
             ])
             appLog(
                 "render: \(file.path) \(rep.pixelsWide)x\(rep.pixelsHigh) bytes=\(png.count)"
@@ -143,8 +147,8 @@ enum RenderHarness {
 
         guard let rep = NSBitmapImageRep(
             bitmapDataPlanes: nil,
-            pixelsWide: width,
-            pixelsHigh: height,
+            pixelsWide: width * scale,
+            pixelsHigh: height * scale,
             bitsPerSample: 8,
             samplesPerPixel: 4,
             hasAlpha: true,
@@ -228,8 +232,8 @@ enum RenderHarness {
 
             guard let rep = NSBitmapImageRep(
                 bitmapDataPlanes: nil,
-                pixelsWide: width,
-                pixelsHigh: height,
+                pixelsWide: width * scale,
+                pixelsHigh: height * scale,
                 bitsPerSample: 8,
                 samplesPerPixel: 4,
                 hasAlpha: true,
@@ -313,8 +317,8 @@ enum RenderHarness {
 
         guard let rep = NSBitmapImageRep(
             bitmapDataPlanes: nil,
-            pixelsWide: width,
-            pixelsHigh: height,
+            pixelsWide: width * scale,
+            pixelsHigh: height * scale,
             bitsPerSample: 8,
             samplesPerPixel: 4,
             hasAlpha: true,
@@ -340,15 +344,27 @@ enum RenderHarness {
             appLog("render: could not write \(file.path): \(error.localizedDescription)")
             return nil
         }
-        appLog("render: \(file.path) \(width)x\(height) bytes=\(png.count)")
+        appLog("render: \(file.path) \(rep.pixelsWide)x\(rep.pixelsHigh) bytes=\(png.count)")
         return [
             "name": name,
             "file": file.lastPathComponent,
-            "width": width,
-            "height": height,
+            "width": rep.pixelsWide,
+            "height": rep.pixelsHigh,
             "bytes": png.count,
             "expanded": true,
             "headline": "component",
+        ]
+    }
+
+    /// The island's own frame inside the 1200 x 800 scene, in logical points.
+    /// The site crops to this so every page image shows the panel at one scale.
+    private static func panelFrame(_ presentation: IslandPresentation) -> [String: Double] {
+        let size = RenderScene.islandSize(presentation)
+        return [
+            "x": Double((CGFloat(width) - size.width) / 2),
+            "y": 0,
+            "width": Double(size.width),
+            "height": Double(size.height),
         ]
     }
 
@@ -409,7 +425,7 @@ struct RenderScene: View {
         .clipped()
     }
 
-    private static func islandSize(_ presentation: IslandPresentation) -> CGSize {
+    static func islandSize(_ presentation: IslandPresentation) -> CGSize {
         let notch = MenuBarMock.barHeight
         if presentation.quickTask != nil {
             return CGSize(

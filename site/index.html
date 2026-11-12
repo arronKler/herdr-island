@@ -657,18 +657,8 @@ ul,ol{padding:0}
   position:relative;overflow:hidden;
   border-radius:11px;background:#0A0B0F;
 }
-.plate img{max-width:none}
-/* The 1200 × 800 renders are cropped in place so real UI text stays crisp. */
-.plate--ears{aspect-ratio:380/230}
-.plate--ears img{position:absolute;top:0;left:50%;width:1200px;height:auto;transform:translateX(-50%)}
-.plate--peek{aspect-ratio:380/285}
-.plate--peek img{position:absolute;top:0;left:-100%;width:300%;height:auto}
-.plate--deck{aspect-ratio:380/320}
-.plate--deck img{position:absolute;top:0;left:-57%;width:214%;height:auto}
-.plate--drop{aspect-ratio:500/420}
-.plate--drop img{position:absolute;top:0;left:50%;width:1200px;height:auto;transform:translateX(-50%)}
-.plate--scene{aspect-ratio:1/1}
-.plate--scene img{width:100%;height:100%;object-fit:cover;object-position:50% 50%}
+.plate img{display:block;width:100%;height:auto}
+/* Each plate holds a 2x crop, so the image sets the plate's own ratio. */
 .stat-card figcaption{padding:16px 2px 0}
 .cap-label{
   display:block;
@@ -1302,7 +1292,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="stat-card">
           <div class="plate-frame">
             <div class="plate plate--peek">
-              <img src="assets/screens/completed.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="assets/screens/completed.webp" width="912" height="616" loading="lazy" decoding="async"
                    alt="Crop of the completion peek: a 400 × 248 card listing Fix the flaky login test, with an open-panel button at the bottom.">
             </div>
           </div>
@@ -1316,7 +1306,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="stat-card">
           <div class="plate-frame">
             <div class="plate plate--deck">
-              <img src="assets/screens/deck.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="assets/screens/deck.webp" width="1232" height="760" loading="lazy" decoding="async"
                    alt="Crop of the deck: Needs attention, Running, Done, and All filters, plus a Claude task Write the release notes.">
             </div>
           </div>
@@ -1377,7 +1367,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="figure figure--deck">
           <div class="plate-frame">
             <div class="plate plate--scene">
-              <img src="assets/screens/running.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="assets/screens/running.webp" width="1232" height="1000" loading="lazy" decoding="async"
                    alt="Deck screenshot with Refactor the parser running and a queued message below, noting it will send after this turn.">
             </div>
           </div>
@@ -1411,7 +1401,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="figure figure--terminal">
           <div class="plate-frame">
             <div class="plate plate--scene">
-              <img src="assets/screens/terminal.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="assets/screens/terminal.webp" width="1432" height="1400" loading="lazy" decoding="async"
                    alt="Detail screenshot: Codex asks to run npm test, the terminal shows test output, and the bottom has the action buttons.">
             </div>
           </div>
@@ -1528,7 +1518,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="figure figure--drop">
           <div class="plate-frame">
             <div class="plate plate--drop">
-              <img src="assets/screens/drop.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="assets/screens/drop.webp" width="1552" height="560" loading="lazy" decoding="async"
                    alt="Shared composer screenshot: the recipient is the main agent, with a task and three attachments ready to send.">
             </div>
           </div>
@@ -1557,7 +1547,7 @@ xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
         <figure class="figure figure--window">
           <div class="plate-frame">
             <div class="plate plate--scene">
-              <img src="assets/screens/window.webp" width="1200" height="800" loading="lazy" decoding="async"
+              <img src="assets/screens/window.webp" width="872" height="560" loading="lazy" decoding="async"
                    alt="Window-lock screenshot: the lock status sits beside the notch, and the shared composer carries the main agent, a task, and attachments; sending will attach a window screenshot.">
             </div>
           </div>

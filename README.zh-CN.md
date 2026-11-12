@@ -232,6 +232,16 @@ python3 -m http.server --directory site 8000
 python3 Scripts/check-site.py site
 ```
 
+站点截图和分享卡片都由 fixture 渲染生成，不要手工裁图。改了界面后按顺序重跑：
+
+```bash
+.build/debug/HerdrIsland --render /tmp/herdr-render
+python3 Scripts/make-site-shots.py /tmp/herdr-render site
+python3 Scripts/make-og-cards.py site
+```
+
+`--render` 以 2 倍像素输出，并把每个面板在场景里的位置写进 `manifest.json`；`make-site-shots.py` 按这个位置裁到面板本身，所以页面上的图是原尺寸的清晰裁切，而不是把整张桌面缩进小框。`make-og-cards.py` 用 `running.webp` 拼出中英两张 1200 × 630 分享卡。
+
 <details>
 <summary><strong>开发参数</strong></summary>
 

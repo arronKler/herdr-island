@@ -308,6 +308,20 @@ python3 -m http.server --directory site 8000
 python3 Scripts/check-site.py site
 ```
 
+The site screenshots and share cards are generated from the fixtures, never cropped by hand. After
+a UI change, rerun the chain in order:
+
+```bash
+.build/debug/HerdrIsland --render /tmp/herdr-render
+python3 Scripts/make-site-shots.py /tmp/herdr-render site
+python3 Scripts/make-og-cards.py site
+```
+
+`--render` writes at 2x and records each panel's frame in the scene inside `manifest.json`.
+`make-site-shots.py` crops to that frame, so a page shows the panel itself at real size instead of
+a shrunken full desktop. `make-og-cards.py` composes both 1200 × 630 share cards from
+`running.webp`.
+
 <details>
 <summary><strong>Development flags</strong></summary>
 
