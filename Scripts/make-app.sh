@@ -53,6 +53,9 @@ cp "$ROOT/Resources/Info.plist" "$APP/Contents/Info.plist"
 cp "$ROOT/Resources/HerdrIsland.icns" "$APP/Contents/Resources/HerdrIsland.icns"
 cp -R "$ARM64_BIN/HerdrIsland_HerdrIsland.bundle" "$APP/Contents/Resources/"
 cp -R "$ARM64_BIN/SwiftTerm_SwiftTerm.bundle" "$APP/Contents/Resources/"
+# SwiftPM may copy resources as 0444. The owner must be able to remove the
+# download quarantine attribute after Archive Utility restores these modes.
+chmod -R u+w "$APP/Contents/Resources"
 
 mkdir -p "$APP/Contents/Frameworks"
 ditto "$ARM64_BIN/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"

@@ -105,9 +105,10 @@
               <li><strong>放进应用程序。</strong>把 <code>HerdrIsland.app</code> 拖进 <code>/Applications</code>。</li>
               <li><strong>放行首次启动。</strong>应用只有 ad-hoc 签名，没有经过 Apple 公证，Gatekeeper 会拦截。到 系统设置 → 隐私与安全性，在「安全性」一栏点「仍要打开」，再输入管理员密码。</li>
             </ol>
-            <p>也可以在把应用移进 /Applications 之前，在终端去掉下载隔离标记：</p>
-            <pre><code>xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
-            <p>要对解压出来的副本执行：对 <code>/Applications/HerdrIsland.app</code> 执行时，macOS 14 及更新版本会因应用管理保护而报 "Operation not permitted"。</p>
+            <p>也可以在新解压副本首次打开前执行以下两条命令，再把它移动到 /Applications：</p>
+            <pre><code>chmod -R u+w ~/Downloads/HerdrIsland.app/Contents/Resources
+xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
+            <p>第一条命令也能修复 v0.2.1 的只读资源。请对下载副本操作；已安装的应用可能受应用管理保护。双击完全没反应时，请按<a href="known-issues.html#install">新副本恢复步骤</a>处理。</p>
             <p>自动更新不会重复这一步。手动下载的新版本可能需要，所以不要用 <code>sudo spctl --master-disable</code> 全局关闭 Gatekeeper。启动后按提示授予 Screen Recording、Automation 和辅助功能权限；完整说明见<a href="index.html#install">首页的安装一节</a>。</p>
           </section>
 

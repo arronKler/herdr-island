@@ -258,6 +258,16 @@
 
             <div class="issue">
               <div class="issue-head">
+                <h3>Opening the app does nothing, even after removing quarantine</h3>
+                <span class="pill pill--unverified">Recovery</span>
+              </div>
+              <p>On some Macs, an earlier blocked launch can leave the app suspended before any interface appears. Repeating xattr on that copy may not help. Quit the stuck HerdrIsland process in Activity Monitor; this does not close the terminal tasks managed by Herdr.</p>
+              <p>Keep the old app as a backup elsewhere. Extract the official archive into a new, empty folder, run both commands in the <a href="download.html#install">installation instructions</a> on that fresh copy before opening it, then move the new app into /Applications. Do not overwrite the blocked copy in place. Open the new copy from Applications.</p>
+              <p>v0.2.1 also includes a read-only shader resource that can make xattr report “Permission denied”. The chmod command in the installation instructions fixes its owner permissions without changing the file contents or signature.</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
                 <h3>Ad-hoc signing means the first launch needs manual approval</h3>
                 <span class="pill pill--limit">Limit</span>
               </div>

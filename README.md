@@ -166,11 +166,14 @@ Prebuilt releases are on [GitHub Releases](https://github.com/arronKler/herdr-is
    moving it:
 
    ```bash
+   chmod -R u+w ~/Downloads/HerdrIsland.app/Contents/Resources
    xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app
    ```
 
-   This fails on `/Applications/HerdrIsland.app`: macOS 14 and later protect installed apps with
-   App Management, which reports “Operation not permitted”.
+   Run both commands on a freshly extracted copy **before its first launch**, then move it to
+   `/Applications`. The first command also repairs the read-only resource shipped in v0.2.1.
+   App Management can prevent changes to an already installed app. If opening the app does nothing,
+   use the [fresh-copy recovery steps](https://arronkler.github.io/herdr-island/known-issues.html#install).
 
    A manually downloaded build may need this again. Automatic updates do not. Do not disable
    Gatekeeper globally with `sudo spctl --master-disable`.
