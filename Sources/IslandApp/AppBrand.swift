@@ -8,8 +8,16 @@ enum AppBrand {
 
     static let statusImage = makeStatusImage()
 
+    private static let bundle: Bundle = {
+        guard let url = Bundle.main.url(forResource: "HerdrIsland_HerdrIsland", withExtension: "bundle"),
+              let bundle = Bundle(url: url) else {
+            preconditionFailure("Missing resource bundle: HerdrIsland_HerdrIsland.bundle")
+        }
+        return bundle
+    }()
+
     private static func load(_ name: String) -> NSImage {
-        guard let url = Bundle.module.url(forResource: name, withExtension: "pdf", subdirectory: "Brand"),
+        guard let url = bundle.url(forResource: name, withExtension: "pdf", subdirectory: "Brand"),
               let image = NSImage(contentsOf: url) else {
             preconditionFailure("Missing bundled brand asset: \(name).pdf")
         }
