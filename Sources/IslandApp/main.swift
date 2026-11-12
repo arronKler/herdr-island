@@ -94,6 +94,7 @@ if launchOptions.settings {
     let environment = try? HerdrLocator.resolve()
     let controller = SettingsWindowController(
         rules: IslandSettings.rules(),
+        updates: UpdateController(),
         herdrPath: environment?.binary.path ?? "herdr not found",
         socketPath: environment?.socket.path ?? HerdrLocator.socketURL().path,
         onChange: { _ in }

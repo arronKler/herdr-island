@@ -48,6 +48,7 @@ final class SettingsModel: ObservableObject {
 
 enum SettingsSection: String, CaseIterable, Identifiable {
     case general
+    case updates
     case sound
     case permissions
     case environment
@@ -57,6 +58,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .general: "常规"
+        case .updates: "更新"
         case .sound: "声音"
         case .permissions: "权限"
         case .environment: "运行环境"
@@ -66,6 +68,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var subtitle: String {
         switch self {
         case .general: "决定岛什么时候展开，以及常用快捷键。"
+        case .updates: "检查新版本，并决定要不要自动检查和自动下载。"
         case .sound: "任务完成或需要你处理时，用声音提醒。默认关闭。"
         case .permissions: "岛只在执行对应动作时使用系统权限。"
         case .environment: "Herdr 的本地路径和岛的应用信息。"
@@ -75,6 +78,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     var icon: String {
         switch self {
         case .general: "slider.horizontal.3"
+        case .updates: "arrow.triangle.2.circlepath"
         case .sound: "speaker.wave.2"
         case .permissions: "lock.shield"
         case .environment: "terminal"
@@ -84,6 +88,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
 
 struct SettingsView: View {
     @ObservedObject var model: SettingsModel
+    @ObservedObject var updates: UpdateController
     let herdrPath: String
     let socketPath: String
     let onOpenAutomation: () -> Void
@@ -95,6 +100,7 @@ struct SettingsView: View {
 
     init(
         model: SettingsModel,
+        updates: UpdateController,
         herdrPath: String,
         socketPath: String,
         screenCaptureAuthorized: Bool,
@@ -103,6 +109,7 @@ struct SettingsView: View {
         onOpenScreenRecording: @escaping () -> Void
     ) {
         self.model = model
+        self.updates = updates
         self.herdrPath = herdrPath
         self.socketPath = socketPath
         self.onOpenAutomation = onOpenAutomation
@@ -230,6 +237,8 @@ struct SettingsView: View {
         switch section {
         case .general:
             generalPage
+        case .updates:
+            updatesPage
         case .sound:
             soundPage
         case .permissions:
@@ -265,6 +274,113 @@ struct SettingsView: View {
                 shortcutRow("鼠标处发起任务", keys: ["⌃", "⌥", "⏎"])
             }
         }
+    }
+
+    private var updatesPage: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            settingsGroup("检查更新") {
+                updateStatusRow
+                SettingsRowDivider()
+                visitableNotesRow
+            }
+
+            settingsGroup("自动更新") {
+                toggleRow(
+                    title: "自动检查更新",
+                    subtitle: "每天读取一次签名的更新源，有新版时提示你。",
+                    isOn: Binding(
+                        get: { updates.automaticallyChecks },
+                        set: { updates.setAutomaticallyChecks($0) }
+                    )
+                )
+                SettingsRowDivider()
+                toggleRow(
+                    title: "自动下载更新",
+                    subtitle: "在后台下载，退出或重启岛时安装。关闭后仍然会提示新版本。",
+                    isOn: Binding(
+                        get: { updates.automaticallyDownloads },
+                        set: { updates.setAutomaticallyDownloads($0) }
+                    ),
+                    enabled: updates.automaticallyChecks && updates.allowsAutomaticDownloads
+                )
+            }
+
+            Text("更新源和每个安装包都由 EdDSA 签名，岛用内置公钥验证通过后才会安装。")
+                .font(Theme.sans(Theme.TypeSize.caption))
+                .foregroundStyle(Theme.textSecondary.opacity(0.72))
+                .padding(.leading, 2)
+        }
+    }
+
+    private var visitableNotesRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            SettingsIconTile(icon: "doc.text", tint: Theme.textSecondary)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("版本说明")
+                    .font(Theme.sans(Theme.TypeSize.row, weight: .medium))
+                    .foregroundStyle(Theme.textPrimary)
+                Text("每次发版的改动和下载包，在 GitHub Releases 上。")
+                    .font(Theme.sans(Theme.TypeSize.caption))
+                    .foregroundStyle(Theme.textSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+
+            SettingsActionButton(title: "打开") {
+                NSWorkspace.shared.open(UpdateController.releaseNotesURL)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(minHeight: 72)
+    }
+
+    private var updateStatusRow: some View {
+        HStack(alignment: .center, spacing: 12) {
+            SettingsIconTile(icon: "arrow.triangle.2.circlepath", tint: updateTint)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(updates.status.summary)
+                    .font(Theme.sans(Theme.TypeSize.row, weight: .medium))
+                    .foregroundStyle(Theme.textPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text("上次检查：\(lastUpdateCheckText) · 当前 v\(appVersionShort)")
+                    .font(Theme.sans(Theme.TypeSize.caption))
+                    .foregroundStyle(Theme.textSecondary)
+            }
+
+            Spacer(minLength: 8)
+
+            VStack(alignment: .trailing, spacing: 7) {
+                SettingsStatusPill(text: updates.status.label, color: updateTint)
+                SettingsActionButton(
+                    title: updates.status == .checking ? "检查中…" : "检查更新",
+                    enabled: updates.canCheckForUpdates
+                ) {
+                    updates.checkForUpdates()
+                }
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .frame(minHeight: 72)
+    }
+
+    private var updateTint: Color {
+        switch updates.status {
+        case .idle: Theme.textSecondary
+        case .checking: Theme.blue
+        case .upToDate: Theme.mint
+        case .available: Theme.amber
+        case .failed: Theme.red
+        }
+    }
+
+    private var lastUpdateCheckText: String {
+        guard let date = updates.lastChecked else { return "还没检查过" }
+        return IslandFormat.relativeDate(date)
     }
 
     private var soundPage: some View {
@@ -397,7 +513,8 @@ struct SettingsView: View {
     private func toggleRow(
         title: String,
         subtitle: String,
-        isOn: Binding<Bool>
+        isOn: Binding<Bool>,
+        enabled: Bool = true
     ) -> some View {
         HStack(alignment: .center, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
@@ -417,6 +534,8 @@ struct SettingsView: View {
                 .toggleStyle(.switch)
                 .controlSize(.small)
                 .tint(Theme.amber)
+                .disabled(!enabled)
+                .opacity(enabled ? 1 : 0.36)
                 .accessibilityLabel(title)
         }
         .padding(.horizontal, 14)
@@ -902,11 +1021,13 @@ final class SettingsWindowController {
     private var window: NSWindow?
     private var hosting: NSHostingController<SettingsView>?
     private let model: SettingsModel
+    private let updates: UpdateController
     private var herdrPath: String
     private var socketPath: String
 
     init(
         rules: IslandRules,
+        updates: UpdateController,
         herdrPath: String,
         socketPath: String,
         onChange: @escaping (IslandRules) -> Void
@@ -914,6 +1035,7 @@ final class SettingsWindowController {
         self.herdrPath = herdrPath
         self.socketPath = socketPath
         self.model = SettingsModel(rules: rules)
+        self.updates = updates
         self.model.onChange = onChange
     }
 
@@ -978,6 +1100,7 @@ final class SettingsWindowController {
     private func makeView() -> SettingsView {
         SettingsView(
             model: model,
+            updates: updates,
             herdrPath: herdrPath,
             socketPath: socketPath,
             screenCaptureAuthorized: CGPreflightScreenCaptureAccess(),

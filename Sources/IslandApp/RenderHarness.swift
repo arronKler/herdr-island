@@ -217,6 +217,7 @@ enum RenderHarness {
         for section in SettingsSection.allCases {
             let view = SettingsView(
                 model: SettingsModel(rules: IslandSettings.rules()),
+                updates: UpdateController.preview(),
                 herdrPath: environment?.binary.path ?? "herdr not found",
                 socketPath: environment?.socket.path ?? HerdrLocator.socketURL().path,
                 screenCaptureAuthorized: CGPreflightScreenCaptureAccess(),

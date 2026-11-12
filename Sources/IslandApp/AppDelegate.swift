@@ -518,8 +518,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func showSettings() {
         guard let store else { return }
         if settingsWindow == nil {
+            // In demo mode no updater was started, so the settings page shows
+            // an inert controller rather than hiding the update section.
+            let updates = updateController ?? UpdateController.preview()
             settingsWindow = SettingsWindowController(
                 rules: store.rules,
+                updates: updates,
                 herdrPath: store.presentation.environment?.binary.path ?? "herdr not found",
                 socketPath: store.presentation.environment?.socket.path ?? HerdrLocator.socketURL().path,
                 onChange: { [weak store] rules in store?.updateRules(rules) }
