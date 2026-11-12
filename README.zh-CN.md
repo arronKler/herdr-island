@@ -127,10 +127,11 @@ Herdr 能识别的 agent 都会出现在 Island 里。新任务可以启动以�
 2. 首次打开会被 Gatekeeper 拦截：应用只有 ad-hoc 签名，没有经过 Apple 公证，所以系统不会显示“已识别的开发者”。到 **系统设置 → 隐私与安全性**，点 **仍要打开** 并输入管理员密码。也可以在移动应用之前去掉隔离标记：
 
    ```bash
+   chmod -R u+w ~/Downloads/HerdrIsland.app/Contents/Resources
    xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app
    ```
 
-   不要对 `/Applications/HerdrIsland.app` 执行这条命令：macOS 14 及更新版本会用应用管理保护已安装的应用，会报 “Operation not permitted”。
+   请在新解压副本**首次打开前**执行这两条命令，再把它移动到 `/Applications`。第一条也能修复 v0.2.1 中的只读资源文件。已安装的应用可能受应用管理保护而无法修改。若双击完全没反应，按[新副本恢复步骤](https://arronkler.github.io/herdr-island/zh/known-issues.html#install)处理。
 
    手动下载的新版本可能还需要再放行一次，自动更新不会。不要用 `sudo spctl --master-disable` 全局关闭 Gatekeeper。
 

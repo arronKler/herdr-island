@@ -311,9 +311,10 @@
               <summary>怎么安装？</summary>
               <div class="qa-body">
                 <p>下载 <code>HerdrIsland-&lt;版本&gt;.zip</code>，解压后把 <code>HerdrIsland.app</code> 拖进 <code>/Applications</code>。Release 里还有一个 <code>.sha256</code>，想检查下载是否损坏时可以用；自动更新由签名验证。</p>
-                <pre><code># 如果不想用系统设置，也可以在移动之前去掉隔离标记
+                <pre><code># 请在新解压副本首次打开前执行
+chmod -R u+w ~/Downloads/HerdrIsland.app/Contents/Resources
 xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
-                <p>这条命令要在把应用移进 /Applications 之前执行；对 <code>/Applications/HerdrIsland.app</code> 执行时，macOS 14 及更新版本会因应用管理保护而报错。</p>
+                <p>请在首次打开前运行这两条命令，再移动应用。第一条也修复 v0.2.1 的只读资源；已安装的应用可能受应用管理保护。若双击完全没反应，请按<a href="known-issues.html#install">新副本恢复步骤</a>处理。</p>
                 <p>也可以在系统设置 → 隐私与安全性里点「仍要打开」。具体步骤见<a href="index.html#install">安装</a>。</p>
               </div>
             </details>

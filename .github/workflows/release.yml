@@ -5,9 +5,16 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+  pull_request:
+    paths:
+      - "Scripts/**"
+      - ".github/workflows/release.yml"
+      - "Sources/IslandApp/AppBrand.swift"
+      - "Sources/IslandApp/Resources/**"
+      - "Package.*"
 
 permissions:
-  contents: write
+  contents: read
 
 env:
   SPARKLE_TOOLS_VERSION: "2.10.1"
@@ -28,14 +35,18 @@ jobs:
       - name: Smoke the packaged app
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/render"
-          build/HerdrIsland.app/Contents/MacOS/HerdrIsland --render "$RUNNER_TEMP/render"
-          [ -s "$RUNNER_TEMP/render/setupMissing.png" ]
+          ditto -c -k --sequesterRsrc --keepParent build/HerdrIsland.app "$RUNNER_TEMP/HerdrIsland.zip"
+          # SwiftPM embeds this path as a fallback. It must be unavailable to
+          # reproduce a user's installation on a different machine.
+          mv .build "$RUNNER_TEMP/island-build-resources"
+          python3 Scripts/verify-release.py "$RUNNER_TEMP/HerdrIsland.zip"
 
   release:
     needs: verify-intel
     if: startsWith(github.ref, 'refs/tags/v')
     runs-on: macos-15
+    permissions:
+      contents: write
     steps:
       - name: Check out
         uses: actions/checkout@v4
@@ -47,6 +58,12 @@ jobs:
 
       - name: Package
         run: Scripts/make-release.sh "${GITHUB_REF_NAME#v}"
+
+      - name: Verify the download before publishing
+        run: |
+          set -euo pipefail
+          mv .build "$RUNNER_TEMP/island-build-resources"
+          python3 Scripts/verify-release.py "build/release/HerdrIsland-${GITHUB_REF_NAME#v}.zip"
 
       - name: Build appcast
         env:

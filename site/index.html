@@ -1239,8 +1239,9 @@ ul,ol{padding:0}
           <li>
             <h3>Approve the first launch</h3>
             <p>The app is ad-hoc signed and not notarized by Apple, so Gatekeeper blocks it. Go to System Settings → Privacy &amp; Security, click "Open Anyway" in the Security section, and enter your admin password. You can also remove the quarantine flag before moving the app:</p>
-            <pre><code>xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
-            <p>Run this on the unzipped copy, not on <code>/Applications/HerdrIsland.app</code>: macOS 14 and later protect installed apps with App Management, so the command fails there with "Operation not permitted".</p>
+            <pre><code>chmod -R u+w ~/Downloads/HerdrIsland.app/Contents/Resources
+xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
+            <p>Run both commands on a freshly extracted copy before its first launch, then move it to /Applications. The first repairs the read-only resource in v0.2.1. App Management may prevent changes to an installed app. If opening the app does nothing, follow the <a href="known-issues.html#install">fresh-copy recovery steps</a>.</p>
             <p>Automatic updates do not repeat this. A manually downloaded build might, so do not disable Gatekeeper globally with <code>sudo spctl --master-disable</code>.</p>
           </li>
           <li>

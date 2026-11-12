@@ -258,6 +258,16 @@
 
             <div class="issue">
               <div class="issue-head">
+                <h3>移除隔离标记后，双击仍然没有反应</h3>
+                <span class="pill pill--unverified">恢复方法</span>
+              </div>
+              <p>部分 Mac 在一次被阻止的启动后，会把应用挂起在显示界面之前。对原副本重复执行 xattr 可能无效。先在「活动监视器」中退出卡住的 HerdrIsland 进程；这不会关闭 Herdr 管理的终端任务。</p>
+              <p>把旧应用移到别处留作备份，将官方压缩包重新解压到新的空目录。首次打开前，先对这个新副本执行<a href="download.html#install">安装说明</a>中的两条命令，再把新应用移动到 /Applications。不要直接覆盖卡住的旧副本。最后从「应用程序」打开新副本。</p>
+              <p>v0.2.1 还包含一个只读 shader 资源，可能让 xattr 报「Permission denied」。安装说明中的 chmod 命令会修复文件所有者的写权限，不改变文件内容或签名。</p>
+            </div>
+
+            <div class="issue">
+              <div class="issue-head">
                 <h3>ad-hoc 签名，首次打开需要手动放行</h3>
                 <span class="pill pill--limit">限制</span>
               </div>
