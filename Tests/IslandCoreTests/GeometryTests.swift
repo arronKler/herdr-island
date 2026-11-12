@@ -236,6 +236,94 @@ final class GeometryTests: XCTestCase {
         XCTAssertEqual(deck.maxY, notchScreen.screenFrame.maxY)
     }
 
+    func testSummonFrameHangsBelowThePointerAndFlipsAbove() {
+        let screen = ScreenMetrics(
+            screenFrame: CGRect(x: 0, y: 0, width: 1440, height: 900),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1440, height: 875),
+            safeAreaTop: 0,
+            auxTopLeft: nil,
+            auxTopRight: nil
+        )
+        let size = CGSize(width: 392, height: 240)
+
+        let middle = IslandGeometry.summonFrame(
+            point: CGPoint(x: 700, y: 500),
+            size: size,
+            screens: [screen]
+        )
+        XCTAssertEqual(middle.midX, 700)
+        XCTAssertEqual(middle.maxY, 490)
+        XCTAssertEqual(middle.size, size)
+
+        // Near the bottom the card flips above the pointer.
+        let bottom = IslandGeometry.summonFrame(
+            point: CGPoint(x: 700, y: 60),
+            size: size,
+            screens: [screen]
+        )
+        XCTAssertEqual(bottom.minY, 70)
+        XCTAssertEqual(bottom.midX, 700)
+
+        // Near the left and right edges it clamps into the visible frame.
+        let left = IslandGeometry.summonFrame(
+            point: CGPoint(x: 4, y: 500),
+            size: size,
+            screens: [screen]
+        )
+        XCTAssertEqual(left.minX, 8)
+        let right = IslandGeometry.summonFrame(
+            point: CGPoint(x: 1436, y: 500),
+            size: size,
+            screens: [screen]
+        )
+        XCTAssertEqual(right.maxX, 1432)
+
+        // A card taller than the display is capped to the visible height.
+        let tall = IslandGeometry.summonFrame(
+            point: CGPoint(x: 700, y: 500),
+            size: CGSize(width: 392, height: 2000),
+            screens: [screen]
+        )
+        XCTAssertEqual(tall.height, 859)
+        XCTAssertGreaterThanOrEqual(tall.minY, 8)
+    }
+
+    func testSummonFramePicksTheDisplayUnderThePointer() {
+        let builtIn = ScreenMetrics(
+            screenFrame: CGRect(x: 0, y: 0, width: 1440, height: 900),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1440, height: 875),
+            safeAreaTop: 0,
+            auxTopLeft: nil,
+            auxTopRight: nil
+        )
+        let external = ScreenMetrics(
+            screenFrame: CGRect(x: 1440, y: 0, width: 1920, height: 1080),
+            visibleFrame: CGRect(x: 1440, y: 0, width: 1920, height: 1055),
+            safeAreaTop: 0,
+            auxTopLeft: nil,
+            auxTopRight: nil
+        )
+        let size = CGSize(width: 392, height: 240)
+
+        let onExternal = IslandGeometry.summonFrame(
+            point: CGPoint(x: 2000, y: 600),
+            size: size,
+            screens: [builtIn, external]
+        )
+        XCTAssertEqual(onExternal.midX, 2000)
+        XCTAssertGreaterThanOrEqual(onExternal.minX, 1448)
+        XCTAssertLessThanOrEqual(onExternal.maxX, 3352)
+
+        // A point in the gap between displays falls back to the first screen.
+        let inGap = IslandGeometry.summonFrame(
+            point: CGPoint(x: 5000, y: 600),
+            size: size,
+            screens: [builtIn, external]
+        )
+        XCTAssertEqual(inGap.maxX, 1432)
+        XCTAssertEqual(inGap.midX, 1236)
+    }
+
     func testComposerStaysOnTheDisplayUnderTheDrop() {
         let external = CGRect(x: 0, y: 0, width: 1920, height: 1080)
         let builtIn = CGRect(x: 1920, y: 0, width: 1728, height: 1117)

@@ -44,10 +44,58 @@ public struct QuickTaskDraftRecovery: Sendable, Equatable {
     }
 }
 
+/// A composer summoned at the pointer. It carries the frontmost window and the
+/// accessibility context captured before the panel took key, so the send can
+/// still screenshot and quote the app the user was reading.
+public struct SummonTaskState: Sendable, Equatable {
+    public var delivery: DeliveryDraft
+    public var phase: WindowTaskPhase
+    public var creation: TaskCreationProgress? = nil
+    public var target: WindowTarget?
+    /// AppKit screen coordinates (bottom-left origin) of the pointer at summon time.
+    public var point: CGPoint
+
+    public init(
+        delivery: DeliveryDraft,
+        phase: WindowTaskPhase = .editing,
+        creation: TaskCreationProgress? = nil,
+        target: WindowTarget? = nil,
+        point: CGPoint
+    ) {
+        self.delivery = delivery
+        self.phase = phase
+        self.creation = creation
+        self.target = target
+        self.point = point
+    }
+}
+
+/// The text and choices from a summon closed without sending. The next summon
+/// starts from them, so Esc or a click elsewhere does not destroy typed work.
+public struct SummonDraftRecovery: Sendable, Equatable {
+    public var text: String
+    public var kind: AgentKindOption
+    public var cwd: String
+    public var attachments: [DeliveryAttachment]
+
+    public init(
+        text: String,
+        kind: AgentKindOption,
+        cwd: String,
+        attachments: [DeliveryAttachment] = []
+    ) {
+        self.text = text
+        self.kind = kind
+        self.cwd = cwd
+        self.attachments = attachments
+    }
+}
+
 public struct IslandState: Sendable, Equatable {
     var isCreatingTask: Bool {
         quickTask?.phase == .creating || (drop?.isBusy ?? false)
             || windowTask?.phase == .preparing || windowTask?.phase == .sending
+            || summon?.phase == .preparing || summon?.phase == .sending
     }
 
     public var rules: IslandRules
@@ -130,6 +178,11 @@ public struct IslandState: Sendable, Equatable {
     public internal(set) var dropHerdrCwds: [String] = []
     public internal(set) var dropDefaultCwd: String? = nil
     public internal(set) var agentWorktrees: [PaneID: String]
+    public internal(set) var summon: SummonTaskState?
+    public internal(set) var summonDraftRecovery: SummonDraftRecovery?
+    /// Nil until the app has asked the system. The summon card uses it to say
+    /// whether the selection can be carried at all.
+    public internal(set) var accessibilityTrusted: Bool?
 
     public init(
         rules: IslandRules = .default,
@@ -178,6 +231,9 @@ public struct IslandState: Sendable, Equatable {
         self.dropHerdrCwds = []
         self.dropDefaultCwd = nil
         self.agentWorktrees = [:]
+        self.summon = nil
+        self.summonDraftRecovery = nil
+        self.accessibilityTrusted = nil
     }
 
     public var environment: HerdrEnvironment? { setup.environment }

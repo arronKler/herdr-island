@@ -529,6 +529,7 @@ public enum DeliveryNoticeKind: Sendable, Equatable {
 
 public enum DeliveryNoticeAction: Sendable, Equatable {
     case openScreenRecording
+    case openAccessibility
     case jump(PaneID)
     case switchRecipient
 }
@@ -648,6 +649,9 @@ public struct DeliveryComposerPresentation: Sendable, Equatable {
     public let isEditable: Bool
     public let phaseLabel: String?
     public let hasWindow: Bool
+    /// What the summon will carry, shown as one muted line. Nil for the other
+    /// surfaces, which have no automatic context to describe.
+    public let contextSummary: String?
 
     public init(
         surface: DeliverySurface,
@@ -673,7 +677,8 @@ public struct DeliveryComposerPresentation: Sendable, Equatable {
         isLocked: Bool,
         isEditable: Bool,
         phaseLabel: String?,
-        hasWindow: Bool
+        hasWindow: Bool,
+        contextSummary: String? = nil
     ) {
         self.surface = surface
         self.text = text
@@ -699,5 +704,6 @@ public struct DeliveryComposerPresentation: Sendable, Equatable {
         self.isEditable = isEditable
         self.phaseLabel = phaseLabel
         self.hasWindow = hasWindow
+        self.contextSummary = contextSummary
     }
 }

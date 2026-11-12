@@ -65,6 +65,7 @@ public enum IslandPresenter {
         let windowLock = state.windowLock.map(WindowLockPresentation.init(target:))
         let windowTask = makeWindowTask(state)
         let drop = makeDrop(state)
+        let summon = makeSummon(state)
         let isVisible = isExpanded
             || drop != nil
             || state.dropActive
@@ -110,6 +111,7 @@ public enum IslandPresenter {
             dropletVisible: state.drop == nil,
             drop: drop,
             isDropActive: state.dropActive,
+            summon: summon,
             isDetailOpen: state.detailOpen,
             machineLabel: "本机",
             completionRemaining: completionRemaining,
@@ -222,9 +224,23 @@ public enum IslandPresenter {
         guard let composer = makeComposerPresentation(state, surface: .lock) else {
             return IslandGeometry.windowTaskSize.height
         }
-        var height: CGFloat = 44 + 24
+        return max(300, composerCardHeight(composer) + 16 + 28)
+    }
+
+    /// The summon panel is the card plus 16 pt of padding on every side.
+    private static func summonHeight(_ composer: DeliveryComposerPresentation) -> CGFloat {
+        max(180, composerCardHeight(composer) + 16 + 16)
+    }
+
+    /// The card's own height, including its 12 pt padding. Each host adds its
+    /// own gutter, so the card and its panel cannot disagree about the body.
+    private static func composerCardHeight(_ composer: DeliveryComposerPresentation) -> CGFloat {
+        var height: CGFloat = 24
         height += 28
         height += 8 + inputHeight(composer.text)
+        if composer.contextSummary != nil {
+            height += 6 + 16
+        }
         if !composer.attachments.isEmpty {
             let rows = attachmentRows(composer.attachments)
             height += 8 + CGFloat(rows) * 28 + CGFloat(rows - 1) * 4
@@ -238,7 +254,7 @@ public enum IslandPresenter {
             height += 8 + 40
         }
         height += 8 + 32
-        return max(300, height)
+        return height
     }
 
     /// The field reserves two lines (lineLimit 2...4) before any text exists,
@@ -342,7 +358,10 @@ public enum IslandPresenter {
             phaseBusy = task.phase != .composing
             hasWindow = task.window != nil
         case .summon:
-            return nil
+            guard let task = state.summon else { return nil }
+            draft = task.delivery
+            phaseBusy = task.phase != .editing
+            hasWindow = task.target != nil
         }
 
         let recipient = DeliveryPolicy.resolve(
@@ -402,7 +421,12 @@ public enum IslandPresenter {
         }
         let noticeRefusal = refusal ?? blockedRefusal
         let captureDenied = hasWindow && state.screenCaptureAuthorized == false
-        let creation = surface == .lock ? state.windowTask?.creation : state.drop?.creation
+        let creation: TaskCreationProgress?
+        switch surface {
+        case .lock: creation = state.windowTask?.creation
+        case .drop: creation = state.drop?.creation
+        case .summon: creation = state.summon?.creation
+        }
 
         var notices: [DeliveryNotice] = []
         // An outcome or a creation progress row replaces the pre-send warnings.
@@ -458,6 +482,13 @@ public enum IslandPresenter {
                     ))
                 }
             }
+            if surface == .summon, state.accessibilityTrusted == false {
+                notices.append(DeliveryNotice(
+                    kind: .muted,
+                    text: hasWindow ? "未授权辅助功能 · 只带窗口截图" : "未授权辅助功能 · 只发文字和文件",
+                    action: .openAccessibility
+                ))
+            }
         }
 
         // Only this surface's creation gates its own send: a drop stuck on an
@@ -478,6 +509,8 @@ public enum IslandPresenter {
             } else if surface == .drop, state.drop?.phase == .sending {
                 title = "发送中"
             } else if surface == .lock, state.windowTask?.phase == .sending {
+                title = "发送中"
+            } else if surface == .summon, state.summon?.phase == .sending {
                 title = "发送中"
             } else if hasWindow {
                 title = "截取中"
@@ -559,8 +592,32 @@ public enum IslandPresenter {
             isLocked: surface == .lock,
             isEditable: draft.isEditable && !phaseBusy,
             phaseLabel: nil,
-            hasWindow: hasWindow
+            hasWindow: hasWindow,
+            contextSummary: surface == .summon ? summonContextSummary(state, draft: draft) : nil
         )
+    }
+
+    /// One muted line naming what the summon will carry. It reads the same
+    /// context the prompt will, so the card cannot promise more than the send.
+    private static func summonContextSummary(_ state: IslandState, draft: DeliveryDraft) -> String {
+        var parts: [String] = []
+        if let target = state.summon?.target {
+            let app = target.appName.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !app.isEmpty { parts.append(app) }
+            let title = target.displayTitle
+            if !title.isEmpty, title != app {
+                parts.append(String(title.prefix(24)))
+            }
+        }
+        let context = draft.context
+        if let selected = context.selectedText, !selected.isEmpty {
+            let count = context.selectedTextOriginalCount ?? selected.count
+            parts.append("已选 \(count) 字")
+        }
+        if let url = context.url, !url.isEmpty { parts.append("链接") }
+        if let document = context.documentPath, !document.isEmpty { parts.append("文件") }
+        if state.summon?.target != nil { parts.append("窗口截图") }
+        return parts.isEmpty ? "仅文字" : parts.joined(separator: " · ")
     }
 
     private static func agentDisplayName(_ agent: Agent) -> String {
@@ -579,6 +636,18 @@ public enum IslandPresenter {
         )
         presentation.creation = task.creation
         return presentation
+    }
+
+    private static func makeSummon(_ state: IslandState) -> SummonPresentation? {
+        guard let task = state.summon,
+              let composer = makeComposerPresentation(state, surface: .summon) else { return nil }
+        return SummonPresentation(
+            composer: composer,
+            point: task.point,
+            height: summonHeight(composer),
+            appName: task.target?.appName,
+            windowTitle: task.target?.displayTitle
+        )
     }
 
     private static func makeDrop(_ state: IslandState) -> DropTaskPresentation? {

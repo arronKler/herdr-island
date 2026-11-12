@@ -79,6 +79,12 @@ public enum IslandEvent: Sendable, Equatable {
     case deliveryCreated(token: UUID, launch: TaskLaunchResult)
     case deliveryResult(token: UUID, result: Result<String, BackendFailure>)
     case resetTaskCreation
+    case openSummon(target: WindowTarget?, context: WindowContext, at: CGPoint, cwd: String, kind: AgentKindOption)
+    case closeSummon
+    case setSummonDraft(String)
+    case setSummonKind(AgentKindOption)
+    case setSummonCwd(String)
+    case accessibilityPermission(Bool)
     case setup(SetupEvent)
 }
 

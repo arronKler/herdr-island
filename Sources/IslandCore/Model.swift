@@ -811,6 +811,30 @@ public struct DropTaskPresentation: Sendable, Equatable {
     public var canSubmit: Bool { composer.send.canSubmit }
 }
 
+/// The composer summoned at the pointer. It is not an island surface: it has
+/// its own panel, so the deck, drop, and lock keep their own key state.
+public struct SummonPresentation: Sendable, Equatable {
+    public let composer: DeliveryComposerPresentation
+    public let point: CGPoint
+    public let height: CGFloat
+    public let appName: String?
+    public let windowTitle: String?
+
+    public init(
+        composer: DeliveryComposerPresentation,
+        point: CGPoint,
+        height: CGFloat,
+        appName: String? = nil,
+        windowTitle: String? = nil
+    ) {
+        self.composer = composer
+        self.point = point
+        self.height = height
+        self.appName = appName
+        self.windowTitle = windowTitle
+    }
+}
+
 public struct IslandPresentation: Sendable, Equatable {
     public let isVisible: Bool
     public let isExpanded: Bool
@@ -839,6 +863,7 @@ public struct IslandPresentation: Sendable, Equatable {
     public let dropletVisible: Bool
     public let drop: DropTaskPresentation?
     public let isDropActive: Bool
+    public let summon: SummonPresentation?
     public let isDetailOpen: Bool
     public let machineLabel: String
     /// Seconds left on the newest pending completion's hold. The peek's
@@ -876,6 +901,7 @@ public struct IslandPresentation: Sendable, Equatable {
         dropletVisible: Bool = true,
         drop: DropTaskPresentation? = nil,
         isDropActive: Bool = false,
+        summon: SummonPresentation? = nil,
         isDetailOpen: Bool = false,
         machineLabel: String = "本机",
         completionRemaining: TimeInterval = 0,
@@ -914,6 +940,7 @@ public struct IslandPresentation: Sendable, Equatable {
         self.dropletVisible = dropletVisible
         self.drop = drop
         self.isDropActive = isDropActive
+        self.summon = summon
         self.isDetailOpen = isDetailOpen
         self.machineLabel = machineLabel
         self.completionRemaining = completionRemaining

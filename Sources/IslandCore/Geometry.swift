@@ -186,6 +186,40 @@ public enum IslandGeometry {
         }
     }
 
+    /// Places the summon panel at the pointer, on the display that owns it, and
+    /// keeps it fully inside that display's visible area. `size` is the panel's
+    /// own size, including its padding. The card hangs 10 pt below the cursor;
+    /// near the bottom of the display it flips above instead of being clipped.
+    public static func summonFrame(
+        point: CGPoint,
+        size: CGSize,
+        screens: [ScreenMetrics]
+    ) -> CGRect {
+        let screen = screens.first { $0.screenFrame.contains(point) }
+            ?? screens.first
+        guard let screen else {
+            return CGRect(
+                x: point.x - size.width / 2,
+                y: point.y - 10 - size.height,
+                width: size.width,
+                height: size.height
+            )
+        }
+        let visible = screen.visibleFrame.insetBy(dx: 8, dy: 8)
+        let height = min(size.height, max(0, visible.height))
+        let width = min(size.width, max(0, visible.width))
+        let x = min(
+            max(point.x - width / 2, visible.minX),
+            max(visible.minX, visible.maxX - width)
+        )
+        var y = point.y - 10 - height
+        if y < visible.minY {
+            y = min(point.y + 10, visible.maxY - height)
+        }
+        y = max(y, visible.minY)
+        return CGRect(x: x, y: y, width: width, height: height)
+    }
+
     public static func isInsideNotch(_ point: CGPoint, placement: IslandPlacement) -> Bool {
         if case .notch(let notch, _) = placement {
             return notch.contains(point)

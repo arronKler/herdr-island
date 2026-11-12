@@ -30,6 +30,10 @@ public enum IslandReducer {
             pruneExpiredCompletions(&state, now: now)
             return []
         case .hotKey:
+            if state.summon != nil {
+                closeSummon(&state)
+                return []
+            }
             if state.quickTask != nil {
                 if state.quickTask?.phase != .creating {
                     saveQuickTaskDraftRecovery(&state)
@@ -55,6 +59,10 @@ public enum IslandReducer {
             return []
         case .escape:
             guard !state.isCreatingTask else { return [] }
+            if state.summon != nil {
+                closeSummon(&state)
+                return []
+            }
             if state.quickTask != nil {
                 saveQuickTaskDraftRecovery(&state)
                 state.quickTask = nil
@@ -538,6 +546,7 @@ public enum IslandReducer {
             state.mainAgent = MainAgentIdentity(agent)
             setRecipient(&state, .main, for: .lock)
             setRecipient(&state, .main, for: .drop)
+            setRecipient(&state, .main, for: .summon)
             return []
         case .setDeliveryRecipient(let surface, let mode):
             setRecipient(&state, mode, for: surface)
@@ -573,6 +582,50 @@ public enum IslandReducer {
             return finishDeliveryCreated(&state, token: token, launch: launch, now: now)
         case .deliveryResult(let token, let result):
             return finishDeliveryResult(&state, token: token, result: result)
+        case .openSummon(let target, let context, let point, let cwd, let kind):
+            guard state.setup.isReady, !state.isCreatingTask, !state.windowDragActive else { return [] }
+            bootstrapMainAgentIfNeeded(&state)
+            var delivery = DeliveryDraft(kind: kind, cwd: cwd, context: context)
+            if let recovery = state.summonDraftRecovery {
+                delivery.text = recovery.text
+                delivery.kind = recovery.kind
+                delivery.cwd = recovery.cwd
+                delivery.attachments = recovery.attachments
+                state.summonDraftRecovery = nil
+            }
+            state.summon = SummonTaskState(delivery: delivery, target: target, point: point)
+            state.banner = nil
+            return []
+        case .closeSummon:
+            closeSummon(&state)
+            return []
+        case .setSummonDraft(let text):
+            guard state.summon?.phase == .editing else { return [] }
+            let isTyping = !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            let clearsCreation = isTyping
+                && (state.summon?.delivery.outcome != nil || state.summon?.delivery.error != nil)
+            if clearsCreation {
+                state.summon?.creation = nil
+            }
+            updateDelivery(&state, surface: .summon) { draft in
+                draft.text = text
+                if isTyping {
+                    draft.outcome = nil
+                    draft.error = nil
+                }
+            }
+            return []
+        case .setSummonKind(let kind):
+            guard state.summon?.phase == .editing else { return [] }
+            state.summon?.delivery.kind = kind
+            return []
+        case .setSummonCwd(let path):
+            guard state.summon?.phase == .editing else { return [] }
+            state.summon?.delivery.cwd = path
+            return []
+        case .accessibilityPermission(let trusted):
+            state.accessibilityTrusted = trusted
+            return []
         case .setup(let event):
             return applySetup(&state, event)
         case .resetTaskCreation:
@@ -589,6 +642,10 @@ public enum IslandReducer {
                 state.windowTask?.draft = ""
                 state.windowTask?.creation = nil
                 state.windowTask?.error = nil
+            } else if state.summon?.delivery.error != nil {
+                state.summon?.delivery.text = ""
+                state.summon?.creation = nil
+                state.summon?.delivery.error = nil
             }
             state.banner = nil
             return []
@@ -673,6 +730,22 @@ public enum IslandReducer {
         state.dropDraftRecovery?.error = drop.error
     }
 
+    /// A sent message is history, not a draft: only unsent text or files come
+    /// back on the next summon.
+    private static func closeSummon(_ state: inout IslandState) {
+        guard let task = state.summon, task.phase == .editing else { return }
+        let hasWork = !task.delivery.trimmedText.isEmpty || !task.delivery.attachments.isEmpty
+        if hasWork, task.delivery.outcome == nil {
+            state.summonDraftRecovery = SummonDraftRecovery(
+                text: task.delivery.text,
+                kind: task.delivery.kind,
+                cwd: task.delivery.cwd,
+                attachments: task.delivery.attachments
+            )
+        }
+        state.summon = nil
+    }
+
     private static func toggleWindowTaskVisibility(_ state: inout IslandState) {
         if state.windowTaskHidden {
             state.windowTaskHidden = false
@@ -739,7 +812,9 @@ public enum IslandReducer {
             body(&drop.delivery)
             state.drop = drop
         case .summon:
-            break
+            guard var task = state.summon else { return }
+            body(&task.delivery)
+            state.summon = task
         }
     }
 
@@ -750,7 +825,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: state.windowTask?.delivery
         case .drop: state.drop?.delivery
-        case .summon: nil
+        case .summon: state.summon?.delivery
         }
     }
 
@@ -802,7 +877,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: phaseIsEditable = state.windowTask?.phase == .editing
         case .drop: phaseIsEditable = state.drop?.phase == .composing
-        case .summon: phaseIsEditable = false
+        case .summon: phaseIsEditable = state.summon?.phase == .editing
         }
         guard phaseIsEditable else { return [] }
         if creation(state, surface: surface)?.canRetry == false { return [] }
@@ -996,6 +1071,8 @@ public enum IslandReducer {
             guard var task = state.windowTask else { return [] }
             task.creation = progress
             state.windowTask = task
+        } else if state.summon?.delivery.pendingToken == token {
+            state.summon?.creation = progress
         } else if state.drop?.delivery.pendingToken == token {
             guard var drop = state.drop, drop.phase != .composing else { return [] }
             drop.creation = progress
@@ -1032,6 +1109,27 @@ public enum IslandReducer {
             task.delivery.error = nil
             task.phase = .editing
             state.windowTask = task
+            state.banner = Banner(
+                text: "已创建 \(launch.name)，正在跟踪。",
+                isError: false,
+                source: .send
+            )
+        } else if state.summon?.delivery.pendingToken == token {
+            guard var task = state.summon else { return [] }
+            let prior = task.creation
+            task.creation = TaskCreationProgress(
+                stage: prior?.stage ?? .workspace,
+                startedAt: prior?.startedAt ?? now,
+                pane: launch.pane
+            )
+            task.delivery.pendingToken = nil
+            task.delivery.outcome = .created(launch.name, launch.pane)
+            task.delivery.text = ""
+            task.delivery.attachments = []
+            task.delivery.attachmentWarning = nil
+            task.delivery.error = nil
+            task.phase = .editing
+            state.summon = task
             state.banner = Banner(
                 text: "已创建 \(launch.name)，正在跟踪。",
                 isError: false,
@@ -1175,7 +1273,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: state.windowLock
         case .drop: state.drop?.window
-        case .summon: nil
+        case .summon: state.summon?.target
         }
     }
 
@@ -1198,7 +1296,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: state.windowTask?.delivery = draft
         case .drop: state.drop?.delivery = draft
-        case .summon: break
+        case .summon: state.summon?.delivery = draft
         }
     }
 
@@ -1238,7 +1336,7 @@ public enum IslandReducer {
             case .sending: state.drop?.phase = .sending
             }
         case .summon:
-            break
+            state.summon?.phase = phase
         }
     }
 
@@ -1260,7 +1358,7 @@ public enum IslandReducer {
                 state.drop?.creation = nil
             }
         case .summon:
-            break
+            state.summon?.phase = .sending
         }
     }
 
@@ -1271,7 +1369,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: state.windowTask?.creation
         case .drop: state.drop?.creation
-        case .summon: nil
+        case .summon: state.summon?.creation
         }
     }
 
@@ -1283,7 +1381,7 @@ public enum IslandReducer {
         switch surface {
         case .lock: state.windowTask?.creation = creation
         case .drop: state.drop?.creation = creation
-        case .summon: break
+        case .summon: state.summon?.creation = creation
         }
     }
 
@@ -1293,6 +1391,7 @@ public enum IslandReducer {
     ) -> DeliverySurface? {
         if state.windowTask?.delivery.pendingToken == token { return .lock }
         if state.drop?.delivery.pendingToken == token { return .drop }
+        if state.summon?.delivery.pendingToken == token { return .summon }
         return nil
     }
 
@@ -1620,6 +1719,9 @@ public enum IslandReducer {
         if state.drop?.delivery.outcome == .queued {
             state.drop?.delivery.outcome = nil
         }
+        if state.summon?.delivery.outcome == .queued {
+            state.summon?.delivery.outcome = nil
+        }
     }
 
     private static func applySampleFailure(
@@ -1913,6 +2015,9 @@ public enum IslandReducer {
                 }
                 if state.drop?.delivery.outcome == .queued {
                     state.drop?.delivery.outcome = .sent(name)
+                }
+                if state.summon?.delivery.outcome == .queued {
+                    state.summon?.delivery.outcome = .sent(name)
                 }
                 state.banner = Banner(text: "已发送给 \(name)。", isError: false, source: .send)
             } else {
