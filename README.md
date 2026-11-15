@@ -310,8 +310,11 @@ app reads the stable feed at
 release is enough; the site does not need to change. `latest` excludes prereleases, which means
 prereleases are manual downloads.
 
-The Homebrew cask lives in a separate repo, `arronKler/homebrew-tap`. After publishing a release,
-point it at the new archive:
+The Homebrew cask lives in a separate repo, `arronKler/homebrew-tap`. Its own workflow reads the
+latest release once a day, downloads the archive, checks it against the published `.sha256`, and
+commits the new version, so a release reaches the tap within a day with no cross-repo secret.
+
+To move it immediately, run the bump script against a tap checkout:
 
 ```bash
 Scripts/bump-tap.sh 0.3.0 ../homebrew-tap

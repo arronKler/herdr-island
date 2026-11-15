@@ -233,7 +233,9 @@ Scripts/make-release.sh 0.1.0
 
 release 工作流还会生成签名 `appcast.xml` 并作为 Release 资产上传。应用读取稳定地址 `https://github.com/arronKler/herdr-island/releases/latest/download/appcast.xml`，所以发布 Release 就够了，不需要改站点。`latest` 不包含 prerelease，因此 prerelease 版本需要手动下载。
 
-Homebrew cask 放在单独的仓库 `arronKler/homebrew-tap`。发布 Release 之后，把它指向新的压缩包：
+Homebrew cask 放在单独的仓库 `arronKler/homebrew-tap`。它自己的 workflow 每天读取一次最新 release，下载压缩包，用已发布的 `.sha256` 校验，然后提交新版本；所以发版后一天内 cask 会自动跟上，不需要跨仓库密钥。
+
+想立刻更新，对 tap 检出运行 bump 脚本：
 
 ```bash
 Scripts/bump-tap.sh 0.3.0 ../homebrew-tap
