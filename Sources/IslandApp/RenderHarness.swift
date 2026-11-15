@@ -332,7 +332,7 @@ enum RenderHarness {
             height: 560,
             name: "recipient-switcher-crowded",
             into: directoryURL,
-            settle: true
+            settled: true
         )
 
         guard crowdedHeight <= bound else {
@@ -368,19 +368,35 @@ enum RenderHarness {
         let hosting = NSHostingView(
             rootView: RecipientSwitcher(composer: composer, actions: .noop, dismiss: {})
         )
+        hosting.frame = NSRect(
+            x: 0,
+            y: 0,
+            width: 300,
+            height: IslandGeometry.recipientPickerMaxHeight
+        )
+        let window = settle(hosting)
+        defer { window.orderOut(nil) }
+        return firstScrollView(in: hosting)?.contentView.bounds.origin.y ?? 0
+    }
+
+    /// Mounts the view in a window and turns the run loop, which is when
+    /// onAppear work such as the picker's first scroll runs. The window has to
+    /// be attached before the first layout, and it stays up through any
+    /// capture, because ordering it out resets the scroll.
+    @MainActor
+    private static func settle(_ hosting: NSView) -> NSWindow {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 300, height: IslandGeometry.recipientPickerMaxHeight),
+            contentRect: hosting.frame,
             styleMask: [.borderless],
             backing: .buffered,
             defer: false
         )
         window.contentView = hosting
         window.orderFront(nil)
+        hosting.layoutSubtreeIfNeeded()
         RunLoop.current.run(until: Date().addingTimeInterval(0.4))
         hosting.layoutSubtreeIfNeeded()
-        let offset = firstScrollView(in: hosting)?.contentView.bounds.origin.y ?? 0
-        window.orderOut(nil)
-        return offset
+        return window
     }
 
     @MainActor
@@ -419,29 +435,12 @@ enum RenderHarness {
         height: Int,
         name: String,
         into directoryURL: URL,
-        settle: Bool = false
+        settled: Bool = false
     ) -> [String: Any]? {
         let hosting = NSHostingView(rootView: view)
         hosting.frame = NSRect(x: 0, y: 0, width: width, height: height)
-        hosting.layoutSubtreeIfNeeded()
-        var window: NSWindow?
-        if settle {
-            // onAppear work such as the picker's first scroll only runs once the
-            // view is in a window and the run loop turns. The window stays up
-            // through the capture, because ordering it out resets the scroll.
-            let frame = NSWindow(
-                contentRect: hosting.frame,
-                styleMask: [.borderless],
-                backing: .buffered,
-                defer: false
-            )
-            frame.contentView = hosting
-            frame.orderFront(nil)
-            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
-            hosting.layoutSubtreeIfNeeded()
-            appLog("probe: \(name) offset=\(firstScrollView(in: hosting)?.contentView.bounds.origin.y ?? -1)")
-            window = frame
-        }
+        let window = settled ? settle(hosting) : nil
+        if !settled { hosting.layoutSubtreeIfNeeded() }
         defer { window?.orderOut(nil) }
 
         guard let rep = NSBitmapImageRep(
