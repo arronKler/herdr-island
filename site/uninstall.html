@@ -94,6 +94,9 @@
               <li><strong>Delete the app and local data.</strong> Removes screenshots, pasted images, and preferences. Permissions may remain in System Settings.</li>
               <li><strong>Delete everything.</strong> Also removes the Automation, Screen Recording, and Accessibility grants. This is the full removal described below.</li>
             </ul>
+            <p>If you installed with Homebrew, one command does the app, the data, and the preference domain:</p>
+            <pre><code>brew uninstall --cask --zap herdr-island</code></pre>
+            <p>It does not remove the permission grants; do those in the next section. The manual steps below cover a drag-installed copy.</p>
             <p>If you only want to reset a broken install, keep the local data and remove the app plus its permissions; see <a href="#reinstall">Clean reinstall</a>.</p>
           </section>
 

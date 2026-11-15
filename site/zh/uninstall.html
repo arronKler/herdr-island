@@ -94,6 +94,9 @@
               <li><strong>删应用和本地数据。</strong>移除截图、粘贴图片和偏好；系统设置里的权限可能仍然保留。</li>
               <li><strong>全部删除。</strong>再移除自动化、屏幕录制和辅助功能授权。这就是下面这份完整流程。</li>
             </ul>
+            <p>用 Homebrew 安装的话，一条命令就能删掉应用、本地数据和偏好域：</p>
+            <pre><code>brew uninstall --cask --zap herdr-island</code></pre>
+            <p>它不会移除权限授权，那部分在下一节处理。下面的手动步骤适用于拖拽安装的副本。</p>
             <p>如果只是想修复一次损坏的安装，保留本地数据，只删应用和权限即可；见<a href="#reinstall">干净重装</a>。</p>
           </section>
 

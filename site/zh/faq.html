@@ -316,6 +316,7 @@ chmod -R u+w ~/Downloads/HerdrIsland.app/Contents/Resources
 xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
                 <p>请在首次打开前运行这两条命令，再移动应用。第一条也修复 v0.2.1 的只读资源；已安装的应用可能受应用管理保护。若双击完全没反应，请按<a href="known-issues.html#install">新副本恢复步骤</a>处理。</p>
                 <p>也可以在系统设置 → 隐私与安全性里点「仍要打开」。具体步骤见<a href="index.html#install">安装</a>。</p>
+                <p>用 Homebrew 的话运行 <code>brew install --cask arronKler/tap/herdr-island</code>。它会解压 release 并把应用放进 <code>/Applications</code>，但会保留 quarantine 标记，所以上面的首次放行仍然需要。Homebrew 6 起，第三方 tap 需要先信任一次：<code>brew trust --cask arronkler/tap/herdr-island</code>。</p>
               </div>
             </details>
 

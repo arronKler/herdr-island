@@ -316,6 +316,7 @@ chmod -R u+w ~/Downloads/HerdrIsland.app/Contents/Resources
 xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>
                 <p>Run both commands before the first launch, then move the app. The first repairs the read-only resource in v0.2.1. App Management may prevent changes to an installed app. If opening the app does nothing, follow the <a href="known-issues.html#install">fresh-copy recovery steps</a>.</p>
                 <p>You can also click "Open Anyway" in System Settings → Privacy &amp; Security. The full walkthrough is in <a href="index.html#install">Install</a>.</p>
+                <p>With Homebrew, run <code>brew install --cask arronKler/tap/herdr-island</code>. It unzips the release and moves the app into <code>/Applications</code>, but it keeps the quarantine flag, so the first-launch approval above still applies. Homebrew 6 and later ask you to trust a third-party tap once with <code>brew trust --cask arronkler/tap/herdr-island</code>.</p>
               </div>
             </details>
 
