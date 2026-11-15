@@ -107,7 +107,7 @@
             </ol>
             <p>If you use Homebrew, the project ships its own tap. It unzips the release and moves the app into <code>/Applications</code>, but it does not clear the quarantine flag, so the first-launch approval above still applies:</p>
             <pre><code>brew install --cask arronKler/tap/herdr-island</code></pre>
-            <p>Updates stay with the app's own updater. <code>brew uninstall --cask --zap herdr-island</code> removes the app and its saved state.</p>
+            <p>Updates stay with the app's own updater. <code>brew uninstall --cask --zap herdr-island</code> removes the app and its saved state. The install command needs no extra step, because the fully qualified name records trust for the cask as it installs. Homebrew 6 and later refuse to load a third-party cask from an untrusted tap, so to install or upgrade by short name first run <code>brew trust --cask arronkler/tap/herdr-island</code>, or trust the whole tap with <code>brew trust arronkler/tap</code>.</p>
             <p>Alternatively, run both commands on a freshly extracted copy before its first launch, then move it into /Applications:</p>
             <pre><code>chmod -R u+w ~/Downloads/HerdrIsland.app/Contents/Resources
 xattr -dr com.apple.quarantine ~/Downloads/HerdrIsland.app</code></pre>

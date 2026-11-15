@@ -161,6 +161,11 @@ quarantine flag on the app, so the first-launch approval in step 2 below applies
 to the app's own updater, and `brew uninstall --cask --zap herdr-island` removes the app and its
 saved state.
 
+That command needs no extra step because the fully qualified name records trust for the cask as it
+installs. Homebrew 6 and later refuse to load a third-party cask from an untrusted tap, so to install
+or upgrade by short name first run `brew trust --cask arronkler/tap/herdr-island`, or trust the
+whole tap with `brew trust arronkler/tap`.
+
 1. Download `HerdrIsland-<version>.zip`, unzip it, and move `HerdrIsland.app` into
    `/Applications`.
 
