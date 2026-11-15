@@ -310,6 +310,16 @@ app reads the stable feed at
 release is enough; the site does not need to change. `latest` excludes prereleases, which means
 prereleases are manual downloads.
 
+The Homebrew cask lives in a separate repo, `arronKler/homebrew-tap`. After publishing a release,
+point it at the new archive:
+
+```bash
+Scripts/bump-tap.sh 0.3.0 ../homebrew-tap
+```
+
+It reads the published `.sha256`, rewrites the cask, and commits and pushes the tap. It is a no-op
+when the cask already matches.
+
 The site is deployed by `.github/workflows/pages.yml`. Push changes under `site/` and the workflow
 checks local links and same-page anchors with `Scripts/check-site.py`, then uploads `site/` to
 GitHub Pages. Preview locally with:
