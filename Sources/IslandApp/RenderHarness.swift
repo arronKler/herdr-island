@@ -331,7 +331,8 @@ enum RenderHarness {
             width: 360,
             height: 560,
             name: "recipient-switcher-crowded",
-            into: directoryURL
+            into: directoryURL,
+            settle: true
         )
 
         guard crowdedHeight <= bound else {
@@ -342,7 +343,53 @@ enum RenderHarness {
             appLog("render: recipient-switcher small height \(smallHeight) exceeds crowded \(crowdedHeight)")
             return false
         }
+        // The list opens on the current main agent, which sits far down a large
+        // fleet. Without the first scroll the picker would open on the top of
+        // the list, so the agent the user is about to send to is off screen.
+        let crowdedOffset = scrollOffset(of: crowded)
+        let smallOffset = scrollOffset(of: small)
+        appLog(
+            "render: recipient-switcher scroll crowded=\(crowdedOffset) small=\(smallOffset)"
+        )
+        guard crowdedOffset > 0 else {
+            appLog("render: recipient-switcher did not scroll to the current main agent")
+            return false
+        }
+        guard smallOffset == 0 else {
+            appLog("render: recipient-switcher scrolled a list that fits")
+            return false
+        }
         return true
+    }
+
+    /// The offset the picker's list settles on once its first scroll has run.
+    @MainActor
+    private static func scrollOffset(of composer: DeliveryComposerPresentation) -> CGFloat {
+        let hosting = NSHostingView(
+            rootView: RecipientSwitcher(composer: composer, actions: .noop, dismiss: {})
+        )
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 300, height: IslandGeometry.recipientPickerMaxHeight),
+            styleMask: [.borderless],
+            backing: .buffered,
+            defer: false
+        )
+        window.contentView = hosting
+        window.orderFront(nil)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+        hosting.layoutSubtreeIfNeeded()
+        let offset = firstScrollView(in: hosting)?.contentView.bounds.origin.y ?? 0
+        window.orderOut(nil)
+        return offset
+    }
+
+    @MainActor
+    private static func firstScrollView(in view: NSView) -> NSScrollView? {
+        if let scroll = view as? NSScrollView { return scroll }
+        for subview in view.subviews {
+            if let found = firstScrollView(in: subview) { return found }
+        }
+        return nil
     }
 
     @MainActor
@@ -371,11 +418,31 @@ enum RenderHarness {
         width: Int,
         height: Int,
         name: String,
-        into directoryURL: URL
+        into directoryURL: URL,
+        settle: Bool = false
     ) -> [String: Any]? {
         let hosting = NSHostingView(rootView: view)
         hosting.frame = NSRect(x: 0, y: 0, width: width, height: height)
         hosting.layoutSubtreeIfNeeded()
+        var window: NSWindow?
+        if settle {
+            // onAppear work such as the picker's first scroll only runs once the
+            // view is in a window and the run loop turns. The window stays up
+            // through the capture, because ordering it out resets the scroll.
+            let frame = NSWindow(
+                contentRect: hosting.frame,
+                styleMask: [.borderless],
+                backing: .buffered,
+                defer: false
+            )
+            frame.contentView = hosting
+            frame.orderFront(nil)
+            RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+            hosting.layoutSubtreeIfNeeded()
+            appLog("probe: \(name) offset=\(firstScrollView(in: hosting)?.contentView.bounds.origin.y ?? -1)")
+            window = frame
+        }
+        defer { window?.orderOut(nil) }
 
         guard let rep = NSBitmapImageRep(
             bitmapDataPlanes: nil,

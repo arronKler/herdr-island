@@ -953,8 +953,18 @@ struct RecipientSwitcher: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 14)
             } else {
-                ForEach(composer.recipients) { option in
-                    recipientRow(option)
+                ScrollViewReader { proxy in
+                    ScrollView(.vertical, showsIndicators: true) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(composer.recipients) { option in
+                                recipientRow(option)
+                            }
+                        }
+                    }
+                    .onAppear {
+                        guard let pane = composer.recipient.pane else { return }
+                        proxy.scrollTo(pane, anchor: .center)
+                    }
                 }
             }
 
@@ -981,6 +991,7 @@ struct RecipientSwitcher: View {
         }
         .padding(5)
         .frame(width: 300)
+        .frame(maxHeight: IslandGeometry.recipientPickerMaxHeight)
         .background(Theme.raised)
         .preferredColorScheme(.dark)
     }
