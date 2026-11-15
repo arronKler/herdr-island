@@ -54,9 +54,13 @@ ruby -c "$CASK"
 
 cd "$TAP"
 git add Casks/herdr-island.rb
+if ! git config user.email >/dev/null 2>&1; then
+  export GIT_AUTHOR_NAME="Herdr Island release" GIT_AUTHOR_EMAIL="release@herdr.dev"
+  export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME" GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL"
+fi
 git commit -q -m "Update Herdr Island to $VERSION"
-git push origin HEAD 2>/dev/null || {
+if ! git push origin HEAD; then
   echo "committed but not pushed; push from $TAP when ready" >&2
   exit 1
-}
+fi
 echo "tap updated to $VERSION ($SHA)"
