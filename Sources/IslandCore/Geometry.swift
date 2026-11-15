@@ -52,6 +52,8 @@ public enum IslandGeometry {
     public static let dropCanvasSize = CGSize(width: 720, height: 640)
     public static let quickTaskSize = CGSize(width: 420, height: 196)
     public static let windowTaskSize = CGSize(width: 380, height: 510)
+    /// The recipient picker bounds its list so the popover always fits on screen.
+    public static let recipientPickerMaxHeight: CGFloat = 352
     public static let notchEarWidth: CGFloat = 72
     /// The droplet hangs below the menu-bar band. The ambient window keeps a
     /// transparent lip so the drop is visible instead of hiding behind the

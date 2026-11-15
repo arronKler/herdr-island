@@ -105,6 +105,10 @@ enum RenderHarness {
             failures += 1
         }
 
+        if !measureRecipientSwitcher(into: directoryURL) {
+            failures += 1
+        }
+
         if let scene = renderAgentMarks(into: directoryURL) {
             scenes.append(scene)
         } else {
@@ -291,6 +295,63 @@ enum RenderHarness {
             name: "recipient-switcher",
             into: directoryURL
         )
+    }
+
+    /// A popover sizes itself to its content, so the switcher's fitted height is
+    /// what the window server will actually place on screen. A fleet bigger
+    /// than the display used to push the bottom rows off it.
+    @MainActor
+    private static func measureRecipientSwitcher(into directoryURL: URL) -> Bool {
+        guard let crowded = Fixtures.presentation(named: .mainAgentCrowded).windowTask?.composer else {
+            appLog("render: crowded switcher fixture has no window composer")
+            return false
+        }
+        guard let small = Fixtures.presentation(named: .mainAgentLock).windowTask?.composer else {
+            appLog("render: switcher fixture has no window composer")
+            return false
+        }
+        let crowdedHeight = fittedHeight(of: crowded)
+        let smallHeight = fittedHeight(of: small)
+        let bound = IslandGeometry.recipientPickerMaxHeight
+        appLog(
+            "render: recipient-switcher crowded agents=\(crowded.recipients.count) "
+                + "height=\(crowdedHeight) small agents=\(small.recipients.count) "
+                + "height=\(smallHeight) bound=\(bound)"
+        )
+
+        let view = VStack(spacing: 0) {
+            RecipientSwitcher(composer: crowded, actions: .noop, dismiss: {})
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .frame(width: 360, height: 560, alignment: .top)
+        .background(Theme.ink)
+        _ = rasterize(
+            view,
+            width: 360,
+            height: 560,
+            name: "recipient-switcher-crowded",
+            into: directoryURL
+        )
+
+        guard crowdedHeight <= bound else {
+            appLog("render: recipient-switcher crowded height \(crowdedHeight) exceeds \(bound)")
+            return false
+        }
+        guard smallHeight <= crowdedHeight else {
+            appLog("render: recipient-switcher small height \(smallHeight) exceeds crowded \(crowdedHeight)")
+            return false
+        }
+        return true
+    }
+
+    @MainActor
+    private static func fittedHeight(of composer: DeliveryComposerPresentation) -> CGFloat {
+        let hosting = NSHostingView(
+            rootView: RecipientSwitcher(composer: composer, actions: .noop, dismiss: {})
+        )
+        hosting.layoutSubtreeIfNeeded()
+        return hosting.fittingSize.height
     }
 
     @MainActor

@@ -19,6 +19,7 @@ public enum FixtureName: String, CaseIterable, Sendable {
     case drop
     case dropWindow
     case mainAgentLock
+    case mainAgentCrowded
     case mainAgentFiles
     case mainAgentQueued
     case mainAgentMissing
@@ -192,7 +193,7 @@ public enum Fixtures {
                 ),
                 now: now
             )
-        case .mainAgentLock:
+        case .mainAgentLock, .mainAgentCrowded:
             _ = IslandReducer.reduce(
                 &state,
                 .lockWindow(
@@ -451,6 +452,8 @@ public enum Fixtures {
             return snapshot(for: .collapsed)
         case .mainAgentBlocked:
             return snapshot(for: .blocked)
+        case .mainAgentCrowded:
+            return crowdedSnapshot()
         case .mainAgentMissing:
             return snapshot(for: .collapsed)
         case .deckRunning:
@@ -493,6 +496,43 @@ public enum Fixtures {
                 agent("w1:p3", "claude", "Write the release notes", "herdr-core", .idle, completionSeq: 10),
             ]
         )
+    }
+
+    /// A live fleet large enough to overflow any popover that sizes itself to
+    /// its content. The picker has to bound the list, not the screen.
+    private static func crowdedSnapshot() -> AgentSnapshot {
+        let projects = ["herdr-core", "island", "infra", "checkout", "tools"]
+        let kinds = ["claude", "codex", "cursor", "gemini", "terminal"]
+        let titles = [
+            "Refactor the parser", "Audit the deploy script", "Write the release notes",
+            "Run the integration suite", "Review auth redirects", "Trace the geometry regression",
+            "Fix the flaky login test", "Summarize the migration plan", "Polish the settings copy",
+            "Watch the test runner", "Port the tail renderer", "Draft the rollout plan",
+            "Check the Q4 numbers", "Narrow the preview panel", "Split the socket reader",
+            "Re-run the visual diff", "Tighten the retry cap", "Collect the blocked notices",
+            "Verify the tap install", "Trim the CLI flags", "Rebuild the fixture set",
+            "Log the idle CPU sample", "Compare the two layouts", "Close the stale worktree",
+            "Rename the delivery card",
+        ]
+        let agents = titles.enumerated().map { index, title in
+            let status: AgentStatus
+            switch index {
+            case 0: status = .blocked
+            case 1, 4, 6, 9, 12, 15, 18, 21: status = .working
+            case 2, 7, 11, 16, 20, 23: status = .done
+            default: status = .idle
+            }
+            return agent(
+                "w1:p\(index + 1)",
+                kinds[index % kinds.count],
+                title,
+                projects[index % projects.count],
+                status,
+                completionSeq: status == .done ? UInt64(20 + index) : nil,
+                stateChangeSeq: status == .blocked ? 42 : 0
+            )
+        }
+        return AgentSnapshot(generation: 1, sampledAt: now, agents: agents)
     }
 
     /// Generation 2 drops the pane the main agent identity pointed at, which
