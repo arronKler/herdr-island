@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import IslandCore
 import SwiftUI
@@ -926,6 +927,9 @@ struct RecipientSwitcher: View {
     let actions: IslandViewActions
     var dismiss: () -> Void
 
+    @State private var highlighted: PaneID?
+    @State private var keyMonitor: Any?
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .firstTextBaseline) {
@@ -962,8 +966,10 @@ struct RecipientSwitcher: View {
                         }
                     }
                     .onAppear {
-                        guard let pane = composer.recipient.pane else { return }
-                        proxy.scrollTo(pane, anchor: .center)
+                        scroll(proxy)
+                    }
+                    .onChange(of: highlighted) { _, _ in
+                        scroll(proxy)
                     }
                 }
             }
@@ -994,10 +1000,69 @@ struct RecipientSwitcher: View {
         .frame(maxHeight: IslandGeometry.recipientPickerMaxHeight)
         .background(Theme.raised)
         .preferredColorScheme(.dark)
+        .onAppear {
+            if highlighted == nil {
+                highlighted = RecipientPickerNavigation.initial(
+                    recipients: composer.recipients,
+                    current: composer.recipient.pane
+                )
+            }
+            installKeyMonitor()
+        }
+        .onDisappear {
+            if let keyMonitor { NSEvent.removeMonitor(keyMonitor) }
+            keyMonitor = nil
+        }
+    }
+
+    private func scroll(_ proxy: ScrollViewProxy) {
+        guard let pane = highlighted ?? composer.recipient.pane else { return }
+        proxy.scrollTo(pane, anchor: .center)
+    }
+
+    /// The popover is its own window, so the panel's key monitor never sees
+    /// these events. The class check keeps the monitor inert once the popover
+    /// is gone but the view has not disappeared yet.
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown]) { event in
+            guard event.window?.className.contains("Popover") == true else { return event }
+            return MainActor.assumeIsolated { handleKey(event) }
+        }
+    }
+
+    private func handleKey(_ event: NSEvent) -> NSEvent? {
+        switch event.keyCode {
+        case 126:
+            highlighted = RecipientPickerNavigation.move(
+                highlighted, by: -1, in: composer.recipients
+            )
+            return nil
+        case 125:
+            highlighted = RecipientPickerNavigation.move(
+                highlighted, by: 1, in: composer.recipients
+            )
+            return nil
+        case 36, 76:
+            commit()
+            return nil
+        case 53:
+            dismiss()
+            return nil
+        default:
+            return event
+        }
+    }
+
+    private func commit() {
+        guard let highlighted else { return }
+        actions.setMainAgent(highlighted)
+        dismiss()
     }
 
     private func recipientRow(_ option: DeliveryRecipientOption) -> some View {
         let current = option.pane == composer.recipient.pane
+        let isHighlighted = option.pane == highlighted
         return Button {
             actions.setMainAgent(option.pane)
             dismiss()
@@ -1007,7 +1072,7 @@ struct RecipientSwitcher: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(option.name)
                         .font(Theme.sans(11.5, weight: .semibold))
-                        .foregroundStyle(current ? Theme.amber : Theme.textPrimary)
+                        .foregroundStyle(isHighlighted ? Theme.amber : Theme.textPrimary)
                         .lineLimit(1)
                     HStack(spacing: 5) {
                         Circle()
@@ -1046,7 +1111,7 @@ struct RecipientSwitcher: View {
             .padding(7)
             .background(
                 RoundedRectangle(cornerRadius: 8)
-                    .fill(current ? Theme.amberWash : Color.clear)
+                    .fill(isHighlighted ? Theme.amberWash : Color.clear)
             )
             .contentShape(Rectangle())
         }
