@@ -326,15 +326,6 @@ enum RenderHarness {
         .padding(20)
         .frame(width: 360, height: 560, alignment: .top)
         .background(Theme.ink)
-        _ = rasterize(
-            view,
-            width: 360,
-            height: 560,
-            name: "recipient-switcher-crowded",
-            into: directoryURL,
-            settled: true
-        )
-
         guard crowdedHeight <= bound else {
             appLog("render: recipient-switcher crowded height \(crowdedHeight) exceeds \(bound)")
             return false
@@ -346,8 +337,24 @@ enum RenderHarness {
         // The list opens on the current main agent, which sits far down a large
         // fleet. Without the first scroll the picker would open on the top of
         // the list, so the agent the user is about to send to is off screen.
-        let crowdedOffset = scrollOffset(of: crowded)
-        let smallOffset = scrollOffset(of: small)
+        // Both the capture and the measurement need the view attached to a
+        // window, and a window makes SwiftUI build a Metal layer, which aborts
+        // on a runner whose device reports no architecture. That abort would
+        // take the whole render with it, so both run in their own process, and
+        // a capture that does not scroll is better than no capture at all.
+        guard let offsets = windowScrollOffsets(into: directoryURL) else {
+            appLog("render: recipient-switcher window check skipped; no Metal device here")
+            _ = rasterize(
+                view,
+                width: 360,
+                height: 560,
+                name: "recipient-switcher-crowded",
+                into: directoryURL
+            )
+            return true
+        }
+        let crowdedOffset = offsets.crowded
+        let smallOffset = offsets.small
         appLog(
             "render: recipient-switcher scroll crowded=\(crowdedOffset) small=\(smallOffset)"
         )
@@ -360,6 +367,84 @@ enum RenderHarness {
             return false
         }
         return true
+    }
+
+    struct WindowScrollOffsets {
+        var crowded: CGFloat
+        var small: CGFloat
+    }
+
+    /// The scroll as measured in a fresh process, or nil when that process died
+    /// on a signal, which is how the Metal abort arrives.
+    @MainActor
+    private static func windowScrollOffsets(
+        into directoryURL: URL
+    ) -> WindowScrollOffsets? {
+        guard let executable = Bundle.main.executableURL else { return nil }
+        let report = directoryURL.appendingPathComponent("window-check.json")
+        try? FileManager.default.removeItem(at: report)
+
+        let child = Process()
+        child.executableURL = executable
+        child.arguments = ["--render-window-check", directoryURL.path]
+        child.standardOutput = FileHandle.nullDevice
+        child.standardError = FileHandle.nullDevice
+        do {
+            try child.run()
+        } catch {
+            appLog("render: could not start the window check: \(error.localizedDescription)")
+            return nil
+        }
+        child.waitUntilExit()
+        guard child.terminationReason == .exit, child.terminationStatus == 0 else {
+            return nil
+        }
+        guard let data = try? Data(contentsOf: report),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Double],
+              let crowded = object["crowded"], let small = object["small"] else {
+            return nil
+        }
+        return WindowScrollOffsets(crowded: crowded, small: small)
+    }
+
+    /// Writes the picker's first scroll for both fixtures and the crowded
+    /// capture. Runs in its own process because mounting a window can abort
+    /// before any of this returns.
+    @MainActor
+    static func runWindowCheck(directory: String) -> Int32 {
+        let directoryURL = URL(fileURLWithPath: (directory as NSString).expandingTildeInPath)
+        guard let crowded = Fixtures.presentation(named: .mainAgentCrowded).windowTask?.composer,
+              let small = Fixtures.presentation(named: .mainAgentLock).windowTask?.composer else {
+            return 1
+        }
+        let view = VStack(spacing: 0) {
+            RecipientSwitcher(composer: crowded, actions: .noop, dismiss: {})
+            Spacer(minLength: 0)
+        }
+        .padding(20)
+        .frame(width: 360, height: 560, alignment: .top)
+        .background(Theme.ink)
+        guard rasterize(
+            view,
+            width: 360,
+            height: 560,
+            name: "recipient-switcher-crowded",
+            into: directoryURL,
+            settled: true
+        ) != nil else {
+            return 1
+        }
+        let payload: [String: Double] = [
+            "crowded": scrollOffset(of: crowded),
+            "small": scrollOffset(of: small),
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: payload) else { return 1 }
+        do {
+            try data.write(to: directoryURL.appendingPathComponent("window-check.json"))
+        } catch {
+            return 1
+        }
+        return 0
     }
 
     /// The offset the picker's list settles on once its first scroll has run.

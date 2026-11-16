@@ -4,6 +4,7 @@ import HerdrKit
 
 struct LaunchOptions {
     var renderDirectory: String?
+    var renderWindowCheckDirectory: String?
     var printState = false
     var noAutoExpand = false
     var demo = false
@@ -25,6 +26,11 @@ func parseLaunchOptions(_ arguments: [String]) -> LaunchOptions {
             index += 1
             if index < arguments.count {
                 options.renderDirectory = arguments[index]
+            }
+        case "--render-window-check":
+            index += 1
+            if index < arguments.count {
+                options.renderWindowCheckDirectory = arguments[index]
             }
         case "--print-state":
             options.printState = true
@@ -85,6 +91,13 @@ if let directory = launchOptions.renderDirectory {
     let application = NSApplication.shared
     application.setActivationPolicy(.prohibited)
     let code = RenderHarness.run(directory: directory)
+    exit(code)
+}
+
+if let directory = launchOptions.renderWindowCheckDirectory {
+    let application = NSApplication.shared
+    application.setActivationPolicy(.prohibited)
+    let code = RenderHarness.runWindowCheck(directory: directory)
     exit(code)
 }
 
