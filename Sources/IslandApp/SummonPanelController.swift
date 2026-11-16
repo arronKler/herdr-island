@@ -235,6 +235,11 @@ final class SummonPanelController: NSObject, NSWindowDelegate {
             }
             return nil
         }
+        if stroke.key == .other, stroke.modifiers == [.command],
+           event.charactersIgnoringModifiers?.lowercased() == "k" {
+            NotificationCenter.default.postOpenRecipientPicker(.summon)
+            return nil
+        }
         return event
     }
 }

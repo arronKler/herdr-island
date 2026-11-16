@@ -96,6 +96,10 @@ struct DeliveryComposerCard: View {
             guard composer.isEditable else { return }
             DispatchQueue.main.async { inputFocused = true }
         }
+        .onReceive(NotificationCenter.default.publisher(for: .herdrOpenRecipientPicker)) { note in
+            guard note.userInfo?["surface"] as? String == composer.surface.rawValue else { return }
+            switcherOpen = true
+        }
     }
 
     // MARK: - Header
@@ -222,7 +226,7 @@ struct DeliveryComposerCard: View {
             )
         }
         .disabled(busy)
-        .help("选择投递对象")
+        .help("选择投递对象 (⌘K)")
         .accessibilityLabel("投递对象：\(composer.recipient.name)")
     }
 

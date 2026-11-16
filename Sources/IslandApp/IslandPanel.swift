@@ -689,6 +689,11 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
                 }
                 return nil
             }
+            if stroke.key == .other, stroke.modifiers == [.command],
+               event.charactersIgnoringModifiers?.lowercased() == "k" {
+                NotificationCenter.default.postOpenRecipientPicker(.drop)
+                return nil
+            }
             return event
         }
 
@@ -713,6 +718,11 @@ final class IslandPanelController: NSObject, NSWindowDelegate {
                 if presentation.windowTask?.composer.send.canSubmit == true {
                     actions.submitDelivery(.lock)
                 }
+                return nil
+            }
+            if stroke.key == .other, stroke.modifiers == [.command],
+               event.charactersIgnoringModifiers?.lowercased() == "k" {
+                NotificationCenter.default.postOpenRecipientPicker(.lock)
                 return nil
             }
             return event
@@ -836,6 +846,21 @@ extension Notification.Name {
     /// Escape while a drop composer is up. The overlay animates the card away
     /// and the drop home before asking the store to clear the drop.
     static let herdrDropEscape = Notification.Name("HerdrIsland.dropEscape")
+    /// Command-K from a host panel. The popover is its own window, so the
+    /// panel's key monitor cannot open it; the card listens instead. The
+    /// surface in `userInfo` keeps a second live composer from opening too.
+    static let herdrOpenRecipientPicker = Notification.Name("HerdrIsland.openRecipientPicker")
+}
+
+extension NotificationCenter {
+    /// One place owns the `userInfo` key the card matches on.
+    func postOpenRecipientPicker(_ surface: DeliverySurface) {
+        post(
+            name: .herdrOpenRecipientPicker,
+            object: nil,
+            userInfo: ["surface": surface.rawValue]
+        )
+    }
 }
 
 extension KeyStroke {
