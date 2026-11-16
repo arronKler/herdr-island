@@ -1,6 +1,7 @@
 import AppKit
 import HerdrKit
 import IslandCore
+import Metal
 import SwiftUI
 
 enum RenderHarness {
@@ -392,7 +393,12 @@ enum RenderHarness {
             defer: false
         )
         window.contentView = hosting
-        window.orderFront(nil)
+        // A runner without a GPU asserts inside Metal when a window is ordered
+        // on screen. onAppear and layout run either way, which is all the
+        // measurement needs, so the window is only shown when a device exists.
+        if MTLCreateSystemDefaultDevice() != nil {
+            window.orderFront(nil)
+        }
         hosting.layoutSubtreeIfNeeded()
         RunLoop.current.run(until: Date().addingTimeInterval(0.4))
         hosting.layoutSubtreeIfNeeded()
